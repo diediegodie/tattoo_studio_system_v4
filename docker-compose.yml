@@ -1,0 +1,58 @@
+version: "3.9"
+
+services:
+  # PostgreSQL Database Service
+  db:
+    image: postgres:16
+    container_name: tattoo_studio_db
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secret123}
+      POSTGRES_DB: ${POSTGRES_DB:-tattoo_studio}
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    networks:
+      - tattoo_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d tattoo_studio"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Backend Flask Application Service
+  app:
+    build:
+      context: .
+      dockerfile: ./backend/Dockerfile
+    container_name: tattoo_studio_app
+    restart: always
+    environment:
+      - [REDACTED_DATABASE_URL]
+      - FLASK_ENV=${FLASK_ENV:-development}
+      - FLASK_DEBUG=${FLASK_DEBUG:-1}
+      - FLASK_SECRET_KEY=${FLASK_SECRET_KEY:-dev-secret-change-me}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - OAUTHLIB_INSECURE_TRANSPORT=${OAUTHLIB_INSECURE_TRANSPORT:-1}
+      - OAUTHLIB_RELAX_TOKEN_SCOPE=${OAUTHLIB_RELAX_TOKEN_SCOPE:-1}
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./backend:/app
+      - ./frontend:/app/frontend
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - tattoo_network
+    command: python app/app.py
+
+volumes:
+  db_data:
+
+networks:
+  tattoo_network:
+    driver: bridge
