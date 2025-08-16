@@ -6,6 +6,7 @@
 	<meta charset="utf-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
 	<link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}" />
+
 </head>
 
 <body class="is-preload">
@@ -17,9 +18,39 @@
 		<div id="main">
 			<div class="inner">
 
+				<!-- Flash Messages -->
+				{% with messages = get_flashed_messages(with_categories=true) %}
+				{% if messages %}
+				<div class="flash-messages">
+					{% for category, message in messages %}
+					<div class="flash-message {{ category }}">{{ message }}</div>
+					{% endfor %}
+				</div>
+				{% endif %}
+				{% endwith %}
+
 				<!-- Header -->
 				<header id="header">
-					<a href="index.html" class="logo"><strong>Sistema</strong> de Gerenciamento</a>
+					<a href="{{ url_for('index') }}" class="logo"><strong>Sistema</strong> de Gerenciamento</a>
+					{% if current_user.is_authenticated %}
+					<div class="user-info" style="position: absolute; top: 0; right: 0; display: flex; align-items: center; gap: 10px; padding: 10px;">
+						{% if current_user.avatar_url %}
+						<img src="{{ current_user.avatar_url }}" alt="Avatar" class="user-avatar">
+						{% endif %}
+						<span>Olá, {{ current_user.name }}!</span>
+						<a href="{{ url_for('logout') }}" class="button">Sair</a>
+					</div>
+					{% endif %}
+				</header>
+				<br>
+				<header>
+					<div class="user-info">
+						{% if current_user.is_authenticated %}
+						
+						<br>
+						{# Sair button moved to header above #}
+						{% endif %}
+					</div>
 				</header>
 				<!-- Banner -->
 				<section id="banner">
