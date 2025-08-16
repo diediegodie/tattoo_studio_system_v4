@@ -1,0 +1,123 @@
+<!DOCTYPE HTML>
+<html>
+
+<head>
+    <title>Extrato</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+    <link rel="stylesheet" href="../assets/css/main.css" />
+</head>
+
+<body class="is-preload">
+
+    <!-- Wrapper -->
+    <div id="wrapper">
+
+        <!-- Main -->
+        <div id="main">
+            <div class="inner">
+
+                <!-- Header -->
+                <header id="header">
+                    <a href="index.html" class="logo"><strong>Extrato</strong> mensal</a>
+                </header>
+
+                <!-- Content -->
+                <section>
+                    <header class="main">
+                        <h1>Extrato</h1>
+                    </header>
+
+                    <section>
+                        <div class="table-wrapper">
+                            <form class="row gtr-uniform" style="max-width:500px;margin:0 auto;">
+                                <div class="col-6 col-12-mobile">
+                                    <label for="mes">Mês</label>
+                                    <select id="mes" name="mes" required>
+                                        <option value="">Selecione</option>
+                                        <option value="01">Janeiro</option>
+                                        <option value="02">Fevereiro</option>
+                                        <option value="03">Março</option>
+                                        <option value="04">Abril</option>
+                                        <option value="05">Maio</option>
+                                        <option value="06">Junho</option>
+                                        <option value="07">Julho</option>
+                                        <option value="08">Agosto</option>
+                                        <option value="09">Setembro</option>
+                                        <option value="10">Outubro</option>
+                                        <option value="11">Novembro</option>
+                                        <option value="12">Dezembro</option>
+                                    </select>
+                                </div>
+                                <div class="col-6 col-12-mobile">
+                                    <label for="ano">Ano</label>
+                                    <input type="number" id="ano" name="ano" min="2000" max="2100" required
+                                        placeholder="Ano" />
+                                </div>
+                                <div class="col-12" style="text-align:center;margin-top:1em;">
+                                    <button type="submit" class="button primary">Buscar</button>
+                                </div>
+                            </form>
+                        </div>
+                        <!-- Tabela de resultados será exibida aqui futuramente -->
+                    </section>
+
+                    <script>
+                        function toggleOptions(btn) {
+                            var actions = btn.nextElementSibling;
+                            if (actions.style.display === "none" || actions.style.display === "") {
+                                actions.style.display = "inline-block";
+                            } else {
+                                actions.style.display = "none";
+                            }
+                        }
+                    </script>
+
+                </section>
+
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div id="sidebar">
+            <div class="inner">
+
+                <!-- Search -->
+                <section id="search" class="alt">
+                    <form method="post" action="#">
+                        <input type="text" name="query" id="query" placeholder="Search" />
+                    </form>
+                </section>
+
+                <!-- Menu -->
+                <nav id="menu">
+                    <header class="major">
+                        <h2>Menu</h2>
+                    </header>
+                    <ul>
+                        <li><a href="index.html">Homepage</a></li>
+                        <li><a href="estoque.html">Estoque</a></li>
+                        <li><a href="sessoes.html">Sessões</a></li>
+                        <li><a href="financeiro.html">Financeiro</a></li>
+                        <li><a href="registrar_pagamento.html">Registrar Pagamento</a></li>
+                        <li><a href="extrato.html">Extrato</a></li>
+                        <li><a href="cadastro_interno.html">Cadastro Interno</a></li>
+                        <li><a href="calculadora.html">Calculadora</a></li>
+                        <li><a href="historico.html">Historico</a></li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Scripts -->
+    <script src="../assets/js/jquery.min.js"></script>
+    <script src="../assets/js/browser.min.js"></script>
+    <script src="../assets/js/breakpoints.min.js"></script>
+    <script src="../assets/js/util.js"></script>
+    <script src="../assets/js/main.js"></script>
+
+</body>
+
+</html>

@@ -1,0 +1,133 @@
+<!DOCTYPE HTML>
+<html>
+
+<head>
+    <title>Registrar Pagamento</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+    <link rel="stylesheet" href="../assets/css/main.css" />
+</head>
+
+<body class="is-preload">
+
+    <!-- Wrapper -->
+    <div id="wrapper">
+
+        <!-- Main -->
+        <div id="main">
+            <div class="inner">
+
+                <!-- Header -->
+                <header id="header">
+                    <a href="index.html" class="logo"><strong>Registrar</strong> um pagamento</a>
+                </header>
+
+                <!-- Content -->
+                <section>
+                    <header class="main">
+                        <h1>Registrar Pagamento</h1>
+                    </header>
+
+                    <section>
+                        <form id="registrar-pagamento-form" style="max-width:600px;margin:0 auto;">
+                            <div style="display:flex;flex-wrap:wrap;gap:1em;">
+                                <div style="flex:1 1 200px;min-width:180px;">
+                                    <label for="data">Data</label>
+                                    <input type="date" id="data" name="data" required style="width:100%;">
+                                </div>
+                                <div style="flex:1 1 200px;min-width:180px;">
+                                    <label for="valor">Valor</label>
+                                    <input type="number" id="valor" name="valor" step="0.01" min="0" required
+                                        style="width:100%;">
+                                </div>
+                                <div style="flex:1 1 200px;min-width:180px;">
+                                    <label for="forma-pagamento">Forma de pagamento</label>
+                                    <select id="forma-pagamento" name="forma-pagamento" required style="width:100%;">
+                                        <option value="">Selecione</option>
+                                        <option value="Pix">Pix</option>
+                                        <option value="Dinheiro">Dinheiro</option>
+                                        <option value="Cartão">Cartão</option>
+                                        <option value="Transferência">Transferência</option>
+                                    </select>
+                                </div>
+                                <div style="flex:1 1 200px;min-width:180px;">
+                                    <label for="cliente">Cliente</label>
+                                    <input type="text" id="cliente" name="cliente" required style="width:100%;">
+                                </div>
+                                <div style="flex:1 1 200px;min-width:180px;">
+                                    <label for="artista">Artista</label>
+                                    <input type="text" id="artista" name="artista" required style="width:100%;">
+                                </div>
+                                <div style="flex:1 1 200px;min-width:180px;">
+                                    <label for="comissao">Comissão</label>
+                                    <input type="number" id="comissao" name="comissao" step="0.01" min="0"
+                                        style="width:100%;">
+                                </div>
+                                <div style="flex:1 1 100%;min-width:180px;">
+                                    <label for="observacao">Observação</label>
+                                    <textarea id="observacao" name="observacao" rows="2"
+                                        style="width:100%;resize:vertical;"></textarea>
+                                </div>
+                            </div>
+                            <div style="display:flex;justify-content:center;gap:1em;margin-top:2em;">
+                                <button type="submit" class="button primary">Registrar</button>
+                                <button type="reset" class="button">Limpar</button>
+                            </div>
+                        </form>
+                    </section>
+
+                    <script>
+                        function toggleOptions(btn) {
+                            var actions = btn.nextElementSibling;
+                            if (actions.style.display === "none" || actions.style.display === "") {
+                                actions.style.display = "inline-block";
+                            } else {
+                                actions.style.display = "none";
+                            }
+                        }
+                    </script>
+
+                </section>
+
+            </div>
+        </div>
+
+
+        <!-- Sidebar -->
+        <div id="sidebar">
+            <div class="inner">
+                <!-- Search -->
+                <section id="search" class="alt">
+                    <form method="post" action="#">
+                        <input type="text" name="query" id="query" placeholder="Search" />
+                    </form>
+                </section>
+                <!-- Menu -->
+                <nav id="menu">
+                    <header class="major">
+                        <h2>Menu</h2>
+                    </header>
+                    <ul>
+                        <li><a href="index.html">Homepage</a></li>
+                        <li><a href="estoque.html">Estoque</a></li>
+                        <li><a href="sessoes.html">Sessões</a></li>
+                        <li><a href="financeiro.html">Financeiro</a></li>
+                        <li><a href="registrar_pagamento.html">Registrar Pagamento</a></li>
+                        <li><a href="extrato.html">Extrato</a></li>
+                        <li><a href="cadastro_interno.html">Cadastro Interno</a></li>
+                        <li><a href="calculadora.html">Calculadora</a></li>
+                        <li><a href="historico.html">Historico</a></li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+        <!-- Scripts -->
+        <script src="../assets/js/jquery.min.js"></script>
+        <script src="../assets/js/browser.min.js"></script>
+        <script src="../assets/js/breakpoints.min.js"></script>
+        <script src="../assets/js/util.js"></script>
+        <script src="../assets/js/main.js"></script>
+
+</body>
+
+</html>
