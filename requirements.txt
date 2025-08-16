@@ -1,0 +1,17 @@
+Flask
+Flask-Dance[google]
+Flask-Login
+Flask-SQLAlchemy
+Flask-WTF
+WTForms
+requests
+gunicorn
+python-dotenv
+psycopg2-binary
+Werkzeug
+itsdangerous
+Jinja2
+click
+email-validator
+pytz
+marshmallow
