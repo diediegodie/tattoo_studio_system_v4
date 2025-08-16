@@ -71,7 +71,7 @@ Management system for tattoo studios, with Flask backend, PostgreSQL database, G
 
 ## 🐳 DOCKER COMMANDS - COMPLETE MANAGEMENT
 
-### 🚀 **START APPLICATION**
+### **START APPLICATION**
 ```bash
 # Start all services (app + database)
 docker compose up -d --build
@@ -86,7 +86,7 @@ docker compose up -d db
 docker compose up -d app
 ```
 
-### 🛑 **STOP APPLICATION**
+### **STOP APPLICATION**
 ```bash
 # Stop all services
 docker compose down
@@ -101,7 +101,7 @@ docker compose stop app
 docker compose stop db
 ```
 
-### 📊 **MONITORING AND LOGS**
+### **MONITORING AND LOGS**
 ```bash
 # View application logs in real time
 docker compose logs app -f
@@ -119,7 +119,7 @@ docker compose ps
 docker ps
 ```
 
-### 🔧 **DATABASE MANAGEMENT**
+### **DATABASE MANAGEMENT**
 ```bash
 # Access PostgreSQL terminal
 docker compose exec db psql -U admin -d tattoo_studio
@@ -134,7 +134,7 @@ docker compose exec db pg_dump -U admin tattoo_studio > backup.sql
 docker compose exec -T db psql -U admin -d tattoo_studio < backup.sql
 ```
 
-### 🔄 **RESTART SERVICES**
+### **RESTART SERVICES**
 ```bash
 # Restart application
 docker compose restart app
@@ -146,7 +146,7 @@ docker compose restart db
 docker compose restart
 ```
 
-### 🧹 **CLEANUP AND MAINTENANCE**
+### **CLEANUP AND MAINTENANCE**
 ```bash
 # Complete rebuild (force recreation)
 docker compose up -d --build --force-recreate
@@ -161,7 +161,7 @@ docker image prune
 docker system prune -a
 ```
 
-### 🔍 **DEBUG AND TROUBLESHOOTING**
+### **DEBUG AND TROUBLESHOOTING**
 ```bash
 # Access application terminal
 docker compose exec app bash
@@ -177,7 +177,7 @@ docker inspect tattoo_studio_app
 docker inspect tattoo_studio_db
 ```
 
-### 📱 **QUICK ACCESS**
+### **QUICK ACCESS**
 ```bash
 # Open application in browser (Linux)
 xdg-open http://localhost:5000
@@ -186,7 +186,7 @@ xdg-open http://localhost:5000
 docker compose logs app --tail=50
 ```
 
-### 🎯 **MOST USED DAILY COMMANDS:**
+### **MOST USED DAILY COMMANDS:**
 ```bash
 # 1. Start everything
 docker compose up -d --build
