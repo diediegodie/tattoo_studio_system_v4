@@ -5,7 +5,7 @@
     <title>Histórico</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
-    <link rel="stylesheet" href="../assets/css/main.css" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}" />
 </head>
 
 <body class="is-preload">
@@ -175,15 +175,15 @@
                         <h2>Menu</h2>
                     </header>
                     <ul>
-                        <li><a href="index.html">Homepage</a></li>
-                        <li><a href="estoque.html">Estoque</a></li>
-                        <li><a href="sessoes.html">Sessões</a></li>
-                        <li><a href="financeiro.html">Financeiro</a></li>
-                        <li><a href="registrar_pagamento.html">Registrar Pagamento</a></li>
-                        <li><a href="extrato.html">Extrato</a></li>
-                        <li><a href="cadastro_interno.html">Cadastro Interno</a></li>
-                        <li><a href="calculadora.html">Calculadora</a></li>
-                        <li><a href="historico.html">Historico</a></li>
+                        <li><a href="{{ url_for('index') }}">Homepage</a></li>
+                        <li><a href="{{ url_for('estoque') }}">Estoque</a></li>
+                        <li><a href="{{ url_for('sessoes') }}">Sessões</a></li>
+                        <li><a href="{{ url_for('financeiro') }}">Financeiro</a></li>
+                        <li><a href="{{ url_for('registrar_pagamento') }}">Registrar Pagamento</a></li>
+                        <li><a href="{{ url_for('extrato') }}">Extrato</a></li>
+                        <li><a href="{{ url_for('cadastro_interno') }}">Cadastro Interno</a></li>
+                        <li><a href="{{ url_for('calculadora') }}">Calculadora</a></li>
+                        <li><a href="{{ url_for('historico') }}">Historico</a></li>
                     </ul>
                 </nav>
             </div>
@@ -192,11 +192,11 @@
     </div>
 
     <!-- Scripts -->
-    <script src="../assets/js/jquery.min.js"></script>
-    <script src="../assets/js/browser.min.js"></script>
-    <script src="../assets/js/breakpoints.min.js"></script>
-    <script src="../assets/js/util.js"></script>
-    <script src="../assets/js/main.js"></script>
+    <script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/browser.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/breakpoints.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/util.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 
 </body>
 
