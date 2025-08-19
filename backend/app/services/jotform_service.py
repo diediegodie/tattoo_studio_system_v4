@@ -23,7 +23,7 @@ class JotFormService(IJotFormService):
         self.base_url = "https://api.jotform.com"
 
     def fetch_submissions(self) -> List[dict]:
-        """Fetch all active submissions from JotForm API."""
+        """Fetch all relevant submissions from JotForm API."""
         url = f"{self.base_url}/form/{self.form_id}/submissions?apiKey={self.api_key}"
 
         try:
@@ -34,7 +34,8 @@ class JotFormService(IJotFormService):
             submissions = []
 
             for item in data.get("content", []):
-                if item.get("status") == "ACTIVE":
+                # Accept any status except 'DELETED' (or customize as needed)
+                if item.get("status") not in ["DELETED", None]:
                     submissions.append(item)
 
             return submissions

@@ -1013,3 +1013,65 @@ button.primary:active,
         color: #0c5460;
         border: 1px solid #bee5eb;
     }
+
+    /* list page */
+    .client-section {
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-bottom: 30px;
+            padding: 20px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .client-header {
+            color: #333;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f2f2f2;
+        }
+
+        .client-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+        }
+
+        .client-table th,
+        .client-table td {
+            padding: 12px;
+            text-align: left;
+            border: 1px solid #ddd;
+            vertical-align: top;
+        }
+
+        .client-table th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+            color: #495057;
+        }
+
+        .client-table tr:nth-child(even) {
+            background-color: #fafafa;
+        }
+
+        .sync-button {
+            background: #28a745;
+            color: white;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 5px;
+            display: inline-block;
+            margin-bottom: 20px;
+            transition: background 0.3s;
+        }
+
+        .sync-button:hover {
+            background: #218838;
+        }
+
+        .no-clients {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+        }
