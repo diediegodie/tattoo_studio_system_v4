@@ -1,0 +1,189 @@
+<!DOCTYPE HTML>
+<html>
+
+<head>
+    <title>Clientes - Alma Negra System</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}" />
+    <style>
+        .client-section {
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-bottom: 30px;
+            padding: 20px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .client-header {
+            color: #333;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f2f2f2;
+        }
+
+        .client-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+        }
+
+        .client-table th,
+        .client-table td {
+            padding: 12px;
+            text-align: left;
+            border: 1px solid #ddd;
+            vertical-align: top;
+        }
+
+        .client-table th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+            color: #495057;
+        }
+
+        .client-table tr:nth-child(even) {
+            background-color: #fafafa;
+        }
+
+        .sync-button {
+            background: #28a745;
+            color: white;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 5px;
+            display: inline-block;
+            margin-bottom: 20px;
+            transition: background 0.3s;
+        }
+
+        .sync-button:hover {
+            background: #218838;
+        }
+
+        .no-clients {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+        }
+    </style>
+</head>
+
+<body class="is-preload">
+
+    <!-- Wrapper -->
+    <div id="wrapper">
+
+        <!-- Main -->
+        <div id="main">
+            <div class="inner">
+
+                <!-- Flash Messages -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                    <div class="flash-message {{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                {% endwith %}
+
+                <!-- Header -->
+                <header id="header">
+                    <a href="{{ url_for('index') }}" class="logo"><strong>Clientes</strong> do JotForm</a>
+                    {% if current_user.is_authenticated %}
+                    <div class="user-info"
+                        style="position: absolute; top: 0; right: 0; display: flex; align-items: center; gap: 10px; padding: 10px;">
+                        {% if current_user.avatar_url %}
+                        <img src="{{ current_user.avatar_url }}" alt="Avatar" class="user-avatar">
+                        {% endif %}
+                        <span>Olá, {{ current_user.name }}!</span>
+                        <a href="{{ url_for('logout') }}" class="button">Sair</a>
+                    </div>
+                    {% endif %}
+                </header>
+
+                <!-- Content -->
+                <section>
+                    <header class="main">
+                        <h1>Lista de Clientes</h1>
+                    </header>
+
+                    <!-- Sync Button -->
+                    <a href="{{ url_for('client.sync_clients') }}" class="sync-button">
+                        🔄 Sincronizar com JotForm
+                    </a>
+
+                    <!-- Client Submissions -->
+                    {% if submissions %}
+                    {% for submission in submissions %}
+                    <div class="client-section">
+                        <h2 class="client-header">Cliente ID: {{ submission.id }}</h2>
+                        <table class="client-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 30%;">Campo</th>
+                                    <th style="width: 70%;">Informação</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for answer in submission.answers %}
+                                <tr>
+                                    <td><strong>{{ answer.label }}</strong></td>
+                                    <td>{{ answer.value|safe }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <div class="no-clients">
+                        <h3>Nenhum cliente encontrado</h3>
+                        <p>Clique em "Sincronizar com JotForm" para buscar novos clientes.</p>
+                    </div>
+                    {% endif %}
+
+                </section>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div id="sidebar" class="inactive">
+            <div class="toggle"></div>
+            <div class="inner">
+
+                <!-- Menu -->
+                <nav id="menu">
+                    <header class="major">
+                        <h2>Menu</h2>
+                    </header>
+                    <ul>
+                        <li><a href="{{ url_for('index') }}">Homepage</a></li>
+                        <li><a href="{{ url_for('client.client_list') }}">Clientes</a></li>
+                        <li><a href="{{ url_for('estoque') }}">Estoque</a></li>
+                        <li><a href="{{ url_for('sessoes') }}">Sessões</a></li>
+                        <li><a href="{{ url_for('financeiro') }}">Financeiro</a></li>
+                        <li><a href="{{ url_for('registrar_pagamento') }}">Registrar Pagamento</a></li>
+                        <li><a href="{{ url_for('extrato') }}">Extrato</a></li>
+                        <li><a href="{{ url_for('cadastro_interno') }}">Cadastro Interno</a></li>
+                        <li><a href="{{ url_for('calculadora') }}">Calculadora</a></li>
+                        <li><a href="{{ url_for('historico') }}">Historico</a></li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/browser.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/breakpoints.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/util.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+
+</body>
+
+</html>

@@ -6,6 +6,14 @@ from db.base import User as DbUser
 
 
 class UserRepository(IUserRepository):
+    def get_db_by_google_id(self, google_id: str) -> Optional[DbUser]:
+        """Get user by Google ID, returning database model."""
+        return self.db.query(DbUser).filter_by(google_id=google_id).first()
+
+    def get_db_by_email(self, email: str) -> Optional[DbUser]:
+        """Get user by email, returning database model."""
+        return self.db.query(DbUser).filter_by(email=email).first()
+
     """Repository for User persistence operations following SOLID principles.
 
     This implementation:
@@ -33,8 +41,8 @@ class UserRepository(IUserRepository):
         db_user = self.db.query(DbUser).filter_by(google_id=google_id).first()
         return self._to_domain(db_user) if db_user else None
 
-    def create(self, user: DomainUser) -> DomainUser:
-        """Create a new user from domain entity."""
+    def create(self, user: DomainUser) -> DbUser:
+        """Create a new user from domain entity and return persistence model."""
         db_user = DbUser()
         db_user.email = user.email  # type: ignore
         db_user.name = user.name  # type: ignore
@@ -46,7 +54,8 @@ class UserRepository(IUserRepository):
         self.db.commit()
         self.db.refresh(db_user)
 
-        return self._to_domain(db_user)
+        # Retorna o modelo de persistência usando o google_id
+        return self.get_db_by_google_id(str(db_user.google_id))
 
     def update(self, user: DomainUser) -> DomainUser:
         """Update an existing user from domain entity."""
