@@ -88,29 +88,38 @@ def create_app():
         google_user_id = str(google_info["id"])
 
         from db.session import SessionLocal
+        from repositories.user_repo import UserRepository
+        from services.user_service import UserService
+        from core.security import create_user_token
 
         db = SessionLocal()
         try:
-            # Check if user already exists
-            user = db.query(User).filter_by(google_id=google_user_id).first()
+            repo = UserRepository(db)
+            service = UserService(repo)
 
-            if not user:
-                # Create new user
-                user = User(
-                    email=google_info["email"],
-                    name=google_info["name"],
-                    avatar_url=google_info.get("picture"),
-                    google_id=google_user_id,
-                )
-                db.add(user)
-                db.commit()
-                db.refresh(user)
+            user = service.create_or_update_from_google(google_info)
+
+            # Create JWT token for API access
+            jwt_token = create_user_token(user.id, user.email)  # type: ignore
 
             login_user(user)
-            flash(f"Bem-vindo, {user.name}!", category="success")
-            return redirect(url_for("index"))
+            flash(f"Bem-vindo, {user.name}!", category="success")  # type: ignore            # Set JWT token as httpOnly cookie for API access
+            response = redirect(url_for("index"))
+            response.set_cookie(
+                "access_token",
+                jwt_token,
+                max_age=24 * 60 * 60,  # 24 hours
+                httponly=True,
+                secure=False,  # Set to True in production with HTTPS
+                samesite="Lax",
+            )
+            return response
         except Exception as e:
-            db.rollback()
+            # Rollback in case repository/service raised after partial changes
+            try:
+                db.rollback()
+            except Exception:
+                pass
             flash(f"Erro ao processar login: {str(e)}", category="error")
             return redirect(url_for("login_page"))
         finally:
@@ -133,7 +142,11 @@ def create_app():
     def logout():
         logout_user()
         flash("Você foi desconectado com sucesso.", category="info")
-        return redirect(url_for("login_page"))
+
+        # Clear JWT cookie as well
+        response = redirect(url_for("login_page"))
+        response.set_cookie("access_token", "", expires=0)
+        return response
 
     @app.route("/index")
     @login_required
@@ -213,7 +226,10 @@ def create_app():
             )
 
     # Register blueprints/controllers here
-    # e.g. from .controllers.user_controller import user_bp
-    # app.register_blueprint(user_bp)
+    from controllers.api_controller import api_bp
+    from controllers.auth_controller import auth_bp
+
+    app.register_blueprint(api_bp)
+    app.register_blueprint(auth_bp)
 
     return app

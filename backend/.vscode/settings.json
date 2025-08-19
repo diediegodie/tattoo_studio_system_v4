@@ -1,0 +1,15 @@
+{
+    "python.analysis.extraPaths": [
+        "./app"
+    ],
+    "python.autoComplete.extraPaths": [
+        "./app"
+    ],
+    "python.analysis.autoImportCompletions": true,
+    "python.analysis.diagnosticMode": "workspace",
+    "python.analysis.typeCheckingMode": "basic",
+    "pylint.args": [
+        "--init-hook",
+        "import sys; sys.path.append('./app')"
+    ]
+}

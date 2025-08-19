@@ -15,6 +15,7 @@ class User(UserMixin, Base):
     name = Column(String(100), nullable=False)
     avatar_url = Column(String(255))
     google_id = Column(String(50), unique=True)
+    password_hash = Column(String(255), nullable=True)  # For local authentication
     # Keep the original column name to match existing database
     is_active = Column(Boolean, default=True)  # type: ignore[assignment]
     created_at = Column(DateTime(timezone=True), server_default=func.now())
