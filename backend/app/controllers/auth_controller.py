@@ -117,7 +117,6 @@ def local_login():
 
 
 @auth_bp.route("/logout", methods=["POST"])
-@auth_bp.route("/logout", methods=["POST"])
 @login_required
 def logout():
     """Logout the current user and clear JWT/session.

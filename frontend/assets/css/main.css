@@ -81,6 +81,11 @@ body.is-preload *, body.is-preload *:before, body.is-preload *:after {
   transition: none !important;
 }
 
+/* submenu */
+.opener { cursor: pointer; }
+#menu ul ul { display: none; }
+#menu li.active > ul { display: block; }
+
 /* Typography */
 body, input, select, textarea {
   color: #7f888f;

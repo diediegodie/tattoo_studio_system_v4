@@ -48,3 +48,18 @@ class TestModel(Base):
 
     def __repr__(self):
         return f"<TestModel(id={self.id}, name='{self.name}')>"
+
+
+class Client(Base):
+    """Client model for database persistence"""
+
+    __tablename__ = "clients"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), nullable=False)
+    jotform_submission_id = Column(String(100), unique=True, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    def __repr__(self):
+        return f"<Client(id={self.id}, name='{self.name}', jotform_id='{self.jotform_submission_id}')>"

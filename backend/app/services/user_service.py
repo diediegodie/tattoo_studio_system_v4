@@ -39,20 +39,34 @@ class UserService:
 
         # Try to find existing user by google_id
         user = self.repo.get_by_google_id(google_id)
-        if user:
+        if user is not None:
             # Update existing user with latest info
             user.email = email
             user.name = name
             user.avatar_url = avatar
-            return self.repo.update(user)
+            self.repo.update(user)
+            # Retorna modelo de persistência para autenticação
+            from repositories.user_repo import UserRepository
+
+            if isinstance(self.repo, UserRepository):
+                return self.repo.get_db_by_google_id(google_id)
+            else:
+                return user
 
         # Try finding by email to link accounts created previously
         user = self.repo.get_by_email(email)
-        if user:
+        if user is not None:
             # Link Google account to existing user
             user.google_id = google_id
             user.avatar_url = avatar
-            return self.repo.update(user)
+            self.repo.update(user)
+            # Retorna modelo de persistência para autenticação
+            from repositories.user_repo import UserRepository
+
+            if isinstance(self.repo, UserRepository):
+                return self.repo.get_db_by_google_id(google_id)
+            else:
+                return user
 
         # Create a new user from domain entity
         new_user = DomainUser(
@@ -63,7 +77,16 @@ class UserService:
             is_active=True,
         )
 
-        return self.repo.create(new_user)
+        self.repo.create(new_user)
+        # Para autenticação, retorna o modelo de persistência
+        # Cast necessário para acessar método específico do repositório concreto
+        from repositories.user_repo import UserRepository
+
+        if isinstance(self.repo, UserRepository):
+            return self.repo.get_db_by_google_id(google_id)
+        else:
+            # Fallback caso não seja o repositório concreto
+            return self.repo.get_by_google_id(google_id)
 
     def set_password(self, user_id: int, [REDACTED_PASSWORD] -> bool:
         """Set a password for a user (for local authentication).

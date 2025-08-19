@@ -235,23 +235,18 @@
 
 		// Openers.
 			$menu_openers.each(function() {
-
 				var $this = $(this);
-
 				$this.on('click', function(event) {
-
-					// Prevent default.
-						event.preventDefault();
-
-					// Toggle.
-						$menu_openers.not($this).removeClass('active');
-						$this.toggleClass('active');
-
+					event.preventDefault();
+					// Remove .active from other submenu parents
+					$menu_openers.not($this).each(function() {
+						$(this).parent('li').removeClass('active');
+					});
+					// Toggle .active on this parent <li>
+					$this.parent('li').toggleClass('active');
 					// Trigger resize (sidebar lock).
-						$window.triggerHandler('resize.sidebar-lock');
-
+					$window.triggerHandler('resize.sidebar-lock');
 				});
-
 			});
 
 })(jQuery);

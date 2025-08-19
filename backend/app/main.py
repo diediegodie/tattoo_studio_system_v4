@@ -228,8 +228,10 @@ def create_app():
     # Register blueprints/controllers here
     from controllers.api_controller import api_bp
     from controllers.auth_controller import auth_bp
+    from controllers.client_controller import client_bp
 
     app.register_blueprint(api_bp)
     app.register_blueprint(auth_bp)
+    app.register_blueprint(client_bp)
 
     return app

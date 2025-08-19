@@ -39,6 +39,10 @@ class User:
         if "@" not in self.email:
             raise ValueError("Invalid email format")
 
+        def get_id(self):
+            """Return the unique identifier for Flask-Login compatibility."""
+            return self.id
+
 
 @dataclass
 class Appointment:
@@ -99,3 +103,27 @@ class InventoryItem:
     def calculate_total_value(self) -> float:
         """Business rule: calculate total inventory value."""
         return self.quantity * self.unit_price
+
+
+@dataclass
+class Client:
+    """Domain entity representing a Client in the system.
+
+    This is the pure business representation, independent of:
+    - Database implementation (SQLAlchemy)
+    - JotForm API details
+    - HTTP frameworks (Flask)
+    """
+
+    id: Optional[int] = None
+    name: str = ""
+    jotform_submission_id: str = ""
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+    def __post_init__(self):
+        """Validate domain rules."""
+        if not self.name:
+            raise ValueError("Client name is required")
+        if not self.jotform_submission_id:
+            raise ValueError("JotForm submission ID is required")

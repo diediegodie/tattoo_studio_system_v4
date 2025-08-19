@@ -9,7 +9,7 @@ This controller demonstrates:
 
 from flask import Blueprint, request, jsonify
 from datetime import datetime
-from typing import Dict, Any
+from typing import Dict, Any, Union, Tuple
 
 from services.appointment_service import AppointmentService
 from schemas.dtos import (
@@ -36,18 +36,45 @@ class AppointmentController:
     def __init__(self, appointment_service: AppointmentService):
         self.appointment_service = appointment_service
 
-    def create_appointment(self) -> Dict[str, Any]:
+    def create_appointment(self) -> Union[Dict[str, Any], Tuple[Dict[str, Any], int]]:
         """Create a new appointment."""
         try:
             data = request.get_json() or {}
 
+            # Validate required fields
+            user_id = data.get("user_id")
+            service_type = data.get("service_type")
+            scheduled_date_str = data.get("scheduled_date")
+            duration_minutes = data.get("duration_minutes")
+            price = data.get("price")
+
+            if user_id is None:
+                raise ValueError("user_id is required")
+            if service_type is None:
+                raise ValueError("service_type is required")
+            if scheduled_date_str is None:
+                raise ValueError("scheduled_date is required")
+            if duration_minutes is None:
+                raise ValueError("duration_minutes is required")
+            if price is None:
+                raise ValueError("price is required")
+
+            # Type conversions with validation
+            try:
+                user_id = int(user_id)
+                duration_minutes = int(duration_minutes)
+                price = float(price)
+                scheduled_date = datetime.fromisoformat(scheduled_date_str)
+            except (ValueError, TypeError) as e:
+                raise ValueError(f"Invalid data type: {e}")
+
             # Create request DTO
             create_request = AppointmentCreateRequest(
-                user_id=data.get("user_id"),
-                service_type=data.get("service_type"),
-                scheduled_date=datetime.fromisoformat(data.get("scheduled_date")),
-                duration_minutes=data.get("duration_minutes"),
-                price=data.get("price"),
+                user_id=user_id,
+                service_type=service_type,
+                scheduled_date=scheduled_date,
+                duration_minutes=duration_minutes,
+                price=price,
                 notes=data.get("notes"),
             )
 
@@ -84,7 +111,9 @@ class AppointmentController:
                 "message": error.message,
             }, 500
 
-    def get_appointment(self, appointment_id: int) -> Dict[str, Any]:
+    def get_appointment(
+        self, appointment_id: int
+    ) -> Union[Dict[str, Any], Tuple[Dict[str, Any], int]]:
         """Get a specific appointment."""
         try:
             # This would call appointment_service.get_appointment_by_id()
@@ -104,20 +133,26 @@ class AppointmentController:
                 "message": error.message,
             }, 500
 
-    def update_appointment(self, appointment_id: int) -> Dict[str, Any]:
+    def update_appointment(
+        self, appointment_id: int
+    ) -> Union[Dict[str, Any], Tuple[Dict[str, Any], int]]:
         """Update an existing appointment."""
         try:
             data = request.get_json() or {}
 
-            # Create update request DTO
+            # Create update request DTO with proper type handling
             update_request = AppointmentUpdateRequest(
                 scheduled_date=(
                     datetime.fromisoformat(data["scheduled_date"])
                     if data.get("scheduled_date")
                     else None
                 ),
-                duration_minutes=data.get("duration_minutes"),
-                price=data.get("price"),
+                duration_minutes=(
+                    int(data["duration_minutes"])
+                    if data.get("duration_minutes") is not None
+                    else None
+                ),
+                price=(float(data["price"]) if data.get("price") is not None else None),
                 status=data.get("status"),
                 notes=data.get("notes"),
             )
@@ -164,7 +199,9 @@ class AppointmentController:
                 "message": error.message,
             }, 500
 
-    def get_user_appointments(self, user_id: int) -> Dict[str, Any]:
+    def get_user_appointments(
+        self, user_id: int
+    ) -> Union[Dict[str, Any], Tuple[Dict[str, Any], int]]:
         """Get all appointments for a specific user."""
         try:
             appointments = self.appointment_service.get_appointments_for_user(user_id)
@@ -192,7 +229,9 @@ class AppointmentController:
                 "message": error.message,
             }, 500
 
-    def cancel_appointment(self, appointment_id: int) -> Dict[str, Any]:
+    def cancel_appointment(
+        self, appointment_id: int
+    ) -> Union[Dict[str, Any], Tuple[Dict[str, Any], int]]:
         """Cancel an appointment."""
         try:
             data = request.get_json() or {}

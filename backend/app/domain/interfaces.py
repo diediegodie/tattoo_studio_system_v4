@@ -7,7 +7,7 @@ enabling dependency injection and easier testing.
 
 from abc import ABC, abstractmethod
 from typing import Optional, List
-from domain.entities import User, Appointment, InventoryItem
+from domain.entities import User, Appointment, InventoryItem, Client
 
 
 class IUserReader(ABC):
@@ -150,3 +150,66 @@ class IInventoryRepository(IInventoryReader, IInventoryWriter):
     """Complete inventory repository interface."""
 
     pass
+
+
+class IClientReader(ABC):
+    """Interface for client read operations - Interface Segregation Principle."""
+
+    @abstractmethod
+    def get_by_id(self, client_id: int) -> Optional[Client]:
+        """Get client by ID."""
+        pass
+
+    @abstractmethod
+    def get_all(self) -> List[Client]:
+        """Get all clients."""
+        pass
+
+    @abstractmethod
+    def get_by_jotform_id(self, jotform_id: str) -> Optional[Client]:
+        """Get client by JotForm submission ID."""
+        pass
+
+
+class IClientWriter(ABC):
+    """Interface for client write operations - Interface Segregation Principle."""
+
+    @abstractmethod
+    def create(self, client: Client) -> Client:
+        """Create a new client."""
+        pass
+
+    @abstractmethod
+    def update(self, client: Client) -> Client:
+        """Update an existing client."""
+        pass
+
+    @abstractmethod
+    def delete(self, client_id: int) -> bool:
+        """Delete a client."""
+        pass
+
+
+class IClientRepository(IClientReader, IClientWriter):
+    """Complete client repository interface combining read/write operations."""
+
+    pass
+
+
+class IJotFormService(ABC):
+    """Interface for JotForm API integration."""
+
+    @abstractmethod
+    def fetch_submissions(self) -> List[dict]:
+        """Fetch all active submissions from JotForm."""
+        pass
+
+    @abstractmethod
+    def parse_client_name(self, submission: dict) -> str:
+        """Parse client name from JotForm submission."""
+        pass
+
+    @abstractmethod
+    def format_submission_data(self, submission: dict) -> dict:
+        """Format submission data for display."""
+        pass
