@@ -1,8 +1,20 @@
-from sqlalchemy import Column, Integer, String, DateTime, Boolean
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    DateTime,
+    Boolean,
+    ForeignKey,
+    func,
+    Date,
+    Time,
+    Numeric,
+)
 from sqlalchemy.sql import func
 from flask_login import UserMixin
 from flask_dance.consumer.storage.sqla import OAuthConsumerMixin
 from .session import Base
+from sqlalchemy.orm import relationship
 
 
 class User(UserMixin, Base):
@@ -11,11 +23,16 @@ class User(UserMixin, Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    email = Column(String(100), unique=True, nullable=False)
+    email = Column(
+        String(100), unique=True, nullable=True
+    )  # Nullable for artists without email
     name = Column(String(100), nullable=False)
     avatar_url = Column(String(255))
     google_id = Column(String(50), unique=True)
     password_hash = Column(String(255), nullable=True)  # For local authentication
+    role = Column(
+        String(20), nullable=False, default="client"
+    )  # 'client', 'artist', 'admin'
     # Keep the original column name to match existing database
     is_active = Column(Boolean, default=True)  # type: ignore[assignment]
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -63,3 +80,30 @@ class Client(Base):
 
     def __repr__(self):
         return f"<Client(id={self.id}, name='{self.name}', jotform_id='{self.jotform_submission_id}')>"
+
+
+# SOLID-compliant: Sessao is a top-level entity, not nested, single responsibility
+class Sessao(Base):
+    """Sessao (Session/Appointment) model for tattoo studio system"""
+
+    __tablename__ = "sessoes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    data = Column(Date, nullable=False)
+    hora = Column(Time, nullable=False)
+    valor = Column(Numeric(10, 2), nullable=False)
+    observacoes = Column(String(255))
+    cliente_id = Column(Integer, ForeignKey("clients.id"), nullable=False)
+    artista_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    # Relationships (ORM navigation)
+    cliente = relationship("Client", foreign_keys=[cliente_id], backref="sessoes")
+    artista = relationship("User", foreign_keys=[artista_id], backref="sessoes_artista")
+
+    def __repr__(self):
+        return (
+            f"<Sessao(id={self.id}, data={self.data}, hora={self.hora}, valor={self.valor}, "
+            f"cliente_id={self.cliente_id}, artista_id={self.artista_id})>"
+        )

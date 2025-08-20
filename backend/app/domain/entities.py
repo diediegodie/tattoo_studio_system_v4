@@ -26,17 +26,20 @@ class User:
     name: str = ""
     avatar_url: Optional[str] = None
     google_id: Optional[str] = None
+    role: str = "client"  # 'client', 'artist', 'admin'
     is_active: bool = True
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
     def __post_init__(self):
         """Validate domain rules."""
-        if not self.email:
-            raise ValueError("Email is required")
         if not self.name:
             raise ValueError("Name is required")
-        if "@" not in self.email:
+        # Email is only required for non-artist roles
+        if not self.email and self.role != "artist":
+            raise ValueError("Email is required")
+        # Validate email format only if email is provided
+        if self.email and "@" not in self.email:
             raise ValueError("Invalid email format")
 
         def get_id(self):

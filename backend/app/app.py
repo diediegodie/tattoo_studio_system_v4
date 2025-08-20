@@ -1,4 +1,4 @@
-import os
+from db.base import User, OAuth, TestModel, Client, Sessao
 from db.session import create_tables
 from main import create_app
 

@@ -28,6 +28,11 @@ class IUserReader(ABC):
         """Get user by Google ID."""
         pass
 
+    @abstractmethod
+    def get_all_artists(self) -> List[User]:
+        """Get all users with role 'artist'."""
+        pass
+
 
 class IUserWriter(ABC):
     """Interface for user write operations - Interface Segregation Principle."""

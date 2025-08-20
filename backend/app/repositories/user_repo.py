@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 
 from domain.interfaces import IUserRepository
 from domain.entities import User as DomainUser
@@ -41,21 +41,30 @@ class UserRepository(IUserRepository):
         db_user = self.db.query(DbUser).filter_by(google_id=google_id).first()
         return self._to_domain(db_user) if db_user else None
 
+    def get_all_artists(self) -> List[DomainUser]:
+        """Get all users with role 'artist', returning domain entities."""
+        db_artists = (
+            self.db.query(DbUser).filter_by(role="artist").order_by(DbUser.name).all()
+        )
+        return [self._to_domain(db_artist) for db_artist in db_artists]
+
     def create(self, user: DomainUser) -> DbUser:
         """Create a new user from domain entity and return persistence model."""
         db_user = DbUser()
-        db_user.email = user.email  # type: ignore
+        # Handle empty email for unique constraint - use None instead of empty string
+        db_user.email = user.email if user.email else None  # type: ignore
         db_user.name = user.name  # type: ignore
         db_user.google_id = user.google_id  # type: ignore
         db_user.avatar_url = user.avatar_url  # type: ignore
+        db_user.role = user.role  # type: ignore
         db_user.is_active = user.is_active  # type: ignore
 
         self.db.add(db_user)
         self.db.commit()
         self.db.refresh(db_user)
 
-        # Retorna o modelo de persistência usando o google_id
-        return self.get_db_by_google_id(str(db_user.google_id))
+        # Return the persistence model
+        return db_user
 
     def update(self, user: DomainUser) -> DomainUser:
         """Update an existing user from domain entity."""
@@ -67,10 +76,12 @@ class UserRepository(IUserRepository):
             raise ValueError(f"User with ID {user.id} not found")
 
         # Update fields from domain entity
-        db_user.email = user.email  # type: ignore
+        # Handle empty email for unique constraint - use None instead of empty string
+        db_user.email = user.email if user.email else None  # type: ignore
         db_user.name = user.name  # type: ignore
         db_user.google_id = user.google_id  # type: ignore
         db_user.avatar_url = user.avatar_url  # type: ignore
+        db_user.role = user.role  # type: ignore
         db_user.is_active = user.is_active  # type: ignore
 
         self.db.add(db_user)
@@ -104,10 +115,12 @@ class UserRepository(IUserRepository):
         """Convert database model to domain entity."""
         return DomainUser(
             id=getattr(db_user, "id"),
-            email=getattr(db_user, "email"),
+            email=getattr(db_user, "email", None)
+            or "",  # Convert NULL to empty string for domain
             name=getattr(db_user, "name"),
             avatar_url=getattr(db_user, "avatar_url", None),
             google_id=getattr(db_user, "google_id", None),
+            role=getattr(db_user, "role", "client"),
             is_active=getattr(db_user, "is_active", True),
             created_at=getattr(db_user, "created_at", None),
             updated_at=getattr(db_user, "updated_at", None),
