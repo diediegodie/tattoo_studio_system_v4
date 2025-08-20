@@ -26,8 +26,12 @@ COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
 
-# Copy the backend application code
+# Copy backend code
 COPY ./backend /app/
+
+# Copy frontend templates and assets for Flask
+COPY ./frontend/templates /app/frontend/templates
+COPY ./frontend/assets /app/frontend/assets
 
 # Create a non-root user for security
 RUN adduser --disabled-password --gecos '' appuser \

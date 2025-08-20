@@ -45,12 +45,10 @@ def client_list():
 
         # Get formatted JotForm submissions for display
         submissions = client_service.get_jotform_submissions_for_display()
-
-        return render_template("clients/list.html", submissions=submissions)
-
+        return render_template("list.html", submissions=submissions)
     except Exception as e:
         flash(f"Erro ao carregar clientes: {str(e)}", "error")
-        return render_template("clients/list.html", submissions=[])
+        return render_template("list.html", submissions=[])
     finally:
         db.close()
 

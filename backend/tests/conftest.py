@@ -33,6 +33,18 @@ except ImportError as e:
 # Test database configuration
 TEST_DATABASE_URL = "sqlite:///:memory:"  # In-memory SQLite for fast tests
 
+# Import integration and auth fixtures for availability across all test modules
+# These are made available here for convenience but can also be imported directly
+try:
+    # Import all fixtures from our fixture modules
+    from tests.fixtures.integration_fixtures import *
+    from tests.fixtures.auth_fixtures import *
+
+    print("Integration and authentication fixtures loaded successfully")
+except ImportError as e:
+    print(f"Warning: Could not import advanced fixtures: {e}")
+    print("Basic fixtures will still be available")
+
 
 @pytest.fixture
 def mock_user():
