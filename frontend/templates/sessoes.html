@@ -28,6 +28,11 @@
 						<h1>Sessões</h1>
 					</header>
 
+					<!-- Nova Sessão Button -->
+					<a href="{{ url_for('sessoes.nova_sessao') }}" class="button primary" style="margin-bottom: 1em;">
+						Nova sessão
+					</a>
+
 					<section>
 						<div class="table-wrapper">
 							<table>
@@ -43,13 +48,16 @@
 									</tr>
 								</thead>
 								<tbody>
+									{% for sessao in sessoes %}
 									<tr>
-										<td>14/08/2025</td>
-										<td>15:00</td>
-										<td>João Silva</td>
-										<td>Alma Negra</td>
-										<td>R$ 500,00</td>
-										<td>Primeira sessão</td>
+										<td>{{ sessao.data.strftime('%d/%m/%Y') if sessao.data else '' }}</td>
+										<td>{{ sessao.hora.strftime('%H:%M') if sessao.hora else '' }}</td>
+										<td>{{ sessao.cliente.name if sessao.cliente else 'Cliente não encontrado' }}
+										</td>
+										<td>{{ sessao.artista.name if sessao.artista else 'Artista não encontrado' }}
+										</td>
+										<td>R$ {{ '{:,.2f}'.format(sessao.valor) }}</td>
+										<td>{{ sessao.observacoes }}</td>
 										<td>
 											<button class="button small options-btn"
 												onclick="toggleOptions(this)">Opções</button>
@@ -59,23 +67,11 @@
 											</span>
 										</td>
 									</tr>
+									{% else %}
 									<tr>
-										<td>15/08/2025</td>
-										<td>17:30</td>
-										<td>Maria Souza</td>
-										<td>Alma Negra</td>
-										<td>R$ 300,00</td>
-										<td>Retorno</td>
-										<td>
-											<button class="button small options-btn"
-												onclick="toggleOptions(this)">Opções</button>
-											<span class="options-actions" style="display:none;">
-												<button class="button small" style="margin-right:0.5em;">Editar</button>
-												<button class="button small">Excluir</button>
-											</span>
-										</td>
+										<td colspan="7">Nenhuma sessão cadastrada.</td>
 									</tr>
-									<!-- Adicione mais linhas conforme necessário -->
+									{% endfor %}
 								</tbody>
 							</table>
 						</div>

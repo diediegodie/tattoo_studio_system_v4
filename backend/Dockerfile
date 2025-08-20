@@ -26,9 +26,9 @@ COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
 
-# Copy backend code
-COPY ./backend /app/
-
+# Copy backend code (including app and force_create_tables.py)
+COPY ./backend/app /app/app/
+COPY ./backend/force_create_tables.py /app/
 # Copy frontend templates and assets for Flask
 COPY ./frontend/templates /app/frontend/templates
 COPY ./frontend/assets /app/frontend/assets

@@ -28,20 +28,158 @@
                         <h1>Cadastro Interno</h1>
                     </header>
 
+                    <!-- Artist Registration Form -->
                     <section>
                         <div class="box" style="max-width:400px;margin:0 auto;">
                             <form id="cadastro-artista-form">
                                 <label for="artista">Nome do artista</label>
                                 <input type="text" id="artista" name="artista" required
                                     style="width:100%;margin-bottom:1em;" />
+
+                                <label for="email">Email (opcional)</label>
+                                <input type="email" id="email" name="email" style="width:100%;margin-bottom:1em;" />
+
                                 <ul class="actions" style="justify-content:center;">
                                     <li><button type="submit" class="button primary">Cadastrar</button></li>
                                 </ul>
                             </form>
+
+                            <!-- Success/Error messages -->
+                            <div id="message-container" style="margin-top:1em;text-align:center;"></div>
+                        </div>
+                    </section>
+
+                    <!-- Artists List Section -->
+                    <section style="margin-top: 3em;">
+                        <header class="main">
+                            <h2>Artistas Cadastrados</h2>
+                        </header>
+
+                        <div class="table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Nome</th>
+                                        <th>Email</th>
+                                        <th>Data de Cadastro</th>
+                                        <th>Opções</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for artist in artists %}
+                                    <tr>
+                                        <td>{{ artist.id }}</td>
+                                        <td>{{ artist.name }}</td>
+                                        <td>{{ artist.email if artist.email else 'Não informado' }}</td>
+                                        <td>{{ artist.created_at.strftime('%d/%m/%Y %H:%M') if artist.created_at else ''
+                                            }}</td>
+                                        <td>
+                                            <button class="button small options-btn"
+                                                onclick="toggleOptions(this)">Opções</button>
+                                            <span class="options-actions" style="display:none;">
+                                                <button class="button small" style="margin-right:0.5em;">Editar</button>
+                                                <button class="button small">Excluir</button>
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    {% else %}
+                                    <tr>
+                                        <td colspan="5">Nenhum artista cadastrado.</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
                         </div>
                     </section>
 
                     <script>
+                        document.getElementById('cadastro-artista-form').addEventListener('submit', function (e) {
+                            e.preventDefault();
+
+                            const name = document.getElementById('artista').value.trim();
+                            const email = document.getElementById('email').value.trim();
+                            const messageContainer = document.getElementById('message-container');
+
+                            if (!name) {
+                                showMessage('Nome do artista é obrigatório.', 'error');
+                                return;
+                            }
+
+                            // Show loading state
+                            const submitButton = this.querySelector('button[type="submit"]');
+                            const originalText = submitButton.textContent;
+                            submitButton.textContent = 'Cadastrando...';
+                            submitButton.disabled = true;
+
+                            // Prepare data
+                            const data = { name: name };
+                            if (email) {
+                                data.email = email;
+                            }
+
+                            // Send request to SOLID-compliant artist endpoint
+                            fetch('/artist/create', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify(data)
+                            })
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.success) {
+                                        showMessage(`Artista "${data.artist.name}" cadastrado com sucesso!`, 'success');
+                                        // Clear form
+                                        document.getElementById('artista').value = '';
+                                        document.getElementById('email').value = '';
+
+                                        // Reload page after 2 seconds to show updated table
+                                        setTimeout(() => {
+                                            window.location.reload();
+                                        }, 2000);
+                                    } else {
+                                        showMessage(data.error || 'Erro ao cadastrar artista.', 'error');
+                                    }
+                                })
+                                .catch(error => {
+                                    console.error('Error:', error);
+                                    showMessage('Erro interno. Tente novamente.', 'error');
+                                })
+                                .finally(() => {
+                                    // Reset button state
+                                    submitButton.textContent = originalText;
+                                    submitButton.disabled = false;
+                                });
+                        });
+
+                        function showMessage(text, type) {
+                            const container = document.getElementById('message-container');
+                            const messageClass = type === 'success' ? 'success' : 'error';
+                            const backgroundColor = type === 'success' ? '#d4edda' : '#f8d7da';
+                            const textColor = type === 'success' ? '#155724' : '#721c24';
+
+                            container.innerHTML = `
+                                <div style="
+                                    padding: 0.75rem 1.25rem;
+                                    margin-bottom: 1rem;
+                                    border: 1px solid transparent;
+                                    border-radius: 0.25rem;
+                                    background-color: ${backgroundColor};
+                                    color: ${textColor};
+                                ">
+                                    ${text}
+                                </div>
+                            `;
+
+                            // Auto-hide success messages after 5 seconds
+                            if (type === 'success') {
+                                setTimeout(() => {
+                                    container.innerHTML = '';
+                                }, 5000);
+                            }
+                        }
+
                         function toggleOptions(btn) {
                             var actions = btn.nextElementSibling;
                             if (actions.style.display === "none" || actions.style.display === "") {
@@ -57,46 +195,46 @@
             </div>
         </div>
 
-
         <!-- Sidebar -->
-		<div id="sidebar" class="inactive">
-			<div class="toggle"></div>
-			<div class="inner">
+        <div id="sidebar" class="inactive">
+            <div class="toggle"></div>
+            <div class="inner">
 
-				<!-- Search -->
-				<section id="search" class="alt">
-					<form method="post" action="#">
-						<input type="text" name="query" id="query" placeholder="Search" />
-					</form>
-				</section>
+                <!-- Search -->
+                <section id="search" class="alt">
+                    <form method="post" action="#">
+                        <input type="text" name="query" id="query" placeholder="Search" />
+                    </form>
+                </section>
 
-				<!-- Menu -->
-				<nav id="menu">
-					<header class="major">
-						<h2>Menu</h2>
-					</header>
-					<ul>
-						<li><a href="{{ url_for('index') }}">Homepage</a></li>
-						<li><a href="{{ url_for('client.client_list') }}">Clientes</a></li>
-						<li><a href="{{ url_for('estoque') }}">Estoque</a></li>
-						<li><a href="{{ url_for('sessoes') }}">Sessões</a></li>
-						<li><a href="{{ url_for('financeiro') }}">Financeiro</a></li>
-						<li><a href="{{ url_for('registrar_pagamento') }}">Registrar Pagamento</a></li>
-						<li><a href="{{ url_for('extrato') }}">Extrato</a></li>
-						<li><a href="{{ url_for('cadastro_interno') }}">Cadastro Interno</a></li>
-						<li><a href="{{ url_for('calculadora') }}">Calculadora</a></li>
-						<li><a href="{{ url_for('historico') }}">Historico</a></li>
-					</ul>
-				</nav>
-			</div>
-		</div>
-        
-        <!-- Scripts -->
-        <script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
-        <script src="{{ url_for('static', filename='js/browser.min.js') }}"></script>
-        <script src="{{ url_for('static', filename='js/breakpoints.min.js') }}"></script>
-        <script src="{{ url_for('static', filename='js/util.js') }}"></script>
-        <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+                <!-- Menu -->
+                <nav id="menu">
+                    <header class="major">
+                        <h2>Menu</h2>
+                    </header>
+                    <ul>
+                        <li><a href="{{ url_for('index') }}">Homepage</a></li>
+                        <li><a href="{{ url_for('client.client_list') }}">Clientes</a></li>
+                        <li><a href="{{ url_for('estoque') }}">Estoque</a></li>
+                        <li><a href="{{ url_for('sessoes') }}">Sessões</a></li>
+                        <li><a href="{{ url_for('financeiro') }}">Financeiro</a></li>
+                        <li><a href="{{ url_for('registrar_pagamento') }}">Registrar Pagamento</a></li>
+                        <li><a href="{{ url_for('extrato') }}">Extrato</a></li>
+                        <li><a href="{{ url_for('cadastro_interno') }}">Cadastro Interno</a></li>
+                        <li><a href="{{ url_for('calculadora') }}">Calculadora</a></li>
+                        <li><a href="{{ url_for('historico') }}">Historico</a></li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/browser.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/breakpoints.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/util.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 
 </body>
 

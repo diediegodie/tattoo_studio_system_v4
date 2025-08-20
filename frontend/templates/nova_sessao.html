@@ -1,0 +1,106 @@
+<!DOCTYPE HTML>
+<html>
+
+<head>
+    <title>Nova Sessão</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}" />
+</head>
+
+<body class="is-preload">
+    <div id="wrapper">
+        <div id="main">
+            <div class="inner">
+                <header id="header">
+                    <a href="{{ url_for('sessoes') }}" class="logo"><strong>Nova Sessão</strong></a>
+                </header>
+                <section>
+                    <header class="main">
+                        <h1>Criar Nova Sessão</h1>
+                    </header>
+                    <form method="post" action="{{ url_for('sessoes.nova_sessao') }}" class="form">
+                        <div style="max-width:600px;margin:0 auto;">
+                            <div style="display:flex;flex-wrap:wrap;gap:1em;">
+                                <div style="flex:1 1 200px;min-width:180px;">
+                                    <label for="data">Data</label>
+                                    <input type="date" name="data" id="data" required style="width:100%;">
+                                </div>
+                                <div style="flex:1 1 200px;min-width:180px;">
+                                    <label for="hora">Hora</label>
+                                    <input type="time" name="hora" id="hora" required style="width:100%;">
+                                </div>
+                                <div style="flex:1 1 200px;min-width:180px;">
+                                    <label for="cliente_id">Cliente</label>
+                                    <select name="cliente_id" id="cliente_id" required style="width:100%;">
+                                        <option value="">Selecione...</option>
+                                        {% for client in clients %}
+                                        <option value="{{ client.id }}">{{ client.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div style="flex:1 1 200px;min-width:180px;">
+                                    <label for="artista_id">Artista</label>
+                                    <select name="artista_id" id="artista_id" required style="width:100%;">
+                                        <option value="">Selecione...</option>
+                                        {% for artist in artists %}
+                                        <option value="{{ artist.id }}">{{ artist.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div style="flex:1 1 200px;min-width:180px;">
+                                    <label for="valor">Valor</label>
+                                    <input type="number" name="valor" id="valor" step="0.01" min="0" required
+                                        style="width:100%;">
+                                </div>
+                                <div style="flex:1 1 100%;min-width:180px;">
+                                    <label for="observacoes">Observações</label>
+                                    <textarea name="observacoes" id="observacoes" rows="3"
+                                        style="width:100%;resize:vertical;"></textarea>
+                                </div>
+                            </div>
+                            <div style="display:flex;justify-content:center;gap:1em;margin-top:2em;">
+                                <button type="submit" class="button primary">Salvar</button>
+                                <a href="{{ url_for('sessoes') }}" class="button">Cancelar</a>
+                            </div>
+                        </div>
+                    </form>
+                </section>
+            </div>
+        </div>
+        <div id="sidebar" class="inactive">
+            <div class="toggle"></div>
+            <div class="inner">
+                <section id="search" class="alt">
+                    <form method="post" action="#">
+                        <input type="text" name="query" id="query" placeholder="Search" />
+                    </form>
+                </section>
+                <nav id="menu">
+                    <header class="major">
+                        <h2>Menu</h2>
+                    </header>
+                    <ul>
+                        <li><a href="{{ url_for('index') }}">Homepage</a></li>
+                        <li><a href="{{ url_for('client.client_list') }}">Clientes</a></li>
+                        <li><a href="{{ url_for('estoque') }}">Estoque</a></li>
+                        <li><a href="{{ url_for('sessoes') }}">Sessões</a></li>
+                        <li><a href="{{ url_for('financeiro') }}">Financeiro</a></li>
+                        <li><a href="{{ url_for('registrar_pagamento') }}">Registrar Pagamento</a></li>
+                        <li><a href="{{ url_for('extrato') }}">Extrato</a></li>
+                        <li><a href="{{ url_for('cadastro_interno') }}">Cadastro Interno</a></li>
+                        <li><a href="{{ url_for('calculadora') }}">Calculadora</a></li>
+                        <li><a href="{{ url_for('historico') }}">Historico</a></li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/browser.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/breakpoints.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/util.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+
+</html>

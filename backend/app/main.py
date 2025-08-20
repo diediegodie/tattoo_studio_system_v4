@@ -57,7 +57,9 @@ def create_app():
         client_id=app.config["GOOGLE_OAUTH_CLIENT_ID"],
         client_[REDACTED_SECRET]"GOOGLE_OAUTH_CLIENT_SECRET"],
         scope=["openid", "email", "profile"],
-        redirect_url="http://localhost:5000/auth/google/authorized",
+        redirect_url=os.getenv(
+            "GOOGLE_OAUTH_REDIRECT_URL", "http://localhost:5000/auth/google/authorized"
+        ),
         redirect_to="index",
     )
     app.register_blueprint(google_bp, url_prefix="/auth")
@@ -156,7 +158,19 @@ def create_app():
     @app.route("/cadastro_interno")
     @login_required
     def cadastro_interno():
-        return render_template("cadastro_interno.html")
+        # Load artists to display in the table
+        from services.user_service import UserService
+        from repositories.user_repo import UserRepository
+        from db.session import SessionLocal
+
+        db_session = SessionLocal()
+        try:
+            user_repo = UserRepository(db_session)
+            user_service = UserService(user_repo)
+            artists = user_service.list_artists()
+            return render_template("cadastro_interno.html", artists=artists)
+        finally:
+            db_session.close()
 
     @app.route("/calculadora")
     @login_required
@@ -191,7 +205,8 @@ def create_app():
     @app.route("/sessoes")
     @login_required
     def sessoes():
-        return render_template("sessoes.html")
+        # Redirect to the SOLID-compliant sessions list controller
+        return redirect(url_for("sessoes.list_sessoes"))
 
     @app.route("/health")
     def health_check():
@@ -226,12 +241,17 @@ def create_app():
             )
 
     # Register blueprints/controllers here
+
     from controllers.api_controller import api_bp
     from controllers.auth_controller import auth_bp
     from controllers.client_controller import client_bp
+    from controllers.sessoes_controller import sessoes_bp
+    from controllers.artist_controller import artist_bp
 
     app.register_blueprint(api_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(client_bp)
+    app.register_blueprint(sessoes_bp)
+    app.register_blueprint(artist_bp)
 
     return app

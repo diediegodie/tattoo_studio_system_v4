@@ -1,4 +1,4 @@
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 
 from domain.interfaces import IUserRepository
 from domain.entities import User as DomainUser
@@ -44,14 +44,7 @@ class UserService:
             user.email = email
             user.name = name
             user.avatar_url = avatar
-            self.repo.update(user)
-            # Retorna modelo de persistência para autenticação
-            from repositories.user_repo import UserRepository
-
-            if isinstance(self.repo, UserRepository):
-                return self.repo.get_db_by_google_id(google_id)
-            else:
-                return user
+            return self.repo.update(user)
 
         # Try finding by email to link accounts created previously
         user = self.repo.get_by_email(email)
@@ -59,14 +52,7 @@ class UserService:
             # Link Google account to existing user
             user.google_id = google_id
             user.avatar_url = avatar
-            self.repo.update(user)
-            # Retorna modelo de persistência para autenticação
-            from repositories.user_repo import UserRepository
-
-            if isinstance(self.repo, UserRepository):
-                return self.repo.get_db_by_google_id(google_id)
-            else:
-                return user
+            return self.repo.update(user)
 
         # Create a new user from domain entity
         new_user = DomainUser(
@@ -77,16 +63,7 @@ class UserService:
             is_active=True,
         )
 
-        self.repo.create(new_user)
-        # Para autenticação, retorna o modelo de persistência
-        # Cast necessário para acessar método específico do repositório concreto
-        from repositories.user_repo import UserRepository
-
-        if isinstance(self.repo, UserRepository):
-            return self.repo.get_db_by_google_id(google_id)
-        else:
-            # Fallback caso não seja o repositório concreto
-            return self.repo.get_by_google_id(google_id)
+        return self.repo.create(new_user)
 
     def set_password(self, user_id: int, [REDACTED_PASSWORD] -> bool:
         """Set a password for a user (for local authentication).
@@ -151,3 +128,62 @@ class UserService:
         user.is_active = False
         self.repo.update(user)
         return True
+
+    def register_artist(self, name: str, email: Optional[str] = None) -> DomainUser:
+        """Register a new artist user.
+
+        Business Rules:
+        - Name is required
+        - Email is optional for artists (they might not need system access)
+        - Default role is 'artist'
+        - Artists are active by default
+
+        Args:
+            name: Artist's name (required)
+            email: Artist's email (optional)
+
+        Returns:
+            Domain entity representing the new artist
+
+        Raises:
+            ValueError: If name is empty or email already exists
+        """
+        if not name or not name.strip():
+            raise ValueError("Artist name is required")
+
+        # Check if email already exists (if provided)
+        if email and self.repo.get_by_email(email):
+            raise ValueError(f"Email {email} is already registered")
+
+        # Create artist domain entity
+        artist = DomainUser(
+            name=name.strip(),
+            email=email or "",  # Empty string if no email provided
+            role="artist",
+            is_active=True,
+        )
+
+        # Persist and return the created artist
+        created_artist_db = self.repo.create(artist)
+
+        # Convert back to domain entity for return
+        if not created_artist_db or not created_artist_db.id:
+            raise ValueError("Failed to create artist")
+
+        created_artist = self.repo.get_by_id(created_artist_db.id)
+        if not created_artist:
+            raise ValueError("Failed to retrieve created artist")
+
+        return created_artist
+
+    def list_artists(self) -> List[DomainUser]:
+        """Get all active artists.
+
+        Business Rules:
+        - Only return users with role 'artist'
+        - Artists are sorted by name for UI consistency
+
+        Returns:
+            List of artist domain entities
+        """
+        return self.repo.get_all_artists()
