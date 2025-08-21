@@ -96,7 +96,7 @@ def api_client_list():
             client_data.append(
                 {
                     "id": client.id,
-                    "name": client.name,
+                    "name": client.full_name,
                     "jotform_submission_id": client.jotform_submission_id,
                     "created_at": (
                         client.created_at.isoformat() if client.created_at else None

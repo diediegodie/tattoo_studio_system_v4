@@ -8,7 +8,7 @@ Following SOLID principles:
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 
 
 @dataclass
@@ -83,8 +83,8 @@ class InventoryItem:
     category: str = ""
     quantity: int = 0
     unit_price: float = 0.0
-    minimum_stock: int = 0
     supplier: Optional[str] = None
+    description: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
@@ -96,37 +96,79 @@ class InventoryItem:
             raise ValueError("Quantity cannot be negative")
         if self.unit_price < 0:
             raise ValueError("Unit price cannot be negative")
-        if self.minimum_stock < 0:
-            raise ValueError("Minimum stock cannot be negative")
 
-    def is_low_stock(self) -> bool:
-        """Business rule: check if item is low on stock."""
-        return self.quantity <= self.minimum_stock
 
-    def calculate_total_value(self) -> float:
-        """Business rule: calculate total inventory value."""
-        return self.quantity * self.unit_price
+@dataclass
+class CalendarEvent:
+    """
+    Domain entity representing a calendar event.
+    Pure business logic, no external dependencies.
+    """
+
+    id: str = ""
+    title: str = ""
+    description: Optional[str] = None
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None
+    location: Optional[str] = None
+    attendees: Optional[List[str]] = None
+    created_by: str = ""
+    google_event_id: Optional[str] = None
+    user_id: Optional[int] = None
+
+    def __post_init__(self):
+        """Validate business rules."""
+        if self.attendees is None:
+            self.attendees = []
+
+        if not self.title.strip():
+            raise ValueError("Event title cannot be empty")
+
+        if self.start_time and self.end_time:
+            if self.end_time <= self.start_time:
+                raise ValueError("End time must be after start time")
+
+    @property
+    def duration_minutes(self) -> int:
+        """Calculate event duration in minutes."""
+        if not self.start_time or not self.end_time:
+            return 0
+        delta = self.end_time - self.start_time
+        return int(delta.total_seconds() / 60)
+
+    @property
+    def is_past_event(self) -> bool:
+        """Check if event is in the past."""
+        if not self.end_time:
+            return False
+        return self.end_time < datetime.now()
 
 
 @dataclass
 class Client:
-    """Domain entity representing a Client in the system.
-
-    This is the pure business representation, independent of:
-    - Database implementation (SQLAlchemy)
-    - JotForm API details
-    - HTTP frameworks (Flask)
-    """
+    """Domain entity representing a Client."""
 
     id: Optional[int] = None
-    name: str = ""
-    jotform_submission_id: str = ""
+    nome: str = ""
+    sobrenome: str = ""
+    email: str = ""
+    telefone: str = ""
+    estilo_preferido: str = ""
+    parte_corpo: str = ""
+    tem_tatuagem: str = ""
+    informacoes_extras: str = ""
+    jotform_submission_id: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
     def __post_init__(self):
-        """Validate domain rules."""
-        if not self.name:
-            raise ValueError("Client name is required")
-        if not self.jotform_submission_id:
-            raise ValueError("JotForm submission ID is required")
+        """Validate business rules."""
+        if not self.nome:
+            raise ValueError("Nome is required")
+        if self.email and "@" not in self.email:
+            raise ValueError("Invalid email format")
+
+    @property
+    def full_name(self) -> str:
+        """Return full name."""
+        return f"{self.nome} {self.sobrenome}".strip()

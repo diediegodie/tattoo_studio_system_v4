@@ -41,7 +41,7 @@ class ClientRepository(IClientRepository):
         """Create a new client from domain entity."""
         # Use constructor pattern to avoid type assignment issues
         db_client = DbClient(
-            name=str(client.name),
+            name=str(client.full_name),
             jotform_submission_id=str(client.jotform_submission_id),
         )
 
@@ -61,7 +61,7 @@ class ClientRepository(IClientRepository):
             raise ValueError(f"Client with ID {client.id} not found")
 
         # Update fields from domain entity using setattr to avoid type issues
-        setattr(db_client, "name", str(client.name))
+        setattr(db_client, "name", str(client.full_name))
         setattr(db_client, "jotform_submission_id", str(client.jotform_submission_id))
 
         self.db.add(db_client)
@@ -82,9 +82,16 @@ class ClientRepository(IClientRepository):
 
     def _to_domain(self, db_client: DbClient) -> DomainClient:
         """Convert database model to domain entity."""
+        # Split stored name back into nome and sobrenome
+        full_name = getattr(db_client, "name", "")
+        name_parts = full_name.split(" ", 1) if full_name else ["", ""]
+        primeiro_nome = name_parts[0] if len(name_parts) > 0 else ""
+        sobrenome = name_parts[1] if len(name_parts) > 1 else ""
+
         return DomainClient(
             id=getattr(db_client, "id"),
-            name=getattr(db_client, "name"),
+            nome=primeiro_nome,
+            sobrenome=sobrenome,
             jotform_submission_id=getattr(db_client, "jotform_submission_id"),
             created_at=getattr(db_client, "created_at", None),
             updated_at=getattr(db_client, "updated_at", None),

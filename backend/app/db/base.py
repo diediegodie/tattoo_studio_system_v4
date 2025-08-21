@@ -38,8 +38,23 @@ class User(UserMixin, Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
+    # Flask-Login required methods - explicit implementation
+    def get_id(self):
+        """Return user identifier for Flask-Login"""
+        return str(self.id)
+
+    @property
+    def is_authenticated(self):
+        """Return True if user is authenticated"""
+        return True
+
+    @property
+    def is_anonymous(self):
+        """Return True if user is anonymous"""
+        return False
+
     def __repr__(self):
-        return f"<User(id={self.id}, email='{self.email}', name='{self.name}')>"
+        return f"<User(id={self.id}, email='{self.email}', name='{self.name}')"
 
 
 class OAuth(OAuthConsumerMixin, Base):

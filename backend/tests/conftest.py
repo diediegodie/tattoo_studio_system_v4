@@ -11,7 +11,7 @@ from pathlib import Path
 from unittest.mock import Mock
 
 # Set up test environment paths BEFORE any other imports
-from tests.config.test_paths import setup_test_environment
+from config.test_paths import setup_test_environment
 
 # Set up the test environment immediately
 print("Configuring test environment in conftest.py...")
@@ -37,8 +37,8 @@ TEST_DATABASE_URL = "sqlite:///:memory:"  # In-memory SQLite for fast tests
 # These are made available here for convenience but can also be imported directly
 try:
     # Import all fixtures from our fixture modules
-    from tests.fixtures.integration_fixtures import *
-    from tests.fixtures.auth_fixtures import *
+    from fixtures.integration_fixtures import *
+    from fixtures.auth_fixtures import *
 
     print("Integration and authentication fixtures loaded successfully")
 except ImportError as e:

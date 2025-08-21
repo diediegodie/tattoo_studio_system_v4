@@ -1,0 +1,187 @@
+<!DOCTYPE HTML>
+<html>
+
+<head>
+    <title>Agenda - Alma Negra System</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}" />
+
+</head>
+
+<body class="is-preload">
+
+    <!-- Wrapper -->
+    <div id="wrapper">
+
+        <!-- Main -->
+        <div id="main">
+            <div class="inner">
+
+                <!-- Flash Messages -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                    <div class="flash-message {{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                {% endwith %}
+
+                <!-- Header -->
+                <header id="header">
+                    <a href="{{ url_for('index') }}" class="logo"><strong>Google</strong> Agenda</a>
+                </header>
+
+                <!-- Content -->
+                <section>
+                    <header class="main">
+                        <h1>Sessões Agendadas</h1>
+                    </header>
+
+                    <!-- Sync Button -->
+                    <a href="{{ url_for('calendar.sync_events') }}" class="sync-button">
+                        Sincronizar com Google Agenda
+                    </a>
+
+                    <!-- Calendar Events -->
+                    {% if events %}
+                    <table class="client-list-table">
+                        <thead>
+                            <tr>
+                                <th>Eventos</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for event in events %}
+                            <tr class="client-row" onclick="toggleDetails('details-{{ loop.index }}')">
+                                <td>
+                                    <span class="client-name"><strong>{{ event.title or 'Evento sem título'
+                                            }}</strong></span>
+                                    <br>
+                                    <small style="color: #666;">{{ event.start_time.strftime('%d/%m/%Y às %H:%M') if
+                                        event.start_time else 'Data não definida' }}</small>
+                                </td>
+                            </tr>
+                            <tr id="details-{{ loop.index }}" class="client-details-row" style="display:none;">
+                                <td colspan="1">
+                                    <table class="client-table">
+                                        <tbody>
+                                            {% if event.description %}
+                                            <tr>
+                                                <td><strong>Descrição</strong></td>
+                                                <td>{{ event.description|safe }}</td>
+                                            </tr>
+                                            {% endif %}
+                                            {% if event.location %}
+                                            <tr>
+                                                <td><strong>Local</strong></td>
+                                                <td>{{ event.location }}</td>
+                                            </tr>
+                                            {% endif %}
+                                            {% if event.start_time %}
+                                            <tr>
+                                                <td><strong>Data/Hora de Início</strong></td>
+                                                <td>{{ event.start_time.strftime('%d/%m/%Y às %H:%M') }}</td>
+                                            </tr>
+                                            {% endif %}
+                                            {% if event.end_time %}
+                                            <tr>
+                                                <td><strong>Data/Hora de Término</strong></td>
+                                                <td>{{ event.end_time.strftime('%d/%m/%Y às %H:%M') }}</td>
+                                            </tr>
+                                            {% endif %}
+                                            {% if event.attendees %}
+                                            <tr>
+                                                <td><strong>Participantes</strong></td>
+                                                <td>
+                                                    {% for attendee in event.attendees %}
+                                                    {{ attendee }}{% if not loop.last %}, {% endif %}
+                                                    {% endfor %}
+                                                </td>
+                                            </tr>
+                                            {% endif %}
+                                            {% if event.google_id %}
+                                            <tr>
+                                                <td><strong>ID do Google</strong></td>
+                                                <td>{{ event.google_id }}</td>
+                                            </tr>
+                                            {% endif %}
+                                        </tbody>
+                                    </table>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <div class="no-clients">
+                        <h3>Nenhum evento encontrado</h3>
+                        <p>Clique em "Sincronizar com Google Agenda" para buscar novos eventos.</p>
+                        {% if not calendar_connected %}
+                        <p><a href="{{ url_for('google.login') }}">Conectar com Google Calendar</a></p>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
+                </section>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div id="sidebar" class="inactive">
+            <div class="toggle"></div>
+            <div class="inner">
+
+                <!-- Search -->
+                <section id="search" class="alt">
+                    <form method="post" action="#">
+                        <input type="text" name="query" id="query" placeholder="Search" />
+                    </form>
+                </section>
+
+                <!-- Menu -->
+                <nav id="menu">
+                    <header class="major">
+                        <h2>Menu</h2>
+                    </header>
+                    <ul>
+						<li><a href="{{ url_for('index') }}">Homepage</a></li>
+						<li><a href="{{ url_for('client.client_list') }}">Clientes</a></li>
+						<li><a href="{{ url_for('calendar.calendar_page') }}">Agenda Google</a></li>
+						<li><a href="{{ url_for('estoque') }}">Estoque</a></li>
+						<li><a href="{{ url_for('sessoes') }}">Sessões</a></li>
+						<li><a href="{{ url_for('financeiro') }}">Financeiro</a></li>
+						<li><a href="{{ url_for('registrar_pagamento') }}">Registrar Pagamento</a></li>
+						<li><a href="{{ url_for('extrato') }}">Extrato</a></li>
+						<li><a href="{{ url_for('cadastro_interno') }}">Cadastro Interno</a></li>
+						<li><a href="{{ url_for('calculadora') }}">Calculadora</a></li>
+						<li><a href="{{ url_for('historico') }}">Historico</a></li>
+					</ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/browser.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/breakpoints.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/util.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+
+    <script>
+        function toggleDetails(id) {
+            var row = document.getElementById(id);
+            if (row.style.display === "none" || row.style.display === "") {
+                row.style.display = "table-row";
+            } else {
+                row.style.display = "none";
+            }
+        }
+    </script>
+
+</body>
+
+</html>

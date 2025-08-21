@@ -48,9 +48,16 @@ class ClientService:
             # Extract client name
             client_name = self.jotform_service.parse_client_name(submission)
 
+            # Create new client - split name into nome and sobrenome
+            name_parts = client_name.split(" ", 1) if client_name else ["", ""]
+            primeiro_nome = name_parts[0] if len(name_parts) > 0 else ""
+            sobrenome = name_parts[1] if len(name_parts) > 1 else ""
+
             # Create new client
             new_client = DomainClient(
-                name=client_name, jotform_submission_id=jotform_id
+                nome=primeiro_nome,
+                sobrenome=sobrenome,
+                jotform_submission_id=jotform_id,
             )
 
             created_client = self.client_repo.create(new_client)
