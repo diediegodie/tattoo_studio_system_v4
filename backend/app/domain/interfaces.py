@@ -7,7 +7,8 @@ enabling dependency injection and easier testing.
 
 from abc import ABC, abstractmethod
 from typing import Optional, List
-from domain.entities import User, Appointment, InventoryItem, Client
+from datetime import datetime
+from .entities import User, Appointment, InventoryItem, Client, CalendarEvent
 
 
 class IUserReader(ABC):
@@ -217,4 +218,59 @@ class IJotFormService(ABC):
     @abstractmethod
     def format_submission_data(self, submission: dict) -> dict:
         """Format submission data for display."""
+        pass
+
+
+class ICalendarService(ABC):
+    """
+    Interface for calendar operations.
+    Follows Interface Segregation Principle - focused on calendar concerns only.
+    """
+
+    @abstractmethod
+    def get_user_events(
+        self, user_id: str, start_date: datetime, end_date: datetime
+    ) -> List[CalendarEvent]:
+        """Get user's calendar events within date range."""
+        pass
+
+    @abstractmethod
+    def sync_events_with_sessions(self, user_id: str) -> bool:
+        """Sync Google Calendar events with local sessions."""
+        pass
+
+    @abstractmethod
+    def create_session_event(
+        self, session_id: str, event_details: CalendarEvent
+    ) -> Optional[str]:
+        """Create a calendar event for a session."""
+        pass
+
+    @abstractmethod
+    def is_user_authorized(self, user_id: str) -> bool:
+        """Check if user has authorized calendar access."""
+        pass
+
+
+class IGoogleCalendarRepository(ABC):
+    """
+    Interface for Google Calendar API operations.
+    Follows Interface Segregation Principle - focused on external API access.
+    """
+
+    @abstractmethod
+    def fetch_events(
+        self, [REDACTED_ACCESS_TOKEN] start_date: datetime, end_date: datetime
+    ) -> List[dict]:
+        """Fetch events from Google Calendar API."""
+        pass
+
+    @abstractmethod
+    def create_event(self, [REDACTED_ACCESS_TOKEN] event_data: dict) -> Optional[str]:
+        """Create an event in Google Calendar."""
+        pass
+
+    @abstractmethod
+    def validate_token(self, [REDACTED_ACCESS_TOKEN] -> bool:
+        """Validate Google access token."""
         pass

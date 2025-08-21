@@ -16,6 +16,106 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
+# Create Google OAuth blueprint at module level
+# Flask-Dance setup for Google OAuth at module level (must be before create_app)
+google_oauth_bp = make_google_blueprint(
+    client_id=os.getenv("GOOGLE_CLIENT_ID"),
+    client_[REDACTED_SECRET]"GOOGLE_CLIENT_SECRET"),
+    scope=[
+        "email",
+        "profile",
+        "https://www.googleapis.com/auth/calendar.readonly",
+        "https://www.googleapis.com/auth/calendar.events",
+    ],
+    redirect_url="/auth/google/authorized",
+)
+# Set unique name immediately to avoid conflicts
+google_oauth_bp.name = "google_oauth_calendar"
+
+
+# OAuth authorized handler - must be at module level
+@oauth_authorized.connect_via(google_oauth_bp)
+def google_logged_in(blueprint, token):
+    print(f"[DEBUG] OAuth callback triggered with token: {bool(token)}")
+    if not token:
+        flash("Falha ao fazer login com Google.", category="error")
+        return redirect(url_for("login_page"))
+
+    print(f"[DEBUG] Token type: {type(token)}, content: {token}")
+
+    resp = blueprint.session.get("/oauth2/v2/userinfo")
+    if not resp.ok:
+        flash("Falha ao buscar informações do usuário do Google.", category="error")
+        return redirect(url_for("login_page"))
+
+    google_info = resp.json()
+    google_user_id = str(google_info["id"])
+    print(
+        f"[DEBUG] Google user ID: {google_user_id}, email: {google_info.get('email')}"
+    )
+
+    from db.session import SessionLocal
+    from repositories.user_repo import UserRepository
+    from services.user_service import UserService
+    from services.oauth_token_service import OAuthTokenService
+    from core.security import create_user_token
+
+    db = SessionLocal()
+    try:
+        repo = UserRepository(db)
+        service = UserService(repo)
+        oauth_service = OAuthTokenService()
+
+        # Get domain user for business logic
+        domain_user = service.create_or_update_from_google(google_info)
+
+        # Get database user for Flask-Login
+        db_user = repo.get_db_by_google_id(google_user_id)
+        if not db_user:
+            # Fallback: try by email
+            db_user = repo.get_db_by_email(google_info.get("email"))
+
+        if not db_user:
+            flash("Erro ao processar login: usuário não encontrado.", category="error")
+            return redirect(url_for("login_page"))
+
+        print(f"[DEBUG] Found DB user: {db_user.id}")
+
+        # Save OAuth token for Google Calendar access
+        token_saved = oauth_service.store_oauth_token(
+            user_id=str(db_user.id),
+            provider="google",
+            provider_user_id=google_user_id,
+            token=token,
+        )
+        print(f"[DEBUG] Token saved: {token_saved}")
+
+        # Create JWT token for API access
+        jwt_token = create_user_token(getattr(db_user, "id"), getattr(db_user, "email"))
+
+        login_user(db_user)  # Use database model for Flask-Login
+        flash(
+            f"Bem-vindo, {db_user.name}!", category="success"
+        )  # Set JWT token as httpOnly cookie for API access
+        response = redirect(url_for("index"))
+        response.set_cookie(
+            "access_token",
+            jwt_token,
+            max_age=24 * 60 * 60,  # 24 hours
+            httponly=True,
+            secure=False,  # Set to True in production with HTTPS
+            samesite="Lax",
+        )
+        return response
+    except Exception as e:
+        # Rollback in case repository/service raised after partial changes
+        print(f"[ERROR] Exception in OAuth callback: {str(e)}")
+        db.rollback()
+        flash("Erro interno durante o login.", category="error")
+        return redirect(url_for("login_page"))
+    finally:
+        db.close()
+
 
 def test_database_connection():
     """Test database connection"""
@@ -52,18 +152,6 @@ def create_app():
     # Import models after app creation
     from db.base import User, OAuth
 
-    # Create Google OAuth blueprint
-    google_bp = make_google_blueprint(
-        client_id=app.config["GOOGLE_OAUTH_CLIENT_ID"],
-        client_[REDACTED_SECRET]"GOOGLE_OAUTH_CLIENT_SECRET"],
-        scope=["openid", "email", "profile"],
-        redirect_url=os.getenv(
-            "GOOGLE_OAUTH_REDIRECT_URL", "http://localhost:5000/auth/google/authorized"
-        ),
-        redirect_to="index",
-    )
-    app.register_blueprint(google_bp, url_prefix="/auth")
-
     @login_manager.user_loader
     def load_user(user_id):
         from db.session import SessionLocal
@@ -71,59 +159,6 @@ def create_app():
         db = SessionLocal()
         try:
             return db.query(User).get(int(user_id))
-        finally:
-            db.close()
-
-    # OAuth authorized handler
-    @oauth_authorized.connect_via(google_bp)
-    def google_logged_in(blueprint, token):
-        if not token:
-            flash("Falha ao fazer login com Google.", category="error")
-            return redirect(url_for("login_page"))
-
-        resp = blueprint.session.get("/oauth2/v2/userinfo")
-        if not resp.ok:
-            flash("Falha ao buscar informações do usuário do Google.", category="error")
-            return redirect(url_for("login_page"))
-
-        google_info = resp.json()
-        google_user_id = str(google_info["id"])
-
-        from db.session import SessionLocal
-        from repositories.user_repo import UserRepository
-        from services.user_service import UserService
-        from core.security import create_user_token
-
-        db = SessionLocal()
-        try:
-            repo = UserRepository(db)
-            service = UserService(repo)
-
-            user = service.create_or_update_from_google(google_info)
-
-            # Create JWT token for API access
-            jwt_token = create_user_token(user.id, user.email)  # type: ignore
-
-            login_user(user)
-            flash(f"Bem-vindo, {user.name}!", category="success")  # type: ignore            # Set JWT token as httpOnly cookie for API access
-            response = redirect(url_for("index"))
-            response.set_cookie(
-                "access_token",
-                jwt_token,
-                max_age=24 * 60 * 60,  # 24 hours
-                httponly=True,
-                secure=False,  # Set to True in production with HTTPS
-                samesite="Lax",
-            )
-            return response
-        except Exception as e:
-            # Rollback in case repository/service raised after partial changes
-            try:
-                db.rollback()
-            except Exception:
-                pass
-            flash(f"Erro ao processar login: {str(e)}", category="error")
-            return redirect(url_for("login_page"))
         finally:
             db.close()
 
@@ -135,9 +170,7 @@ def create_app():
 
     @app.route("/auth/login")
     def google_login():
-        if current_user.is_authenticated:
-            return redirect(url_for("index"))
-        return redirect(url_for("google.login"))
+        return redirect(url_for("google_oauth_calendar.login"))
 
     @app.route("/logout")
     @login_required
@@ -247,11 +280,16 @@ def create_app():
     from controllers.client_controller import client_bp
     from controllers.sessoes_controller import sessoes_bp
     from controllers.artist_controller import artist_bp
+    from controllers.calendar_controller import calendar_bp
 
     app.register_blueprint(api_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(client_bp)
     app.register_blueprint(sessoes_bp)
     app.register_blueprint(artist_bp)
+    app.register_blueprint(calendar_bp)
+
+    # Register OAuth blueprint - name already set at creation
+    app.register_blueprint(google_oauth_bp, url_prefix="/auth")
 
     return app
