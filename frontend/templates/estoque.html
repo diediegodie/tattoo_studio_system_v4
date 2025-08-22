@@ -26,8 +26,27 @@
 				<section>
 					<header class="main">
 						<h1>Estoque</h1>
+						<div class="row header-row">
+							<div class="header-row-flex"></div>
+							<span id="lock-toggle" class="opener lock-toggle">
+								<span id="lock-icon" class="lock-icon">
+									<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#a05a4a"
+										stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+										<rect x="6" y="11" width="12" height="9" rx="1" ry="1" />
+										<path d="M9 11V8a3 3 0 0 1 6 0v3" />
+									</svg>
+								</span>
+								<span id="edit-icon" class="edit-icon">
+									<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#a05a4a"
+										stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+										<path d="M4 20H20" />
+										<path
+											d="M16.5 3.5C16.8978 3.10218 17.4374 2.87868 18 2.87868C18.5626 2.87868 19.1022 3.10218 19.5 3.5C19.8978 3.89782 20.1213 4.4374 20.1213 5C20.1213 5.5626 19.8978 6.10218 19.5 6.5L8 18L4 19L5 15L16.5 3.5Z" />
+									</svg>
+								</span>
+							</span>
+						</div>
 					</header>
-
 					<section>
 						<div class="table-wrapper">
 							<table>
@@ -43,12 +62,32 @@
 									<tr>
 										<td>Produto A</td>
 										<td>Em estoque</td>
-										<td>10</td>
+										<td>
+											<span class="qtd-cell" data-qtd="10">
+												<span class="qtd-value">10</span>
+												<span class="edit-btns">
+													<button class="btn-icon btn-up">
+														<svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+															stroke="#222" stroke-width="1.5" stroke-linecap="round"
+															stroke-linejoin="round">
+															<path d="M18 15l-6-6-6 6" />
+														</svg>
+													</button>
+													<button class="btn-icon btn-down">
+														<svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+															stroke="#222" stroke-width="1.5" stroke-linecap="round"
+															stroke-linejoin="round">
+															<path d="M6 9l6 6 6-6" />
+														</svg>
+													</button>
+												</span>
+											</span>
+										</td>
 										<td>
 											<button class="button small options-btn"
 												onclick="toggleOptions(this)">Opções</button>
-											<span class="options-actions" style="display:none;">
-												<button class="button small" style="margin-right:0.5em;">Editar</button>
+											<span class="options-actions">
+												<button class="button small">Editar</button>
 												<button class="button small">Excluir</button>
 											</span>
 										</td>
@@ -56,31 +95,116 @@
 									<tr>
 										<td>Produto B</td>
 										<td>Faltando</td>
-										<td>0</td>
+										<td>
+											<span class="qtd-cell" data-qtd="0">
+												<span class="qtd-value">0</span>
+												<span class="edit-btns">
+													<button class="btn-icon btn-up">
+														<svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+															stroke="#222" stroke-width="1.5" stroke-linecap="round"
+															stroke-linejoin="round">
+															<path d="M18 15l-6-6-6 6" />
+														</svg>
+													</button>
+													<button class="btn-icon btn-down">
+														<svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+															stroke="#222" stroke-width="1.5" stroke-linecap="round"
+															stroke-linejoin="round">
+															<path d="M6 9l6 6 6-6" />
+														</svg>
+													</button>
+												</span>
+											</span>
+										</td>
 										<td>
 											<button class="button small options-btn"
 												onclick="toggleOptions(this)">Opções</button>
-											<span class="options-actions" style="display:none;">
-												<button class="button small" style="margin-right:0.5em;">Editar</button>
+											<span class="options-actions">
+												<button class="button small">Editar</button>
 												<button class="button small">Excluir</button>
 											</span>
 										</td>
 									</tr>
-									<!-- Adicione mais linhas conforme necessário -->
 								</tbody>
 							</table>
 						</div>
 					</section>
 
 					<script>
+						// Alterna bloqueio/desbloqueio
+						let isLocked = true;
+						document.getElementById('lock-toggle').onclick = function () {
+							isLocked = !isLocked;
+							const lockIcon = document.getElementById('lock-icon');
+							const editIcon = document.getElementById('edit-icon');
+
+							if (isLocked) {
+								lockIcon.classList.remove('edit-icon');
+								lockIcon.classList.add('lock-icon');
+								editIcon.classList.remove('lock-icon');
+								editIcon.classList.add('edit-icon');
+							} else {
+								lockIcon.classList.remove('lock-icon');
+								lockIcon.classList.add('edit-icon');
+								editIcon.classList.remove('edit-icon');
+								editIcon.classList.add('lock-icon');
+							}
+
+							document.querySelectorAll('.edit-btns').forEach(function (btns) {
+								if (isLocked) {
+									btns.classList.remove('visible');
+								} else {
+									btns.classList.add('visible');
+								}
+							});
+						};
+
+						// Função para alternar opções
 						function toggleOptions(btn) {
 							var actions = btn.nextElementSibling;
-							if (actions.style.display === "none" || actions.style.display === "") {
-								actions.style.display = "inline-block";
+							actions.classList.toggle('visible');
+						}
+
+						// Função para alterar quantidade
+						document.querySelectorAll('.btn-up').forEach(function (btn) {
+							btn.onclick = function (e) {
+								e.preventDefault();
+								let qtdCell = btn.closest('.qtd-cell');
+								let qtdSpan = qtdCell.querySelector('.qtd-value');
+								let qtd = parseInt(qtdCell.getAttribute('data-qtd'));
+								qtd++;
+								qtdCell.setAttribute('data-qtd', qtd);
+								qtdSpan.textContent = qtd;
+								updateQtdColor(qtdCell, qtd);
+							};
+						});
+						document.querySelectorAll('.btn-down').forEach(function (btn) {
+							btn.onclick = function (e) {
+								e.preventDefault();
+								let qtdCell = btn.closest('.qtd-cell');
+								let qtdSpan = qtdCell.querySelector('.qtd-value');
+								let qtd = parseInt(qtdCell.getAttribute('data-qtd'));
+								if (qtd > 0) qtd--;
+								qtdCell.setAttribute('data-qtd', qtd);
+								qtdSpan.textContent = qtd;
+								updateQtdColor(qtdCell, qtd);
+							};
+						});
+
+						// Alerta de baixo estoque
+						function updateQtdColor(cell, qtd) {
+							if (qtd < 6) {
+								cell.classList.add('low-stock');
 							} else {
-								actions.style.display = "none";
+								cell.classList.remove('low-stock');
 							}
 						}
+
+						// Inicializa cor dos campos
+						document.querySelectorAll('.qtd-cell').forEach(function (cell) {
+							let qtd = parseInt(cell.getAttribute('data-qtd'));
+							updateQtdColor(cell, qtd);
+						});
 					</script>
 
 				</section>

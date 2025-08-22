@@ -224,5 +224,5 @@ docker compose down
 ```
 
 ---
-This README serves as a quick guide for installation, configuration and system usage. Add future implementations and observations below as the project evolves.
+This README serves as a quick guide for installation, configuration and system usage. I will add future implementations and observations below as the project evolves.
 
