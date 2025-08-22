@@ -1075,3 +1075,103 @@ button.primary:active,
             padding: 40px;
             color: #6c757d;
         }
+
+        /* Inventory/Estoque specific styles */
+        .qtd-cell {
+            display: inline-flex;
+            align-items: center;
+            min-height: 24px;
+            vertical-align: middle;
+        }
+
+        .qtd-value {
+            display: inline-block;
+            min-width: 20px;
+        }
+
+        .edit-btns {
+            display: none;
+            margin-left: 6px;
+            align-items: center;
+            gap: 2px;
+            vertical-align: middle;
+        }
+
+        .edit-btns.visible {
+            display: inline-flex;
+        }
+
+        .btn-icon {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0;
+            margin: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 16px;
+            height: 16px;
+            line-height: 1;
+            vertical-align: middle;
+        }
+
+        .btn-icon svg {
+            width: 12px;
+            height: 12px;
+            display: block;
+        }
+
+        /* Evitar deformação das linhas da tabela */
+        table td {
+            vertical-align: middle;
+        }
+
+        .options-actions {
+            display: none;
+        }
+
+        .options-actions.visible {
+            display: inline-block;
+        }
+
+        .options-actions .button {
+            margin-right: 0.5em;
+        }
+
+        .options-actions .button:last-child {
+            margin-right: 0;
+        }
+
+        .qtd-cell.low-stock {
+            background-color: rgba(245, 106, 106, 0.1);
+            color: #f56a6a;
+            padding: 2px 6px;
+            border-radius: 3px;
+            border: 1px solid rgba(245, 106, 106, 0.2);
+        }
+
+        /* Header layout styles */
+        .header-row {
+            margin-bottom: 1.5em;
+        }
+
+        .header-row-flex {
+            flex: 1;
+        }
+
+        .lock-toggle {
+            cursor: pointer;
+        }
+
+        .lock-icon {
+            display: inline-block;
+        }
+
+        .edit-icon {
+            display: none;
+        }
+
+        .new-session-btn {
+            margin-bottom: 1em;
+        }

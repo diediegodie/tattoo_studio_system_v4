@@ -29,7 +29,7 @@
 					</header>
 
 					<!-- Nova Sessão Button -->
-					<a href="{{ url_for('sessoes.nova_sessao') }}" class="button primary" style="margin-bottom: 1em;">
+					<a href="{{ url_for('sessoes.nova_sessao') }}" class="button primary new-session-btn">
 						Nova sessão
 					</a>
 
@@ -61,8 +61,8 @@
 										<td>
 											<button class="button small options-btn"
 												onclick="toggleOptions(this)">Opções</button>
-											<span class="options-actions" style="display:none;">
-												<button class="button small" style="margin-right:0.5em;">Editar</button>
+											<span class="options-actions">
+												<button class="button small">Editar</button>
 												<button class="button small">Excluir</button>
 											</span>
 										</td>
@@ -80,11 +80,7 @@
 					<script>
 						function toggleOptions(btn) {
 							var actions = btn.nextElementSibling;
-							if (actions.style.display === "none" || actions.style.display === "") {
-								actions.style.display = "inline-block";
-							} else {
-								actions.style.display = "none";
-							}
+							actions.classList.toggle('visible');
 						}
 					</script>
 
