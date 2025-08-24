@@ -4,7 +4,7 @@ Run this file inside the app container: python force_create_tables.py
 """
 
 from app.db.session import Base, engine
-from app.db.base import Sessao
+from app.db.base import Sessao, Inventory
 
 if __name__ == "__main__":
     Base.metadata.create_all(bind=engine)

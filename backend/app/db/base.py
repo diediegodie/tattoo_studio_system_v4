@@ -38,6 +38,24 @@ class User(UserMixin, Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
+
+# ------------------- ESTOQUE (INVENTORY) -------------------
+class Inventory(Base):
+    """Inventory model for stock control (Estoque)"""
+
+    __tablename__ = "inventory"
+
+    id = Column(Integer, primary_key=True, index=True)
+    nome = Column(String(100), nullable=True)
+    quantidade = Column(Integer, nullable=True)
+    observacoes = Column(String(255), nullable=True)
+    order = Column(Integer, nullable=False, default=0)  # Ordem para drag&drop
+    category = Column(String(50), nullable=True)  # Categoria do item
+    unit_price = Column(Numeric(10, 2), nullable=True)  # Preço unitário
+    supplier = Column(String(100), nullable=True)  # Fornecedor
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
     # Flask-Login required methods - explicit implementation
     def get_id(self):
         """Return user identifier for Flask-Login"""

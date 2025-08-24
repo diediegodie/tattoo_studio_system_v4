@@ -1,0 +1,59 @@
+<!DOCTYPE HTML>
+<html>
+
+<head>
+    <title>Reordenar Estoque</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}" />
+    <script src="{{ url_for('static', filename='js/drag_drop.js') }}" defer></script>
+</head>
+
+<body class="is-preload">
+    <div id="wrapper">
+        <div id="main">
+            <div class="inner">
+                <header id="header">
+                    <a href="{{ url_for('index') }}" class="logo"><strong>Estoque</strong> de materiais</a>
+                </header>
+                <section>
+                    <header class="main">
+                        <h1>Reordenar Estoque</h1>
+                    </header>
+                    <div class="table-wrapper">
+                        <form id="drag-drop-form" method="post" action="{{ url_for('drag_drop.drag_drop') }}">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Nome</th>
+                                        <th>Quantidade</th>
+                                        <th>Observações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in inventory_items %}
+                                    <tr data-id="{{ item.id }}">
+                                        <td>{{ item.nome }}</td>
+                                        <td>{{ item.quantidade }}</td>
+                                        <td>{{ item.observacoes }}</td>
+                                    </tr>
+                                    {% else %}
+                                    <tr>
+                                        <td colspan="3">Nenhum item cadastrado.</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                            <div class="actions special">
+                                <button type="submit" class="button primary">Aplicar</button>
+                                <a href="{{ url_for('estoque') }}" class="button">Cancelar</a>
+                            </div>
+                        </form>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

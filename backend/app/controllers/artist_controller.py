@@ -161,12 +161,12 @@ def create_artist_form() -> Dict[str, Any]:
         # Return JSON response for AJAX calls
         return (
             jsonify(
-                {
+                    {
                     "success": True,
                     "artist": {
-                        "id": artist.id,
-                        "name": artist.name,
-                        "email": artist.email,
+                    "id": artist.id,
+                    "name": artist.name,
+                    "email": artist.email,
                     },
                 }
             ),

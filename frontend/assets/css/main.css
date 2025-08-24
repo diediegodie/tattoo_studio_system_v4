@@ -1172,6 +1172,35 @@ button.primary:active,
             display: none;
         }
 
+        /* Drag and Drop Styles */
+        .drag-handle {
+            color: #ccc;
+            font-weight: bold;
+            user-select: none;
+            transition: color 0.2s;
+        }
+
+        .drag-handle:hover {
+            color: #a05a4a;
+        }
+
+        tr[draggable="true"]:hover .drag-handle {
+            color: #a05a4a;
+        }
+
+        tr[draggable="true"] {
+            transition: opacity 0.2s;
+        }
+
         .new-session-btn {
             margin-bottom: 1em;
         }
+
+        /* Highlight low quantity in inventory (numbers only, safe) */
+.qtd-display.low-quantity {
+  color: #fff;
+  background-color: #d32f2f; /* red */
+  border-radius: 4px;
+  padding: 0 4px;
+  font-weight: bold;
+}
