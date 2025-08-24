@@ -120,7 +120,7 @@
                         <h3>Nenhum evento encontrado</h3>
                         <p>Clique em "Sincronizar com Google Agenda" para buscar novos eventos.</p>
                         {% if not calendar_connected %}
-                        <p><a href="{{ url_for('google.login') }}">Conectar com Google Calendar</a></p>
+                        <p><a href="{{ url_for('google_login') }}">Conectar com Google Calendar</a></p>
                         {% endif %}
                     </div>
                     {% endif %}

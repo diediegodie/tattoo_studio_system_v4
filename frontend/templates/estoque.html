@@ -6,225 +6,86 @@
 	<meta charset="utf-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
 	<link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}" />
+	<style>
+	</style>
 </head>
 
 <body class="is-preload">
-
-	<!-- Wrapper -->
 	<div id="wrapper">
-
-		<!-- Main -->
 		<div id="main">
 			<div class="inner">
-
 				<!-- Header -->
 				<header id="header">
-					<a href="index.html" class="logo"><strong>Estoque</strong> de materiais</a>
+					<a href="{{ url_for('index') }}" class="logo"><strong>Estoque</strong> de materiais</a>
 				</header>
-
 				<!-- Content -->
 				<section>
 					<header class="main">
 						<h1>Estoque</h1>
-						<div class="row header-row">
-							<div class="header-row-flex"></div>
-							<span id="lock-toggle" class="opener lock-toggle">
-								<span id="lock-icon" class="lock-icon">
-									<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#a05a4a"
-										stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
-										<rect x="6" y="11" width="12" height="9" rx="1" ry="1" />
-										<path d="M9 11V8a3 3 0 0 1 6 0v3" />
-									</svg>
-								</span>
-								<span id="edit-icon" class="edit-icon">
-									<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#a05a4a"
-										stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
-										<path d="M4 20H20" />
-										<path
-											d="M16.5 3.5C16.8978 3.10218 17.4374 2.87868 18 2.87868C18.5626 2.87868 19.1022 3.10218 19.5 3.5C19.8978 3.89782 20.1213 4.4374 20.1213 5C20.1213 5.5626 19.8978 6.10218 19.5 6.5L8 18L4 19L5 15L16.5 3.5Z" />
-									</svg>
-								</span>
-							</span>
-						</div>
 					</header>
-					<section>
-						<div class="table-wrapper">
-							<table>
-								<thead>
-									<tr>
-										<th>Nome</th>
-										<th>Observações</th>
-										<th>Quantidade</th>
-										<th>Opções</th>
-									</tr>
-								</thead>
-								<tbody>
-									<tr>
-										<td>Produto A</td>
-										<td>Em estoque</td>
-										<td>
-											<span class="qtd-cell" data-qtd="10">
-												<span class="qtd-value">10</span>
-												<span class="edit-btns">
-													<button class="btn-icon btn-up">
-														<svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-															stroke="#222" stroke-width="1.5" stroke-linecap="round"
-															stroke-linejoin="round">
-															<path d="M18 15l-6-6-6 6" />
-														</svg>
-													</button>
-													<button class="btn-icon btn-down">
-														<svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-															stroke="#222" stroke-width="1.5" stroke-linecap="round"
-															stroke-linejoin="round">
-															<path d="M6 9l6 6 6-6" />
-														</svg>
-													</button>
-												</span>
-											</span>
-										</td>
-										<td>
-											<button class="button small options-btn"
-												onclick="toggleOptions(this)">Opções</button>
-											<span class="options-actions">
-												<button class="button small">Editar</button>
-												<button class="button small">Excluir</button>
-											</span>
-										</td>
-									</tr>
-									<tr>
-										<td>Produto B</td>
-										<td>Faltando</td>
-										<td>
-											<span class="qtd-cell" data-qtd="0">
-												<span class="qtd-value">0</span>
-												<span class="edit-btns">
-													<button class="btn-icon btn-up">
-														<svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-															stroke="#222" stroke-width="1.5" stroke-linecap="round"
-															stroke-linejoin="round">
-															<path d="M18 15l-6-6-6 6" />
-														</svg>
-													</button>
-													<button class="btn-icon btn-down">
-														<svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-															stroke="#222" stroke-width="1.5" stroke-linecap="round"
-															stroke-linejoin="round">
-															<path d="M6 9l6 6 6-6" />
-														</svg>
-													</button>
-												</span>
-											</span>
-										</td>
-										<td>
-											<button class="button small options-btn"
-												onclick="toggleOptions(this)">Opções</button>
-											<span class="options-actions">
-												<button class="button small">Editar</button>
-												<button class="button small">Excluir</button>
-											</span>
-										</td>
-									</tr>
-								</tbody>
-							</table>
+					<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom:1em;">
+						<a href="/estoque/novo" id="add-item-btn" class="button primary">Adicionar Item</a>
+						<div style="display: flex; gap: 8px; margin-left: auto;">
+							<a href="{{ url_for('drag_drop.drag_drop') }}" class="button small btn-icon"
+								title="Reordenar Estoque">
+								<span><i class="fas fa-arrows-alt"></i></span>
+							</a>
+							<button id="lock-toggle" class="button small btn-icon" title="Bloquear/Editar">
+								<span id="lock-icon"><i class="fas fa-lock"></i></span>
+								<span id="edit-icon" style="display:none;"><i class="fas fa-pencil-alt"></i></span>
+							</button>
 						</div>
-					</section>
-
-					<script>
-						// Alterna bloqueio/desbloqueio
-						let isLocked = true;
-						document.getElementById('lock-toggle').onclick = function () {
-							isLocked = !isLocked;
-							const lockIcon = document.getElementById('lock-icon');
-							const editIcon = document.getElementById('edit-icon');
-
-							if (isLocked) {
-								lockIcon.classList.remove('edit-icon');
-								lockIcon.classList.add('lock-icon');
-								editIcon.classList.remove('lock-icon');
-								editIcon.classList.add('edit-icon');
-							} else {
-								lockIcon.classList.remove('lock-icon');
-								lockIcon.classList.add('edit-icon');
-								editIcon.classList.remove('edit-icon');
-								editIcon.classList.add('lock-icon');
-							}
-
-							document.querySelectorAll('.edit-btns').forEach(function (btns) {
-								if (isLocked) {
-									btns.classList.remove('visible');
-								} else {
-									btns.classList.add('visible');
-								}
-							});
-						};
-
-						// Função para alternar opções
-						function toggleOptions(btn) {
-							var actions = btn.nextElementSibling;
-							actions.classList.toggle('visible');
-						}
-
-						// Função para alterar quantidade
-						document.querySelectorAll('.btn-up').forEach(function (btn) {
-							btn.onclick = function (e) {
-								e.preventDefault();
-								let qtdCell = btn.closest('.qtd-cell');
-								let qtdSpan = qtdCell.querySelector('.qtd-value');
-								let qtd = parseInt(qtdCell.getAttribute('data-qtd'));
-								qtd++;
-								qtdCell.setAttribute('data-qtd', qtd);
-								qtdSpan.textContent = qtd;
-								updateQtdColor(qtdCell, qtd);
-							};
-						});
-						document.querySelectorAll('.btn-down').forEach(function (btn) {
-							btn.onclick = function (e) {
-								e.preventDefault();
-								let qtdCell = btn.closest('.qtd-cell');
-								let qtdSpan = qtdCell.querySelector('.qtd-value');
-								let qtd = parseInt(qtdCell.getAttribute('data-qtd'));
-								if (qtd > 0) qtd--;
-								qtdCell.setAttribute('data-qtd', qtd);
-								qtdSpan.textContent = qtd;
-								updateQtdColor(qtdCell, qtd);
-							};
-						});
-
-						// Alerta de baixo estoque
-						function updateQtdColor(cell, qtd) {
-							if (qtd < 6) {
-								cell.classList.add('low-stock');
-							} else {
-								cell.classList.remove('low-stock');
-							}
-						}
-
-						// Inicializa cor dos campos
-						document.querySelectorAll('.qtd-cell').forEach(function (cell) {
-							let qtd = parseInt(cell.getAttribute('data-qtd'));
-							updateQtdColor(cell, qtd);
-						});
-					</script>
-
+					</div>
+					<div class="table-wrapper">
+						<table>
+							<thead>
+								<tr>
+									<th>Nome</th>
+									<th>Quantidade</th>
+									<th>Observações</th>
+									<th>Opções</th>
+								</tr>
+							</thead>
+							<tbody>
+								{% for item in inventory_items %}
+								<tr data-id="{{ item.id }}">
+									<td>{{ item.nome }}</td>
+									<td>{{ item.observacoes }}</td>
+									<td><span class="qtd-display">{{ item.quantidade }}</span></td>
+									<td class="qtd-controls" style="display:none;">
+										<button class="btn-up btn-icon"
+											onclick="changeQuantity({{ item.id }}, 1)">↑</button>
+										<button class="btn-down btn-icon"
+											onclick="changeQuantity({{ item.id }}, -1)">↓</button>
+									</td>
+									<td>
+										<button class="button small options-btn">Opções</button>
+										<span class="options-actions" style="display:none;">
+											<button class="button small edit-btn">Editar</button>
+											<button class="button small delete-btn">Excluir</button>
+										</span>
+									</td>
+								</tr>
+								{% else %}
+								<tr>
+									<td colspan="4">Nenhum item cadastrado.</td>
+								</tr>
+								{% endfor %}
+							</tbody>
+						</table>
+					</div>
 				</section>
-
 			</div>
 		</div>
-
 		<!-- Sidebar -->
 		<div id="sidebar" class="inactive">
 			<div class="toggle"></div>
 			<div class="inner">
-
-				<!-- Search -->
 				<section id="search" class="alt">
 					<form method="post" action="#">
 						<input type="text" name="query" id="query" placeholder="Search" />
 					</form>
 				</section>
-
-				<!-- Menu -->
 				<nav id="menu">
 					<header class="major">
 						<h2>Menu</h2>
@@ -245,16 +106,45 @@
 				</nav>
 			</div>
 		</div>
-
 	</div>
+	<script>
+		// Independent toggles for locker and options
+		function toggleOptions(btn) {
+			var actions = btn.parentElement.querySelector('.options-actions');
+			if (actions) {
+				if (actions.style.display === 'none' || actions.style.display === '') {
+					actions.style.display = 'inline-block';
+				} else {
+					actions.style.display = 'none';
+				}
+			}
+		}
 
-	<!-- Scripts -->
+		window.INVENTORY_LOCKED = true;
+		function toggleLockMode() {
+			window.INVENTORY_LOCKED = !window.INVENTORY_LOCKED;
+			document.getElementById('lock-icon').style.display = window.INVENTORY_LOCKED ? 'inline' : 'none';
+			document.getElementById('edit-icon').style.display = window.INVENTORY_LOCKED ? 'none' : 'inline';
+			updateLockerControls();
+		}
+		document.getElementById('lock-toggle').onclick = toggleLockMode;
+
+		function updateLockerControls() {
+			document.querySelectorAll('.qtd-controls').forEach(ctrl => {
+				ctrl.style.display = window.INVENTORY_LOCKED ? 'none' : 'inline-block';
+			});
+			document.querySelectorAll('.btn-up, .btn-down').forEach(btn => {
+				btn.disabled = window.INVENTORY_LOCKED;
+			});
+		}
+		document.addEventListener('DOMContentLoaded', updateLockerControls);
+	</script>
 	<script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
 	<script src="{{ url_for('static', filename='js/browser.min.js') }}"></script>
 	<script src="{{ url_for('static', filename='js/breakpoints.min.js') }}"></script>
 	<script src="{{ url_for('static', filename='js/util.js') }}"></script>
 	<script src="{{ url_for('static', filename='js/main.js') }}"></script>
-
+	<script src="{{ url_for('static', filename='js/inventory.js') }}"></script>
 </body>
 
 </html>

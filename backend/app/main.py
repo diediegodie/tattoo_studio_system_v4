@@ -213,7 +213,21 @@ def create_app():
     @app.route("/estoque")
     @login_required
     def estoque():
-        return render_template("estoque.html")
+        from repositories.inventory_repository import InventoryRepository
+        from services.inventory_service import InventoryService
+        from db.session import SessionLocal
+
+        db = SessionLocal()
+        repository = InventoryRepository(db)
+        service = InventoryService(repository)
+        items = service.list_items()
+        db.close()
+        return render_template("estoque.html", inventory_items=items)
+
+    @app.route("/estoque/novo", endpoint="novo_item")
+    @login_required
+    def novo_item():
+        return render_template("novo_item.html")
 
     @app.route("/extrato")
     @login_required
@@ -281,6 +295,7 @@ def create_app():
     from controllers.sessoes_controller import sessoes_bp
     from controllers.artist_controller import artist_bp
     from controllers.calendar_controller import calendar_bp
+    from controllers.inventory_controller import inventory_bp
 
     app.register_blueprint(api_bp)
     app.register_blueprint(auth_bp)
@@ -288,6 +303,7 @@ def create_app():
     app.register_blueprint(sessoes_bp)
     app.register_blueprint(artist_bp)
     app.register_blueprint(calendar_bp)
+    app.register_blueprint(inventory_bp)
 
     # Register OAuth blueprint - name already set at creation
     app.register_blueprint(google_oauth_bp, url_prefix="/auth")

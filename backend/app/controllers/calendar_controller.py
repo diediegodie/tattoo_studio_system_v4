@@ -419,14 +419,20 @@ def sync_events():
         start_date = datetime.now()
         end_date = start_date + timedelta(days=30)
 
-        events = calendar_service.get_user_events(
-            str(current_user.id), start_date, end_date
-        )
-
-        flash(f"Sincronização concluída! {len(events)} eventos encontrados.", "success")
+        try:
+            events = calendar_service.get_user_events(
+                str(current_user.id), start_date, end_date
+            )
+            flash(
+                f"Sincronização concluída! {len(events)} eventos encontrados.",
+                "success",
+            )
+        except Exception as e:
+            logger.error(f"Error syncing calendar events: {str(e)}")
+            flash("Erro ao sincronizar eventos do Google Calendar", "error")
 
     except Exception as e:
-        logger.error(f"Error syncing calendar events: {str(e)}")
-        flash("Erro ao sincronizar eventos do Google Calendar", "error")
+        logger.error(f"Error in sync_events: {str(e)}")
+        flash("Erro interno ao sincronizar eventos do Google Calendar", "error")
 
     return redirect(url_for("calendar.calendar_page"))

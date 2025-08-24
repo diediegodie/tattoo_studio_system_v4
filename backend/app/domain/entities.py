@@ -78,24 +78,18 @@ class Appointment:
 class InventoryItem:
     """Domain entity for inventory management."""
 
+    nome: str = ""
+    quantidade: int = 0
+    observacoes: Optional[str] = None
     id: Optional[int] = None
-    name: str = ""
-    category: str = ""
-    quantity: int = 0
-    unit_price: float = 0.0
-    supplier: Optional[str] = None
-    description: Optional[str] = None
+    # campos extras removidos para manter compatibilidade
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
     def __post_init__(self):
         """Validate business rules."""
-        if not self.name:
-            raise ValueError("Item name is required")
-        if self.quantity < 0:
-            raise ValueError("Quantity cannot be negative")
-        if self.unit_price < 0:
-            raise ValueError("Unit price cannot be negative")
+        if self.quantidade < 0:
+            raise ValueError("Quantidade não pode ser negativa")
 
 
 @dataclass
