@@ -26,8 +26,8 @@ from tests.config.test_paths import ensure_domain_imports
 ensure_domain_imports()
 
 try:
-    from controllers import appointment_controller
-    from services.appointment_service import AppointmentService
+    from app.controllers import appointment_controller
+    from app.services.appointment_service import AppointmentService
     from schemas.dtos import AppointmentResponse, ErrorResponse
 
     IMPORTS_AVAILABLE = True

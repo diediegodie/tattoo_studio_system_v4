@@ -1,228 +1,134 @@
 # Tattoo Studio System
 
-## Project
-Management system for tattoo studios, with Flask backend, PostgreSQL database, Google OAuth authentication and responsive frontend.
+Management system for tattoo studios — Flask backend, PostgreSQL database, Google OAuth and a responsive frontend.
 
-## Structure
-- **backend/**: Python Flask code, SQLAlchemy models, authentication, routes and business logic
-- **frontend/**: HTML templates, CSS, JS, system pages
-- **docker-compose.yml**: Services orchestration
-- **requirements.txt**: Python dependencies
-- **.env**: Environment variables (credentials, URLs)
+## Quick overview
+- Backend: `backend/` (Flask + SQLAlchemy)
+- Frontend: `frontend/` (templates, CSS, JS)
+- Orchestration: `docker-compose.yml`
+- Env template: `.env.example`
+- Dependencies: `requirements.txt`
 
-## Quick Installation
-1. Install Docker and Docker Compose
-2. **IMPORTANT**: Copy and configure the environment file:
-   ```bash
-   cp .env.example .env
-   ```
-3. Edit the `.env` file with your real credentials:
-   - Configure Google OAuth credentials (see section below)
-   - Change default database passwords
-   - Configure a secure secret key for Flask
-4. Start the services:
-   ```bash
-   docker compose up -d --build
-   ```
-5. Access the system at `http://localhost:5000/`
+---
 
-## Google OAuth Authentication
-1. Access the [Google Cloud Console](https://console.cloud.google.com/)
-2. Create a new project or select an existing one
-3. Enable the APIs: Google+ API and Google Identity API
-4. Configure OAuth 2.0 credentials:
-   - Type: Web Application
-   - Authorized redirect URIs:
-     - `http://localhost:5000/auth/google/authorized`
-     - `http://127.0.0.1:5000/auth/google/authorized`
-5. Copy the Client ID and Client Secret to the `.env` file
+## Quick Installation (Docker)
+
+1. Copy env file:
+```bash
+cp .env.example .env
+```
+
+2. Edit .env with your real credentials (see "Environment Variables" below).
+
+3. Start services:
+```bash
+docker-compose up -d
+```
+
+4. Open the app at: http://localhost:5000/
+
+---
+
+## Local development (without Docker)
+
+1. Create & activate a virtual environment:
+```bash
+python -m venv venv
+source venv/bin/activate
+```
+
+2. Install dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+3. Copy .env.example to .env and edit required values.
+
+4. Run the app locally:
+```bash
+python app.py
+```
+
+(Alternatively, set FLASK_APP and use flask run from the appropriate working directory — the project uses an app factory in backend/app/main.py and the convenience runner in backend/app/app.py.)
+
+---
+
+## Environment Variables (required / important)
+
+Set these in .env or your environment. Defaults shown are for development only.
+
+DATABASE_URL (e.g. [REDACTED_DATABASE_URL])
+POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB
+FLASK_SECRET_KEY (used by Flask for sessions) — e.g. [REDACTED_FLASK_SECRET_KEY]
+JWT_SECRET_KEY (used to sign JWTs; has a dev default if not set)
+GOOGLE_CLIENT_ID
+GOOGLE_CLIENT_SECRET
+OAUTHLIB_INSECURE_TRANSPORT (dev only, set to 1)
+OAUTHLIB_RELAX_TOKEN_SCOPE (dev only, set to 1)
+JOTFORM_API_KEY, JOTFORM_FORM_ID (if using JotForm sync)
+
+See .env.example for examples.
+
+---
+
+## OAuth / Google setup
+
+- Do NOT rely on the deprecated Google+ API. Configure Google OAuth / Identity credentials.
+- Authorized redirect URIs (example):
+http://localhost:5000/auth/google/authorized
+http://127.0.0.1:5000/auth/google/authorized
+- Scopes requested by the app:
+email
+profile
+https://www.googleapis.com/auth/calendar.readonly
+https://www.googleapis.com/auth/calendar.events
+
+---
+
+## Key endpoints (paths & HTTP methods)
+
+GET / — Login page (web)
+GET /index — Dashboard (login required)
+GET /auth/login — Start Google OAuth (redirect to provider)
+POST /auth/login — Local email/password login (JSON API; returns token on success)
+GET /logout — Web logout (clears cookie & redirects)
+POST /auth/logout — API logout (clears access token cookie)
+GET /clients/ — Clients list page (web)
+GET /clients/sync — Trigger JotForm -> local sync (web, redirects back)
+GET /clients/api/list — Clients JSON API (internal)
+GET /health — Health check
+GET /db-test — Database connection test
+
+(If you use the frontend, it expects the web routes; for API clients use the /auth/* and /clients/api/* endpoints.)
+
+---
 
 ## Database
-- PostgreSQL
-- Tables created automatically (`users`, `oauth`)
-- To query users:
-	```bash
-	docker compose exec db psql -U admin -d tattoo_studio -c "SELECT id, name, email FROM users;"
-	```
 
-## Main Endpoints
-- `/` or `/login`: Login page
-- `/index`: Dashboard (protected)
-- `/auth/login`: Start OAuth
-- `/auth/logout`: Logout
-- Other pages: inventory, sessions, financial, statement, internal registration, calculator, history
+PostgreSQL is used in docker-compose by default.
+Tables can be created automatically on startup (app runner calls create_tables).
+Example to query database from host (when running via docker-compose):
 
-## Useful Commands
-- Start: `docker compose up -d --build`
-- Stop: `docker compose down`
-- Logs: `docker compose logs app -f`
-- Query database: `docker compose exec db psql -U admin -d tattoo_studio`
-
-## Current Implementation Status
-
-### ✅ Production-Ready Features
-- **Authentication System** (100%): Multi-auth (OAuth2 + Local), JWT tokens, security
-- **Client Management** (100%): Full CRUD, JotForm integration, API endpoints
-- **User/Artist Management** (95%): User profiles, session assignments, role management
-- **Session Scheduling** (85%): Database models, basic management, user-client associations
-- **SOLID Architecture** (100%): Complete implementation with comprehensive testing
-- **Testing Infrastructure** (100%): 144 tests, 73 passing, professional test organization
-
-### 🔄 In Development
-- **Inventory Management** (15%): Domain entities exist, needs full implementation
-- **Financial Management** (5%): Templates exist, needs backend implementation
-- **Advanced Reporting** (30%): Basic dashboard, needs enhanced features
-
-### 📊 System Metrics
-- **Database**: PostgreSQL with complete User, Client, Sessao models
-- **Tests**: 73 passing unit tests + 71 ready integration tests
-- **Security**: JWT authentication, bcrypt hashing, OAuth2 integration
-- **Deployment**: Full Docker containerization with environment management
-
-See `docs/current_status.md` for detailed implementation breakdown.
-
-## Future Enhancements
-- [ ] Complete inventory management system
-- [ ] Financial reporting and payment tracking
-- [ ] Advanced analytics dashboard
-- [ ] Notification system
-- [ ] Automated backup and restore
-
-
----
-
-## 🐳 DOCKER COMMANDS - COMPLETE MANAGEMENT
-
-### **START APPLICATION**
 ```bash
-# Start all services (app + database)
-docker compose up -d --build
-
-# Or start without rebuild (faster after first time)
-docker compose up -d
-
-# Start only the database
-docker compose up -d db
-
-# Start only the application
-docker compose up -d app
-```
-
-### **STOP APPLICATION**
-```bash
-# Stop all services
-docker compose down
-
-# Stop and remove volumes (CAUTION: deletes database data!)
-docker compose down -v
-
-# Stop only the application (keeps database running)
-docker compose stop app
-
-# Stop only the database
-docker compose stop db
-```
-
-### **MONITORING AND LOGS**
-```bash
-# View application logs in real time
-docker compose logs app -f
-
-# View database logs
-docker compose logs db -f
-
-# View logs from all services
-docker compose logs -f
-
-# View container status
-docker compose ps
-
-# View detailed status
-docker ps
-```
-
-### **DATABASE MANAGEMENT**
-```bash
-# Access PostgreSQL terminal
-docker compose exec db psql -U admin -d tattoo_studio
-
-# Query users directly
 docker compose exec db psql -U admin -d tattoo_studio -c "SELECT id, name, email FROM users;"
-
-# Database backup
-docker compose exec db pg_dump -U admin tattoo_studio > backup.sql
-
-# Restore backup
-docker compose exec -T db psql -U admin -d tattoo_studio < backup.sql
-```
-
-### **RESTART SERVICES**
-```bash
-# Restart application
-docker compose restart app
-
-# Restart database
-docker compose restart db
-
-# Restart all services
-docker compose restart
-```
-
-### **CLEANUP AND MAINTENANCE**
-```bash
-# Complete rebuild (force recreation)
-docker compose up -d --build --force-recreate
-
-# Remove stopped containers
-docker container prune
-
-# Remove unused images
-docker image prune
-
-# Complete cleanup (CAUTION!)
-docker system prune -a
-```
-
-### **DEBUG AND TROUBLESHOOTING**
-```bash
-# Access application terminal
-docker compose exec app bash
-
-# Check application environment variables
-docker compose exec app env
-
-# View resource usage
-docker stats
-
-# Inspect specific container
-docker inspect tattoo_studio_app
-docker inspect tattoo_studio_db
-```
-
-### **QUICK ACCESS**
-```bash
-# Open application in browser (Linux)
-xdg-open http://localhost:5000
-
-# View summarized logs (last 50 lines)
-docker compose logs app --tail=50
-```
-
-### **MOST USED DAILY COMMANDS:**
-```bash
-# 1. Start everything
-docker compose up -d --build
-
-# 2. Check if it's working
-docker compose ps
-
-# 3. View logs if there's a problem
-docker compose logs app -f
-
-# 4. Stop everything
-docker compose down
 ```
 
 ---
-This README serves as a quick guide for installation, configuration and system usage. I will add future implementations and observations below as the project evolves.
 
+## Running tests
+From the repository root (after installing dev deps):
+```bash
+source .venv/bin/activate
+pip install -r [requirements.txt](http://_vscodecontentref_/3)
+pytest -q
+```
+
+---
+
+## Useful Docker commands
+
+Start: docker compose up -d --build
+Stop: docker compose down
+Logs: docker compose logs app -f
+Run only app: docker compose up -d app
+Enter app container: docker compose exec app bash

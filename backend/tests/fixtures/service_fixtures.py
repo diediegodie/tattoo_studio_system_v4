@@ -14,7 +14,7 @@ from tests.config import setup_test_imports
 setup_test_imports()
 
 try:
-    from services.user_service import UserService
+    from app.services.user_service import UserService
     from tests.factories.repository_factories import UserRepositoryFactory
 
     SERVICE_IMPORTS_AVAILABLE = True

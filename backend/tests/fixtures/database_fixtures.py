@@ -32,18 +32,31 @@ def test_database():
         yield Mock()
         return
 
-    # Create a temporary database file
-    db_fd, db_path = tempfile.mkstemp(suffix=".db")
+    # Prefer to use the DATABASE_URL from the test import setup so the
+    # application's global engine (created at import time) and the schema
+    # creation happen on the same SQLite file.
+    sqlite_url = os.environ.get("DATABASE_URL")
+
+    if not sqlite_url:
+        # Fallback to a temporary file-based sqlite URL
+        db_fd, db_path = tempfile.mkstemp(suffix=".db")
+        sqlite_url = f"sqlite:///{db_path}"
+        cleanup_path = db_path
+    else:
+        cleanup_path = None
 
     try:
-        # Create all tables in the test database
-        Base.metadata.create_all(bind=engine)
-        yield db_path
+        from sqlalchemy import create_engine
+
+        transient_engine = create_engine(sqlite_url, echo=False)
+        Base.metadata.create_all(bind=transient_engine)
+
+        yield sqlite_url
     finally:
-        # Clean up the temporary database file
-        os.close(db_fd)
-        if os.path.exists(db_path):
-            os.unlink(db_path)
+        if cleanup_path:
+            os.close(db_fd)
+            if os.path.exists(cleanup_path):
+                os.unlink(cleanup_path)
 
 
 @pytest.fixture
@@ -53,13 +66,34 @@ def db_session(test_database):
         yield Mock()
         return
 
-    # Create a new session for this test
-    session = SessionLocal()
+    # Create a new temporary engine and session bound to the test database so
+    # tests are fully isolated and don't depend on the global SessionLocal.
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+
+    test_engine = create_engine(test_database, echo=False)
+    TestSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
+
+    # Ensure tables exist in this test database
+    Base.metadata.create_all(bind=test_engine)
+
+    # Rebind the application's global engine/session to this test engine so
+    # other modules that import SessionLocal/engine get the test binding.
+    try:
+        import importlib
+
+        db_session_module = importlib.import_module("db.session")
+        db_session_module.engine = test_engine
+        db_session_module.SessionLocal = TestSessionLocal
+    except Exception:
+        # If rebinding fails, continue — tests will use the provided session
+        pass
+
+    session = TestSessionLocal()
 
     try:
         yield session
     finally:
-        # Rollback any changes made during the test
         session.rollback()
         session.close()
 
@@ -71,7 +105,16 @@ def clean_db_session(test_database):
         yield Mock()
         return
 
-    session = SessionLocal()
+    # Create a session bound to the test database to ensure isolation
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+
+    test_engine = create_engine(test_database, echo=False)
+    TestSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
+    # Ensure schema exists
+    Base.metadata.create_all(bind=test_engine)
+
+    session = TestSessionLocal()
 
     try:
         yield session

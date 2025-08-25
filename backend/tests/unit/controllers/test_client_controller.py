@@ -19,10 +19,10 @@ from tests.config.test_paths import ensure_domain_imports
 ensure_domain_imports()
 
 try:
-    from controllers import client_controller
-    from services.client_service import ClientService
-    from services.jotform_service import JotFormService
-    from repositories.client_repo import ClientRepository
+    from app.controllers import client_controller
+    from app.services.client_service import ClientService
+    from app.services.jotform_service import JotFormService
+    from app.repositories.client_repo import ClientRepository
 
     IMPORTS_AVAILABLE = True
 except ImportError as e:

@@ -33,10 +33,10 @@ def test_basic_integration():
     # Test 2: Import Check
     print("\n2. Testing imports...")
     try:
-        from domain.entities import CalendarEvent
-        from domain.interfaces import ICalendarService
-        from services.google_calendar_service import GoogleCalendarService
-        from controllers.calendar_controller import calendar_bp
+        from app.domain.entities import CalendarEvent
+        from app.domain.interfaces import ICalendarService
+        from app.services.google_calendar_service import GoogleCalendarService
+        from app.controllers.calendar_controller import calendar_bp
 
         print("✅ All calendar modules import successfully")
     except Exception as e:
@@ -46,7 +46,7 @@ def test_basic_integration():
     # Test 3: Service Creation
     print("\n3. Testing service creation...")
     try:
-        from services.google_calendar_service import GoogleCalendarService
+        from app.services.google_calendar_service import GoogleCalendarService
 
         calendar_service = GoogleCalendarService()
         print("✅ Calendar service created successfully")

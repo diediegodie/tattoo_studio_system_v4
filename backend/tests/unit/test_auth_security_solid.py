@@ -22,7 +22,7 @@ try:
         create_access_token,
         decode_access_token,
     )
-    from services.user_service import UserService
+    from app.services.user_service import UserService
     from domain.entities import User as DomainUser
     from domain.interfaces import IUserRepository
     from tests.factories.repository_factories import UserRepositoryFactory

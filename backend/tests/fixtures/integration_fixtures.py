@@ -54,14 +54,46 @@ def app(test_database):
     if not FLASK_IMPORTS_AVAILABLE:
         pytest.skip("Flask integration dependencies not available")
 
-    # Configure app for testing
-    app = create_app(
+    # Configure environment for testing so create_app() and db.session pick up the
+    # test database and secrets. Some versions of create_app accepted a config
+    # dict; newer versions take no args, so we set env vars and call create_app().
+    os.environ["DATABASE_URL"] = test_database
+    os.environ["FLASK_SECRET_KEY"] = "test-secret-key"
+    os.environ["JWT_SECRET_KEY"] = "test-jwt-secret"
+
+    app = create_app()
+
+    # Fix template/static paths for test environment: create_app() uses
+    # absolute Docker paths (/app/frontend/...), which are not present during
+    # local pytest runs. Point Flask to the repo's frontend folders so
+    # Jinja can find templates and static assets.
+    from pathlib import Path
+
+    repo_root = Path(__file__).parent.parent.parent.parent.resolve()
+    templates_path = repo_root / "frontend" / "templates"
+    static_path = repo_root / "frontend" / "assets"
+
+    if templates_path.exists():
+        app.template_folder = str(templates_path)
+        # Ensure the jinja loader search path includes the repo templates
+        try:
+            if hasattr(app, "jinja_loader") and hasattr(app.jinja_loader, "searchpath"):
+                app.jinja_loader.searchpath.insert(0, str(templates_path))
+        except Exception:
+            # Non-fatal for environments with custom loaders
+            pass
+
+    if static_path.exists():
+        app.static_folder = str(static_path)
+
+    # During tests surface internal exceptions to make debugging easier
+    app.config["PROPAGATE_EXCEPTIONS"] = True
+
+    # Explicit test config applied to the Flask app object
+    app.config.update(
         {
             "TESTING": True,
-            "DATABASE_URL": test_database,
-            "SECRET_KEY": "test-secret-key",
-            "JWT_SECRET_KEY": "test-jwt-secret",
-            "WTF_CSRF_ENABLED": False,  # Disable CSRF for testing
+            "WTF_CSRF_ENABLED": False,
         }
     )
 
@@ -113,9 +145,20 @@ def db_session(app):
     try:
         yield session
     finally:
-        # Always rollback the transaction to isolate tests
-        transaction.rollback()
-        session.close()
+        # Always rollback the transaction to isolate tests, but only if
+        # it's still active. Guarding prevents errors when the transaction
+        # was already closed due to an earlier exception.
+        try:
+            if getattr(transaction, "is_active", False):
+                transaction.rollback()
+        except Exception:
+            # As a last resort, call session.rollback()
+            try:
+                session.rollback()
+            except Exception:
+                pass
+        finally:
+            session.close()
 
 
 @pytest.fixture
