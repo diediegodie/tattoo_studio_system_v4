@@ -15,8 +15,8 @@ from dotenv import load_dotenv
 load_dotenv("../.env")
 
 from flask import Flask
-from services.oauth_token_service import OAuthTokenService
-from services.google_calendar_service import GoogleCalendarService
+from app.services.oauth_token_service import OAuthTokenService
+from app.services.google_calendar_service import GoogleCalendarService
 from datetime import datetime, timedelta
 
 
@@ -135,7 +135,7 @@ def test_with_mock_token():
     print("=" * 50)
 
     try:
-        from repositories.google_calendar_repo import GoogleCalendarRepository
+        from app.repositories.google_calendar_repo import GoogleCalendarRepository
 
         # Test repository without real API calls
         repo = GoogleCalendarRepository()

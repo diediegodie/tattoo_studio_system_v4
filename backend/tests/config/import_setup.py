@@ -6,6 +6,8 @@ import behavior across the entire test suite.
 """
 
 import sys
+import os
+import tempfile
 from pathlib import Path
 from typing import Optional
 
@@ -36,18 +38,29 @@ class TestImportManager:
         # Get the backend directory
         backend_dir = test_dir.parent
 
-        # Get the app directory
-        app_dir = backend_dir / "app"
+        # Add backend directory to sys.path to allow `import app.xxx`.
+        # Also add backend/app so top-level imports like `db` (which lives
+        # under app/db) can be imported as `db.*`. The order matters: add
+        # the backend root first so `app` resolves to the package directory
+        # rather than a file that may live inside it.
+        backend_app_dir = test_dir / "app"
 
-        # Add paths to sys.path if not already present
         paths_to_add = [
             str(backend_dir),  # For importing from 'app' package
-            str(app_dir),  # For direct imports from app modules
+            str(backend_app_dir),  # For allowing top-level `db`, etc.
         ]
 
         for path in paths_to_add:
             if path not in sys.path:
                 sys.path.insert(0, path)
+
+        # When running tests locally, prefer a SQLite file-based database so
+        # test runs don't attempt to reach the production Postgres host.
+        # Only set this if DATABASE_URL isn't already provided by CI/ENV.
+        if "DATABASE_URL" not in os.environ:
+            tmp_db = Path(tempfile.gettempdir()) / "tattoo_test.sqlite"
+            os.environ["DATABASE_URL"] = f"sqlite:///{tmp_db}"
+            print(f"Added to Python path: {paths_to_add[0]}")
 
     @staticmethod
     def ensure_imports_available():

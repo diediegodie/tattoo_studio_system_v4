@@ -20,7 +20,7 @@ ensure_domain_imports()
 
 try:
     from controllers import auth_controller
-    from services.user_service import UserService
+    from app.services.user_service import UserService
     from core.security import create_access_token, verify_token
 
     IMPORTS_AVAILABLE = True

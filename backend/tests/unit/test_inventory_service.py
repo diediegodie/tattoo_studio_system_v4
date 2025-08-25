@@ -4,18 +4,34 @@ Unit tests for InventoryService following SOLID and existing test patterns.
 Tests use the repository mock factories and domain fixtures where possible.
 """
 
+import sys
+from pathlib import Path
 import pytest
 from unittest.mock import Mock
+
+# Make sure the backend/app package is importable during pytest collection.
+# Insert backend directory at the front of sys.path so `import app.xxx` works.
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 # Ensure test import paths are set up
 from tests.config import setup_test_imports
 
 setup_test_imports()
 
-from domain.interfaces import IInventoryRepository
-from services.inventory_service import InventoryService
+# `tests.config.import_setup` adds both backend and backend/app to sys.path which can
+# cause `import app.services` to resolve `app` to the module file `backend/app/app.py`
+# instead of the `app` package. Remove the backend/app path so the package import
+# resolves to the directory package at `<workspace>/backend/app` via the backend entry.
+backend_dir = Path(__file__).resolve().parents[2]
+app_dir = backend_dir / "app"
+app_dir_str = str(app_dir)
+if app_dir_str in sys.path:
+    sys.path = [p for p in sys.path if p != app_dir_str]
+
+
+from app.services.inventory_service import InventoryService
 from tests.factories.repository_factories import InventoryRepositoryFactory
-from tests.fixtures.domain_fixtures import InventoryItem as DomainInventoryItem
+from app.domain.entities import InventoryItem as DomainInventoryItem
 
 
 @pytest.fixture
@@ -122,21 +138,17 @@ def test_update_item_handles_repository_exception(service, mock_repo):
         item = Mock(id=6, nome="Stencil", quantidade=5, observacoes="")
 
     mock_repo.update.side_effect = Exception("DB Error")
-
-    with pytest.raises(Exception, match="DB Error"):
+    # Pyright may complain about pytest.raises typing; silence for this context manager
+    with pytest.raises(Exception, match="DB Error"):  # type: ignore
         service.update_item(item)
 
 
 def test_change_quantity_updates_and_returns_item(service, mock_repo):
     try:
-        original = DomainInventoryItem(
-            id=7, nome="Tattoo Ink", quantidade=10, observacoes=""
-        )
         updated = DomainInventoryItem(
             id=7, nome="Tattoo Ink", quantidade=12, observacoes=""
         )
     except Exception:
-        original = Mock(id=7, nome="Tattoo Ink", quantidade=10, observacoes="")
         updated = Mock(id=7, nome="Tattoo Ink", quantidade=12, observacoes="")
 
     mock_repo.change_quantity.return_value = updated
@@ -150,8 +162,8 @@ def test_change_quantity_updates_and_returns_item(service, mock_repo):
 def test_change_quantity_propagates_not_found(service, mock_repo):
     # Simulate repository raising when item not found
     mock_repo.change_quantity.side_effect = ValueError("Item not found")
-
-    with pytest.raises(ValueError, match="Item not found"):
+    # Pyright may complain about pytest.raises typing; silence for this line
+    with pytest.raises(ValueError, match="Item not found"):  # type: ignore
         service.change_quantity(999, 1)
 
 

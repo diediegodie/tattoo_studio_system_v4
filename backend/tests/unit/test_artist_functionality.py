@@ -27,7 +27,7 @@ if str(app_dir) not in sys.path:
 try:
     from domain.entities import User as DomainUser
     from repositories.user_repo import UserRepository
-    from services.user_service import UserService
+    from app.services.user_service import UserService
 
     # Note: Controller tests will be mocked since they require app context
 except ImportError as e:

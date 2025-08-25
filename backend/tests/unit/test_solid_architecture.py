@@ -14,7 +14,7 @@ from datetime import datetime
 # Import the new architecture components
 from domain.entities import User as DomainUser
 from domain.interfaces import IUserRepository
-from services.user_service import UserService
+from app.services.user_service import UserService
 from schemas.dtos import UserCreateRequest, UserResponse
 from repositories.user_repo import UserRepository
 

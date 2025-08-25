@@ -70,17 +70,13 @@ def test_change_quantity_flow(authenticated_client):
     item_id = created.get("id")
 
     # Increase quantity
-    resp = client.authenticated_patch(
-        f"/inventory/{item_id}/quantity", json={"delta": 5}
-    )
+    resp = client.patch(f"/inventory/{item_id}/quantity", json={"delta": 5})
     assert resp.status_code == 200
     updated = resp.get_json()
     assert updated.get("quantidade") == 15
 
     # Decrease quantity
-    resp = client.authenticated_patch(
-        f"/inventory/{item_id}/quantity", json={"delta": -3}
-    )
+    resp = client.patch(f"/inventory/{item_id}/quantity", json={"delta": -3})
     assert resp.status_code == 200
     updated = resp.get_json()
     assert updated.get("quantidade") == 12
