@@ -119,8 +119,24 @@ function addItemLocally(newItem) {
 
 // Alterar quantidade de um item
 async function changeQuantity(id, delta) {
+    console.log(`📊 Alterando quantidade: ID=${id}, Delta=${delta}`);
+    // Update local state
+    const item = inventoryData.find(i => i.id == id);
+    if (item) {
+        item.quantidade = Math.max(0, item.quantidade + delta);
+    }
+    // Update only the DOM for this row
+    const row = document.querySelector(`tr[data-id='${id}']`);
+    if (row) {
+        const qtdDisplay = row.querySelector('.qtd-display');
+        if (qtdDisplay) {
+            qtdDisplay.textContent = item ? item.quantidade : qtdDisplay.textContent;
+        }
+    }
+    // Reapply highlighting
+    highlightLowQuantity();
+    // Sync with backend
     try {
-        console.log(`📊 Alterando quantidade: ID=${id}, Delta=${delta}`);
         const response = await fetch(`/inventory/${id}/quantity`, {
             method: 'PATCH',
             headers: {
@@ -131,21 +147,12 @@ async function changeQuantity(id, delta) {
         });
         if (response.ok) {
             console.log('✅ Quantidade atualizada com sucesso');
-            await loadInventory(); // Recarregar dados para persistir
         } else {
             const errorData = await response.json();
             console.error('❌ Erro na atualização:', errorData);
         }
     } catch (error) {
         console.error('❌ Erro na requisição:', error);
-        // Atualização local como fallback
-        const item = inventoryData.find(i => i.id == id);
-        if (item) {
-            item.quantidade = Math.max(0, item.quantidade + delta);
-            renderInventory();
-            highlightLowQuantity(); // Ensure highlight updates after local change
-            console.log('🔄 Atualização local aplicada');
-        }
     }
 }
 
