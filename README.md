@@ -119,7 +119,7 @@ docker compose exec db psql -U admin -d tattoo_studio -c "SELECT id, name, email
 From the repository root (after installing dev deps):
 ```bash
 source .venv/bin/activate
-pip install -r [requirements.txt](http://_vscodecontentref_/3)
+pip install -r requirements-dev.txt
 pytest -q
 ```
 

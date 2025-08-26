@@ -17,6 +17,33 @@
 		<div id="main">
 			<div class="inner">
 
+				<!-- Flash Messages -->
+				{% with messages = get_flashed_messages(with_categories=true) %}
+				{% if messages %}
+				<div class="flash-messages">
+					{% for category, message in messages %}
+					<div class="flash-message {{ category }}">{{ message }}</div>
+					{% endfor %}
+				</div>
+				{% endif %}
+				{% endwith %}
+
+				<!-- Template selects for edit modal (hidden, reuse server-rendered options from nova_sessao) -->
+				<div id="template-selects" style="display:none;">
+					<select id="tmpl_cliente_select">
+						<option value="">Selecione...</option>
+						{% for client in clients %}
+						<option value="{{ client.id }}">{{ client.name }}</option>
+						{% endfor %}
+					</select>
+					<select id="tmpl_artista_select">
+						<option value="">Selecione...</option>
+						{% for artist in artists %}
+						<option value="{{ artist.id }}">{{ artist.name }}</option>
+						{% endfor %}
+					</select>
+				</div>
+
 				<!-- Header -->
 				<header id="header">
 					<a href="index.html" class="logo"><strong>Sessões</strong> de de clientes</a>
@@ -49,7 +76,7 @@
 								</thead>
 								<tbody>
 									{% for sessao in sessoes %}
-									<tr>
+									<tr data-id="{{ sessao.id }}">
 										<td>{{ sessao.data.strftime('%d/%m/%Y') if sessao.data else '' }}</td>
 										<td>{{ sessao.hora.strftime('%H:%M') if sessao.hora else '' }}</td>
 										<td>{{ sessao.cliente.name if sessao.cliente else 'Cliente não encontrado' }}
@@ -61,9 +88,9 @@
 										<td>
 											<button class="button small options-btn"
 												onclick="toggleOptions(this)">Opções</button>
-											<span class="options-actions">
-												<button class="button small">Editar</button>
-												<button class="button small">Excluir</button>
+											<span class="options-actions" style="display:none;">
+												<button class="button small edit-btn">Editar</button>
+												<button class="button small delete-btn">Excluir</button>
 											</span>
 										</td>
 									</tr>
@@ -79,8 +106,10 @@
 
 					<script>
 						function toggleOptions(btn) {
-							var actions = btn.nextElementSibling;
-							actions.classList.toggle('visible');
+							var actions = btn.parentElement.querySelector('.options-actions');
+							if (actions) {
+								actions.style.display = (actions.style.display === 'none' || actions.style.display === '') ? 'inline-block' : 'none';
+							}
 						}
 					</script>
 
@@ -130,6 +159,7 @@
 	<script src="{{ url_for('static', filename='js/breakpoints.min.js') }}"></script>
 	<script src="{{ url_for('static', filename='js/util.js') }}"></script>
 	<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+	<script src="{{ url_for('static', filename='js/sessoes.js') }}"></script>
 
 </body>
 

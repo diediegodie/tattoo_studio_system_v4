@@ -26,14 +26,15 @@
 					<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom:1em;">
 						<a href="/estoque/novo" id="add-item-btn" class="button primary">Adicionar Item</a>
 						<div style="display: flex; gap: 8px; margin-left: auto;">
-							<a href="{{ url_for('drag_drop.drag_drop') }}" class="button small btn-icon"
-								title="Reordenar Estoque">
-								<span><i class="fas fa-arrows-alt"></i></span>
-							</a>
 							<button id="lock-toggle" class="button small btn-icon" title="Bloquear/Editar">
 								<span id="lock-icon"><i class="fas fa-lock"></i></span>
 								<span id="edit-icon" style="display:none;"><i class="fas fa-pencil-alt"></i></span>
 							</button>
+							<a href="{{ url_for('drag_drop.drag_drop') }}" class="button small btn-icon"
+								title="Reordenar Estoque">
+								<span><i class="fas fa-arrows-alt"></i></span>
+							</a>
+							
 						</div>
 					</div>
 					<div class="table-wrapper">
@@ -50,20 +51,23 @@
 								{% for item in inventory_items %}
 								<tr data-id="{{ item.id }}">
 									<td>{{ item.nome }}</td>
-									<td>{{ item.observacoes }}</td>
-									<td><span class="qtd-display">{{ item.quantidade }}</span></td>
-									<td class="qtd-controls" style="display:none;">
-										<button class="btn-up btn-icon"
-											onclick="changeQuantity({{ item.id }}, 1)">↑</button>
-										<button class="btn-down btn-icon"
-											onclick="changeQuantity({{ item.id }}, -1)">↓</button>
+									<td>
+										<span class="qtd-display">{{ item.quantidade }}</span>
+										<span class="qtd-controls" style="display:none; margin-left:0.75em;">
+											<button class="btn-up btn-icon" data-id="{{ item.id }}"
+												data-delta="1">↑</button>
+											<button class="btn-down btn-icon" data-id="{{ item.id }}"
+												data-delta="-1">↓</button>
+										</span>
 									</td>
+									<td>{{ item.observacoes }}</td>
 									<td>
 										<button class="button small options-btn">Opções</button>
 										<span class="options-actions" style="display:none;">
 											<button class="button small edit-btn">Editar</button>
 											<button class="button small delete-btn">Excluir</button>
 										</span>
+										
 									</td>
 								</tr>
 								{% else %}
