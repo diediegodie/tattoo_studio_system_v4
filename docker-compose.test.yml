@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  test-db:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: test_migration
+    ports:
+      - "5432:5432"
+
+  test-runner:
+    build: .
+    depends_on:
+      - test-db
+    environment:
+      DATABASE_URL: [REDACTED_DATABASE_URL]
+      PYTHONPATH: /app
+    volumes:
+      - ./coverage:/app/coverage
+    command: >
+      sh -c "pip install coverage && \
+             coverage run --parallel-mode -m pytest backend/tests/integration/test_migration_postgres_integration.py -v && \
+             coverage combine && coverage xml"

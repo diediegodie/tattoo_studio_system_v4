@@ -94,10 +94,10 @@ def google_logged_in(blueprint, token):
         jwt_token = create_user_token(getattr(db_user, "id"), getattr(db_user, "email"))
 
         login_user(db_user)  # Use database model for Flask-Login
-        flash(
-            f"Bem-vindo, {db_user.name}!", category="success"
-        )  # Set JWT token as httpOnly cookie for API access
-        response = redirect(url_for("index"))
+        flash(f"Bem-vindo, {db_user.name}!", category="success")
+
+        # After successful OAuth login, redirect user to the calendar page
+        response = redirect(url_for("calendar.calendar_page"))
         response.set_cookie(
             "access_token",
             jwt_token,

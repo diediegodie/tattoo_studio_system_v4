@@ -22,6 +22,8 @@ class InventoryRepository(InventoryRepositoryInterface):
             nome=item.nome,
             quantidade=item.quantidade,
             observacoes=item.observacoes,
+            # New items should not have a manual order by default
+            order=None,
         )
         self.db.add(db_item)
         self.db.commit()
@@ -50,7 +52,22 @@ class InventoryRepository(InventoryRepositoryInterface):
         return self._to_domain(db_item) if db_item else None
 
     def list_all(self) -> List[InventoryItem]:
-        items = self.db.query(Inventory).order_by(Inventory.order.asc()).all()
+        # Return items in two groups to satisfy ordering requirements:
+        # 1) Items without manual 'order' (NULL) sorted by created_at DESC (newest first)
+        # 2) Items with manual 'order' defined sorted by order ASC
+        no_order_items = (
+            self.db.query(Inventory)
+            .filter(Inventory.order == None)
+            .order_by(Inventory.created_at.desc())
+            .all()
+        )
+        ordered_items = (
+            self.db.query(Inventory)
+            .filter(Inventory.order != None)
+            .order_by(Inventory.order.asc())
+            .all()
+        )
+        items = no_order_items + ordered_items
         return [self._to_domain(i) for i in items]
 
     def change_quantity(self, item_id: int, delta: int) -> InventoryItem:

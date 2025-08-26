@@ -2,17 +2,29 @@
 console.log('📂 INVENTORY.JS CARREGADO');
 
 let inventoryData = [];
+// Generic resource client for inventory
+try {
+    var inventoryClient = typeof makeResourceClient === 'function' ? makeResourceClient('/inventory') : null;
+} catch (e) {
+    console.error('makeResourceClient not available', e);
+    var inventoryClient = null;
+}
+// domHelpers namespace (optional)
+var domHelpers = typeof window !== 'undefined' && window.domHelpers ? window.domHelpers : null;
 
 // Carregar dados do inventário
 async function loadInventory() {
     try {
         console.log('📋 Carregando inventário...');
-    const response = await fetch('/inventory/');
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
+        if (inventoryClient && typeof inventoryClient.getAll === 'function') {
+            inventoryData = await inventoryClient.getAll();
+        } else {
+            const response = await fetch('/inventory/');
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            inventoryData = await response.json();
         }
-        inventoryData = await response.json();
-        console.log('✅ Dados carregados:', inventoryData.length, 'itens');
+    // Backend provides authoritative ordering; render as received
+    console.log('✅ Dados carregados:', inventoryData.length, 'itens');
         renderInventory();
     } catch (error) {
         console.error('❌ Erro ao carregar inventário:', error);
@@ -31,11 +43,6 @@ function renderInventory() {
     tbody.innerHTML = '';
     // Always use inventoryData as received from backend
     inventoryData.forEach(item => {
-// Utility to add new item at the top
-// Utility to add new item (no local unshift, always reload from backend)
-function addItemLocally(newItem) {
-    loadInventory();
-}
         const tr = document.createElement('tr');
         tr.setAttribute('data-id', item.id);
 
@@ -99,10 +106,18 @@ function addItemLocally(newItem) {
         tdOptions.appendChild(spanActions);
         tr.appendChild(tdOptions);
 
-        tbody.appendChild(tr);
+    // Append rows in order of inventoryData (already sorted newest-first)
+    tbody.appendChild(tr);
         });
         highlightLowQuantity(); // Highlight low quantity after rendering
         console.log('🔨 Tabela renderizada com', inventoryData.length, 'itens');
+}
+
+// Utility to add a newly created item locally at the top without full reload
+function addItemLocally(newItem) {
+    // Do not manipulate client-side ordering; reload authoritative data from server
+    // This ensures both estoque and drag_drop pages display identical order
+    loadInventory();
 }
 
     // Highlight low quantity in .qtd-display (only the number, not buttons/icons)
@@ -197,26 +212,36 @@ function editItem(id) {
             quantidade: parseInt(formData.get('quantidade'), 10),
             observacoes: formData.get('observacoes')
         };
-        fetch(`/inventory/${id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        })
-        .then(res => res.json())
-        .then(json => {
-            if (json.success) {
-                Object.assign(item, json.data);
-                renderInventory();
-                showStatus(json.message, true);
-                modal.style.display = 'none';
-                modal.remove();
-            } else {
-                showStatus(json.message, false);
+        (async function () {
+            try {
+                let json;
+                if (inventoryClient && typeof inventoryClient.update === 'function') {
+                    json = await inventoryClient.update(id, payload);
+                } else {
+                    const res = await fetch(`/inventory/${id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    json = await res.json();
+                }
+
+                // api_response returns { success, message, data }
+                if (json && json.success) {
+                    Object.assign(item, json.data);
+                    renderInventory();
+                    showStatus(json.message, true);
+                    modal.style.display = 'none';
+                    modal.remove();
+                } else {
+                    const msg = (json && json.message) || 'Erro ao salvar.';
+                    showStatus(msg, false);
+                }
+            } catch (err) {
+                const msg = (err && err.payload && err.payload.message) || 'Erro ao salvar.';
+                showStatus(msg, false);
             }
-        })
-        .catch(() => {
-            showStatus('Erro ao salvar.', false);
-        });
+        })();
     };
 }
 
@@ -224,43 +249,51 @@ function editItem(id) {
 function deleteItem(id) {
     if (!confirm('Tem certeza que deseja excluir este item?')) return;
     showStatus('Excluindo...', true);
-    fetch(`/inventory/${id}`, {
-        method: 'DELETE'
-    })
-    .then(res => res.json())
-    .then(json => {
-        if (json.success) {
-            inventoryData = inventoryData.filter(i => i.id != id);
-            renderInventory();
-            showStatus(json.message, true);
-        } else {
-            showStatus(json.message, false);
+    (async function () {
+        try {
+            let json;
+            if (inventoryClient && typeof inventoryClient.delete === 'function') {
+                json = await inventoryClient.delete(id);
+            } else {
+                const res = await fetch(`/inventory/${id}`, { method: 'DELETE' });
+                json = await res.json();
+            }
+
+            if (json && json.success) {
+                // Prefer DOM removal for minimal reflow when possible
+                const removed = domHelpers && typeof domHelpers.removeRowById === 'function'
+                    ? domHelpers.removeRowById('.table-wrapper table', id)
+                    : false;
+
+                if (!removed) {
+                    inventoryData = inventoryData.filter(i => i.id != id);
+                    renderInventory();
+                }
+                showStatus(json.message, true);
+            } else {
+                const msg = (json && json.message) || 'Erro ao excluir.';
+                showStatus(msg, false);
+            }
+        } catch (err) {
+            const msg = (err && err.payload && err.payload.message) || 'Erro ao excluir.';
+            showStatus(msg, false);
         }
-    })
-    .catch(() => {
-        showStatus('Erro ao excluir.', false);
-    });
+    })();
 }
 
 // Status bar helper
 function showStatus(message, success = true) {
-    let bar = document.getElementById('status-bar');
-    if (!bar) {
-        bar = document.createElement('div');
-        bar.id = 'status-bar';
-        bar.style.position = 'fixed';
-        bar.style.bottom = '0';
-        bar.style.left = '0';
-        bar.style.width = '100%';
-        bar.style.padding = '10px';
-        bar.style.background = success ? '#4caf50' : '#f44336';
-        bar.style.color = '#fff';
-        bar.style.textAlign = 'center';
-        bar.style.zIndex = '9999';
-        document.body.appendChild(bar);
+    // Thin wrapper: delegate to the global toast. Keep minimal fallback.
+    try {
+        if (window.showToast) {
+            window.showToast(message, success ? 'success' : 'error', 3000);
+            return;
+        }
+    } catch (e) {
+        console.error('Error calling global showToast', e);
     }
-    bar.textContent = message;
-    setTimeout(() => { bar.remove(); }, 3000);
+    // Extremely minimal fallback: alert so messages are never silently lost.
+    try { alert(message); } catch (e) { console.error('Fallback alert failed', e); }
 }
 
 // ...existing code...
@@ -296,6 +329,48 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 500);
     // Locker button
     document.getElementById('lock-toggle').onclick = toggleLockMode;
+    // Delegate clicks for quantity buttons (works for server-rendered and JS-rendered rows)
+    document.querySelector('.table-wrapper').addEventListener('click', function(e) {
+        const btn = e.target.closest('.btn-up, .btn-down');
+        if (!btn) return;
+        e.preventDefault();
+        const id = btn.getAttribute('data-id');
+        const delta = parseInt(btn.getAttribute('data-delta') || '0', 10);
+        if (id) changeQuantity(id, delta);
+    });
     // No need for event delegation, all handlers are attached in renderInventory
     updateLockerControls();
+
+    // Intercept add item form (on /estoque/novo) and submit via fetch to insert locally
+    const addForm = document.getElementById('addItemForm');
+    if (addForm) {
+        addForm.addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const formData = new FormData(addForm);
+            const payload = {
+                nome: formData.get('nome'),
+                quantidade: parseInt(formData.get('quantidade') || '0', 10),
+                observacoes: formData.get('observacoes')
+            };
+            try {
+                const res = await fetch('/inventory/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (res.status === 201) {
+                    const created = await res.json();
+                    // Add locally at top and navigate back to estoque page
+                    addItemLocally(created);
+                    window.location.href = '/estoque';
+                } else {
+                    // Fallback: let the form submit normally to preserve behavior
+                    addForm.submit();
+                }
+            } catch (err) {
+                console.error('Erro ao enviar novo item via AJAX', err);
+                addForm.submit();
+            }
+        });
+    }
 });

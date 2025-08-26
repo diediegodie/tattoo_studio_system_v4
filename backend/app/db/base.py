@@ -49,7 +49,8 @@ class Inventory(Base):
     nome = Column(String(100), nullable=True)
     quantidade = Column(Integer, nullable=True)
     observacoes = Column(String(255), nullable=True)
-    order = Column(Integer, nullable=False, default=0)  # Ordem para drag&drop
+    # Manual order for drag&drop. Nullable: items without manual order appear first (newest first)
+    order = Column(Integer, nullable=True, default=None)
     category = Column(String(50), nullable=True)  # Categoria do item
     unit_price = Column(Numeric(10, 2), nullable=True)  # Preço unitário
     supplier = Column(String(100), nullable=True)  # Fornecedor

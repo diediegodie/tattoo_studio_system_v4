@@ -24,12 +24,21 @@ from services.user_service import UserService
 from repositories.user_repo import UserRepository
 from db.session import SessionLocal
 from db.base import Client, Sessao
+from decimal import Decimal
+from datetime import datetime, date, time
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
 # Create Blueprint
 sessoes_bp = Blueprint("sessoes", __name__, url_prefix="/sessoes")
+
+
+def api_response(
+    success: bool, message: str, data: dict = None, status_code: int = 200
+):
+    """Consistent JSON API response used across controllers."""
+    return jsonify({"success": success, "message": message, "data": data}), status_code
 
 
 def _get_user_service() -> UserService:
@@ -116,11 +125,192 @@ def list_sessoes() -> str:
             .options(joinedload(Sessao.cliente), joinedload(Sessao.artista))
             .all()
         )
-        return render_template("sessoes.html", sessoes=sessoes)
+
+        # Also provide clients and artists (same pattern as nova_sessao) so
+        # templates can render user-friendly select options for edit modals.
+        from db.base import Client
+
+        clients = db.query(Client).order_by(Client.name).all()
+
+        user_service = _get_user_service()
+        artists = user_service.list_artists()
+
+        return render_template(
+            "sessoes.html", sessoes=sessoes, clients=clients, artists=artists
+        )
     except Exception as e:
         logger.error(f"Error listing sessions: {str(e)}")
         flash("Erro ao carregar sessões.", "error")
         return render_template("sessoes.html", sessoes=[])
+    finally:
+        if db:
+            db.close()
+
+
+# -------------------------
+# REST API endpoints for sessoes
+# -------------------------
+
+
+@sessoes_bp.route("/api", methods=["GET"])
+@login_required
+def api_list_sessoes():
+    """Return JSON array of sessions."""
+    db = None
+    try:
+        db = SessionLocal()
+        from sqlalchemy.orm import joinedload
+
+        sessoes = (
+            db.query(Sessao)
+            .options(joinedload(Sessao.cliente), joinedload(Sessao.artista))
+            .all()
+        )
+
+        def to_dict(s):
+            return {
+                "id": s.id,
+                "data": s.data.isoformat() if s.data else None,
+                "hora": s.hora.strftime("%H:%M:%S") if s.hora else None,
+                "cliente": (
+                    {"id": s.cliente.id, "name": s.cliente.name} if s.cliente else None
+                ),
+                "artista": (
+                    {"id": s.artista.id, "name": s.artista.name} if s.artista else None
+                ),
+                "valor": float(s.valor) if s.valor is not None else None,
+                "observacoes": s.observacoes,
+                "created_at": s.created_at.isoformat() if s.created_at else None,
+                "updated_at": s.updated_at.isoformat() if s.updated_at else None,
+            }
+
+        return jsonify([to_dict(s) for s in sessoes]), 200
+    except Exception as e:
+        logger.error(f"Error in api_list_sessoes: {str(e)}")
+        return jsonify([]), 500
+    finally:
+        if db:
+            db.close()
+
+
+@sessoes_bp.route("/api/<int:sessao_id>", methods=["GET"])
+@login_required
+def api_get_sessao(sessao_id: int):
+    db = None
+    try:
+        db = SessionLocal()
+        s = db.query(Sessao).get(sessao_id)
+        if not s:
+            return api_response(False, "Sessão não encontrada", None, 404)
+
+        data = {
+            "id": s.id,
+            "data": s.data.isoformat() if s.data else None,
+            "hora": s.hora.strftime("%H:%M:%S") if s.hora else None,
+            "cliente": (
+                {"id": s.cliente.id, "name": s.cliente.name} if s.cliente else None
+            ),
+            "artista": (
+                {"id": s.artista.id, "name": s.artista.name} if s.artista else None
+            ),
+            "valor": float(s.valor) if s.valor is not None else None,
+            "observacoes": s.observacoes,
+            "created_at": s.created_at.isoformat() if s.created_at else None,
+            "updated_at": s.updated_at.isoformat() if s.updated_at else None,
+        }
+        return api_response(True, "Sessão encontrada", data, 200)
+    except Exception as e:
+        logger.error(f"Error in api_get_sessao: {str(e)}")
+        return api_response(False, f"Error: {str(e)}", None, 500)
+    finally:
+        if db:
+            db.close()
+
+
+@sessoes_bp.route("/api/<int:sessao_id>", methods=["PUT"])
+@login_required
+def api_update_sessao(sessao_id: int):
+    db = None
+    try:
+        db = SessionLocal()
+        if not request.is_json:
+            return api_response(False, "Expected JSON payload", None, 400)
+        payload = request.get_json()
+
+        s = db.query(Sessao).get(sessao_id)
+        if not s:
+            return api_response(False, "Sessão não encontrada", None, 404)
+
+        # Update fields if provided
+        try:
+            if "data" in payload and payload["data"]:
+                # Expect YYYY-MM-DD
+                s.data = (
+                    date.fromisoformat(payload["data"])
+                    if isinstance(payload["data"], str)
+                    else payload["data"]
+                )
+            if "hora" in payload and payload["hora"]:
+                # Accept HH:MM or HH:MM:SS
+                try:
+                    s.hora = time.fromisoformat(payload["hora"])
+                except Exception:
+                    s.hora = datetime.strptime(payload["hora"], "%H:%M").time()
+            if "cliente_id" in payload and payload["cliente_id"]:
+                s.cliente_id = int(payload["cliente_id"])
+            if "artista_id" in payload and payload["artista_id"]:
+                s.artista_id = int(payload["artista_id"])
+            if "valor" in payload and payload["valor"] is not None:
+                s.valor = Decimal(str(payload["valor"]))
+            if "observacoes" in payload:
+                s.observacoes = payload.get("observacoes")
+
+            db.add(s)
+            db.commit()
+            db.refresh(s)
+        except Exception as e:
+            db.rollback()
+            return api_response(False, f"Update failed: {str(e)}", None, 400)
+
+        data = {
+            "id": s.id,
+            "data": s.data.isoformat() if s.data else None,
+            "hora": s.hora.strftime("%H:%M:%S") if s.hora else None,
+            "cliente": (
+                {"id": s.cliente.id, "name": s.cliente.name} if s.cliente else None
+            ),
+            "artista": (
+                {"id": s.artista.id, "name": s.artista.name} if s.artista else None
+            ),
+            "valor": float(s.valor) if s.valor is not None else None,
+            "observacoes": s.observacoes,
+            "created_at": s.created_at.isoformat() if s.created_at else None,
+            "updated_at": s.updated_at.isoformat() if s.updated_at else None,
+        }
+        return api_response(True, "Sessão atualizada com sucesso", data, 200)
+    finally:
+        if db:
+            db.close()
+
+
+@sessoes_bp.route("/api/<int:sessao_id>", methods=["DELETE"])
+@login_required
+def api_delete_sessao(sessao_id: int):
+    db = None
+    try:
+        db = SessionLocal()
+        s = db.query(Sessao).get(sessao_id)
+        if not s:
+            return api_response(False, "Sessão não encontrada", None, 404)
+
+        try:
+            db.delete(s)
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            return api_response(False, f"Delete failed: {str(e)}", None, 400)
+
+        return api_response(True, "Sessão excluída", None, 200)
     finally:
         if db:
             db.close()

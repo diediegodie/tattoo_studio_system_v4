@@ -585,3 +585,86 @@
 	};
 
 })(jQuery);
+
+// Global toast utility
+(function() {
+	// Ensure we don't overwrite an existing implementation
+	if (window.showToast) return;
+
+	function ensureContainer() {
+		let container = document.getElementById('toast-container');
+		if (!container) {
+			container = document.createElement('div');
+			container.id = 'toast-container';
+			container.setAttribute('aria-live', 'polite');
+			container.setAttribute('aria-atomic', 'false');
+			document.body.appendChild(container);
+		}
+		return container;
+	}
+
+	function mapCategory(cat) {
+		if (!cat) return 'info';
+		cat = String(cat).toLowerCase();
+		if (cat === 'success' || cat === 'ok' || cat === 'green') return 'success';
+		if (cat === 'error' || cat === 'danger' || cat === 'red') return 'error';
+		return 'info';
+	}
+
+	window.showToast = function(message, category = 'info', duration = 3000) {
+		try {
+			const container = ensureContainer();
+			const cat = mapCategory(category);
+
+			// Remove any existing global status bar first to mimic previous behavior
+			const existing = document.getElementById('global-status-bar');
+			if (existing) existing.remove();
+
+			const bar = document.createElement('div');
+			bar.id = 'global-status-bar';
+			bar.className = cat;
+			bar.setAttribute('role', 'status');
+			bar.setAttribute('aria-live', 'polite');
+			bar.setAttribute('aria-atomic', 'true');
+			bar.textContent = message;
+
+			// Append bar into container (container spans full width)
+			container.appendChild(bar);
+
+			if (duration > 0) {
+				setTimeout(() => {
+					// remove bar after timeout
+					try { bar.remove(); } catch (e) {}
+				}, duration);
+			}
+
+			return bar;
+		} catch (e) {
+			console.error('showToast error', e);
+			try { alert(message); } catch (e2) {}
+			return null;
+		}
+	};
+
+	// On DOMContentLoaded convert server-rendered .flash-message elements
+	document.addEventListener('DOMContentLoaded', function() {
+		try {
+			const flashContainers = document.querySelectorAll('.flash-messages');
+			if (!flashContainers || flashContainers.length === 0) return;
+			flashContainers.forEach(fc => {
+				const items = fc.querySelectorAll('.flash-message');
+				items.forEach(item => {
+					const classes = Array.from(item.classList || []);
+					// category usually present as additional class
+					const category = classes.find(c => c !== 'flash-message') || 'info';
+					const text = item.textContent.trim();
+					if (text) window.showToast(text, category, 3000);
+				});
+				// Remove the original container so it doesn't show twice
+				fc.remove();
+			});
+		} catch (e) {
+			console.error('flash-to-toast conversion failed', e);
+		}
+	});
+})();

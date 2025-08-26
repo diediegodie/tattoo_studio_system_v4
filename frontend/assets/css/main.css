@@ -113,6 +113,36 @@ body, input, select, textarea {
   }
 }
 
+
+/* Full-width bottom status bar (global flash) */
+#toast-container {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  z-index: 99999;
+  display: flex;
+  justify-content: center; /* center the bar content */
+  pointer-events: none; /* clicks pass through except inside the bar */
+}
+
+#global-status-bar {
+  pointer-events: auto;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 1rem;
+  text-align: center;
+  color: #fff;
+  font-weight: 600;
+}
+
+#global-status-bar.success { background: #4caf50; }
+#global-status-bar.error { background: #f44336; }
+#global-status-bar.info { background: #333; }
+
+@media screen and (min-width: 768px) {
+  #global-status-bar { max-width: 1100px; margin: 0 auto; border-radius: 4px 4px 0 0; }
+}
 a {
   -moz-transition: color 0.2s ease-in-out, border-bottom-color 0.2s ease-in-out;
   -webkit-transition: color 0.2s ease-in-out, border-bottom-color 0.2s ease-in-out;
@@ -1013,6 +1043,8 @@ button.primary:active,
         color: #0c5460;
         border: 1px solid #bee5eb;
     }
+
+    
 
     /* list page */
     .client-section {
