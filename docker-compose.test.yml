@@ -2,24 +2,35 @@ version: '3.8'
 
 services:
   test-db:
-    image: postgres:13
+    image: postgres:16
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: test_migration
     ports:
       - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d test_migration"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
   test-runner:
-    build: .
+    build:
+      context: .
+      dockerfile: ./backend/Dockerfile
+      target: test
     depends_on:
-      - test-db
+      test-db:
+        condition: service_healthy
     environment:
       DATABASE_URL: [REDACTED_DATABASE_URL]
       PYTHONPATH: /app
+      FLASK_ENV: testing
     volumes:
+      - ./backend/tests:/app/tests
+      - ./backend/pytest.ini:/app/pytest.ini
       - ./coverage:/app/coverage
+    working_dir: /app
     command: >
-      sh -c "pip install coverage && \
-             coverage run --parallel-mode -m pytest backend/tests/integration/test_migration_postgres_integration.py -v && \
-             coverage combine && coverage xml"
+      sh -c "cd /app && python -m pytest tests/ -v --tb=short --cov=app --cov-report=xml --cov-report=term"

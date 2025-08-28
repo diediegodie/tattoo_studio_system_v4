@@ -68,11 +68,8 @@ class TestArtistFunctionalityBasic:
         assert all(artist.role == "artist" for artist in mock_artists)
 
 
-# Skip the rest if imports are not available
-@pytest.mark.skipif(
-    True, reason="Requires app imports that may not be available during test discovery"
-)
+# The test class is now enabled after fixing imports
 class TestArtistFunctionalityFull:
-    """Full tests requiring app imports - skipped during discovery."""
+    """Full tests requiring app imports - now enabled after import fixes."""
 
     pass

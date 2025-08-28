@@ -26,14 +26,22 @@ from tests.config.test_paths import ensure_domain_imports
 ensure_domain_imports()
 
 try:
-    from app.controllers import appointment_controller
-    from app.services.appointment_service import AppointmentService
+    import controllers.appointment_controller as appointment_controller
+    from services.appointment_service import AppointmentService
     from schemas.dtos import AppointmentResponse, ErrorResponse
+
+    # Get the class from the module
+    AppointmentController = appointment_controller.AppointmentController
 
     IMPORTS_AVAILABLE = True
 except ImportError as e:
     print(f"Warning: Could not import required modules: {e}")
     IMPORTS_AVAILABLE = False
+    appointment_controller = None
+    AppointmentController = None
+    AppointmentService = None
+    AppointmentResponse = None
+    ErrorResponse = None
 
 
 @pytest.mark.unit
@@ -49,9 +57,7 @@ class TestAppointmentControllerExtended:
 
         # Interface segregation: Mock only the service interface we need
         self.mock_service = Mock(spec=AppointmentService)
-        self.controller = appointment_controller.AppointmentController(
-            appointment_service=self.mock_service
-        )
+        self.controller = AppointmentController(appointment_service=self.mock_service)
 
     # =====================================================
     # CREATE APPOINTMENT TESTS
