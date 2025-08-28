@@ -129,6 +129,9 @@ class Sessao(Base):
     observacoes = Column(String(255))
     cliente_id = Column(Integer, ForeignKey("clients.id"), nullable=False)
     artista_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    google_event_id = Column(
+        String(100), nullable=True, unique=True
+    )  # Added for Google Calendar integration
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 

@@ -5,8 +5,9 @@ Single Responsibility: Handle OAuth token operations for Google Calendar
 
 import logging
 import json
+import requests
 from typing import Optional, Dict, Any
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from flask import current_app
 
 from db.session import SessionLocal
@@ -104,6 +105,7 @@ class OAuthTokenService:
     def get_user_access_token(self, user_id: str) -> Optional[str]:
         """
         Get Google access token for user.
+        Checks expiration and refreshes if needed.
 
         Args:
             user_id: User identifier
@@ -122,6 +124,7 @@ class OAuthTokenService:
             if oauth_record and getattr(oauth_record, "token", None):
                 # OAuth record stores token as JSON string
                 import json
+                from datetime import datetime, timedelta
 
                 try:
                     token_value = getattr(oauth_record, "token", None)
@@ -132,11 +135,46 @@ class OAuthTokenService:
                     )
                     if token_data and isinstance(token_data, dict):
                         [REDACTED_ACCESS_TOKEN]"access_token")
-                        if [REDACTED_ACCESS_TOKEN]
-                                f"Retrieved token from database for user {user_id}"
-                            )
-                            return access_token
-                except (json.JSONDecodeError, AttributeError) as e:
+                        expires_at = token_data.get("expires_at")
+                        refresh_token = token_data.get("refresh_token")
+
+                        if [REDACTED_ACCESS_TOKEN] Check if token is expired (with 5-minute safety buffer)
+                            now = datetime.now(timezone.utc)
+                            if expires_at:
+                                if isinstance(expires_at, str):
+                                    expires_at = datetime.fromisoformat(
+                                        expires_at.replace("Z", "+00:00")
+                                    )
+                                elif isinstance(expires_at, (int, float)):
+                                    # Make timezone-aware when parsing from timestamp
+                                    expires_at = datetime.fromtimestamp(
+                                        expires_at, tz=timezone.utc
+                                    )
+
+                                # Add safety buffer
+                                expires_at_with_buffer = expires_at - timedelta(
+                                    minutes=5
+                                )
+
+                                if now >= expires_at_with_buffer and refresh_token:
+                                    # Token expired, try to refresh
+                                    logger.info(
+                                        f"Access token expired for user {user_id}, attempting refresh"
+                                    )
+                                    new_token = self.refresh_access_token(user_id)
+                                    return new_token
+                                else:
+                                    logger.info(
+                                        f"Retrieved valid token from database for user {user_id}"
+                                    )
+                                    return access_token
+                            else:
+                                # No expiration info, assume valid
+                                logger.info(
+                                    f"Retrieved token from database for user {user_id} (no expiration info)"
+                                )
+                                return access_token
+                except (json.JSONDecodeError, AttributeError, ValueError) as e:
                     logger.warning(f"Error parsing token for user {user_id}: {str(e)}")
 
             logger.warning(f"No valid access token found for user {user_id}")
@@ -148,9 +186,9 @@ class OAuthTokenService:
         finally:
             self.db.close()
 
-    def refresh_user_token(self, user_id: str) -> Optional[str]:
+    def refresh_access_token(self, user_id: str) -> Optional[str]:
         """
-        Refresh Google access token for user.
+        Refresh Google access token using refresh token.
 
         Args:
             user_id: User identifier
@@ -159,19 +197,100 @@ class OAuthTokenService:
             New access token if refresh successful, None otherwise
         """
         try:
-            # For now, return the existing token if available
-            # Token refresh logic can be implemented later if needed
-            existing_token = self.get_user_access_token(user_id)
-            if existing_token:
-                logger.info(f"Using existing token for user {user_id}")
-                return existing_token
+            # Get current token data from database
+            oauth_record = (
+                self.db.query(OAuth)
+                .filter(OAuth.user_id == int(user_id), OAuth.provider == "google")
+                .first()
+            )
 
-            logger.warning(f"Could not refresh token for user {user_id}")
+            if not oauth_record:
+                logger.warning(f"No OAuth record found for user {user_id}")
+                return None
+
+            import json
+            import requests
+            from datetime import datetime, timedelta
+
+            token_value = getattr(oauth_record, "token", None)
+            if not token_value:
+                logger.warning(f"No token data found for user {user_id}")
+                return None
+
+            token_data = (
+                json.loads(token_value) if isinstance(token_value, str) else token_value
+            )
+
+            refresh_token = token_data.get("refresh_token")
+            if not refresh_token:
+                logger.warning(f"No refresh token found for user {user_id}")
+                return None
+
+            # Get client credentials from config
+            client_id = current_app.config.get("GOOGLE_OAUTH_CLIENT_ID")
+            client_[REDACTED_SECRET]"GOOGLE_OAUTH_CLIENT_SECRET")
+
+            if not client_id or not client_[REDACTED_SECRET]"Google OAuth client credentials not configured")
+                return None
+
+            # Make refresh request to Google OAuth endpoint
+            token_url = "https://oauth2.googleapis.com/token"
+            data = {
+                "client_id": client_id,
+                "client_[REDACTED_SECRET]
+                "refresh_token": refresh_token,
+                "grant_type": "refresh_token",
+            }
+
+            response = requests.post(token_url, data=data, timeout=30)
+
+            if response.status_code == 200:
+                new_token_data = response.json()
+                new_[REDACTED_ACCESS_TOKEN]"access_token")
+                expires_in = new_token_data.get("expires_in", 3600)  # Default 1 hour
+
+                if new_[REDACTED_ACCESS_TOKEN] Calculate new expiration date
+                    expires_at = datetime.now(timezone.utc) + timedelta(
+                        seconds=expires_in
+                    )
+
+                    # Update token data
+                    updated_token_data = token_data.copy()
+                    updated_token_data["access_token"] = new_access_token
+                    updated_token_data["expires_at"] = expires_at.isoformat()
+                    # Google may return a new refresh_token
+                    if "refresh_token" in new_token_data:
+                        updated_token_data["refresh_token"] = new_token_data[
+                            "refresh_token"
+                        ]
+
+                    # Update database
+                    setattr(oauth_record, "token", updated_token_data)
+                    self.db.commit()
+
+                    logger.info(
+                        f"Successfully refreshed access token for user {user_id}"
+                    )
+                    return new_access_token
+                else:
+                    logger.error(
+                        f"No access token in refresh response for user {user_id}"
+                    )
+                    return None
+            else:
+                logger.error(
+                    f"Failed to refresh token for user {user_id}: {response.status_code} - {response.text}"
+                )
+                return None
+
+        except requests.RequestException as e:
+            logger.error(f"Request error refreshing token for user {user_id}: {str(e)}")
             return None
-
         except Exception as e:
             logger.error(f"Error refreshing token for user {user_id}: {str(e)}")
             return None
+        finally:
+            self.db.close()
 
     def is_token_valid(self, user_id: str) -> bool:
         """

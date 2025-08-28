@@ -9,6 +9,7 @@ from typing import List, Optional, Dict
 from datetime import datetime
 
 from domain.interfaces import IGoogleCalendarRepository
+from core.exceptions import ExpiredAccessTokenError
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +75,7 @@ class GoogleCalendarRepository(IGoogleCalendarRepository):
                 return data.get("items", [])
             elif response.status_code == 401:
                 logger.warning("Google Calendar API: Unauthorized access token")
-                return []
+                raise ExpiredAccessTokenError("Access token expired, needs refresh")
             else:
                 logger.error(
                     f"Google Calendar API error: {response.status_code} - {response.text}"
@@ -115,6 +116,11 @@ class GoogleCalendarRepository(IGoogleCalendarRepository):
             if response.status_code == 200:
                 created_event = response.json()
                 return created_event.get("id")
+            elif response.status_code == 401:
+                logger.warning(
+                    "Google Calendar API: Unauthorized access token during event creation"
+                )
+                raise ExpiredAccessTokenError("Access token expired, needs refresh")
             else:
                 logger.error(
                     f"Error creating calendar event: {response.status_code} - {response.text}"
@@ -149,7 +155,18 @@ class GoogleCalendarRepository(IGoogleCalendarRepository):
                 f"{self.base_url}/calendars/primary", headers=headers, timeout=10
             )
 
-            return response.status_code == 200
+            if response.status_code == 200:
+                return True
+            elif response.status_code == 401:
+                logger.warning(
+                    "Google Calendar API: Unauthorized access token during validation"
+                )
+                raise ExpiredAccessTokenError("Access token expired, needs refresh")
+            else:
+                logger.warning(
+                    f"Token validation failed with status {response.status_code}"
+                )
+                return False
 
         except requests.RequestException as e:
             logger.error(f"Request error validating token: {str(e)}")

@@ -11,6 +11,7 @@ from domain.interfaces import ICalendarService, IGoogleCalendarRepository
 from domain.entities import CalendarEvent
 from repositories.google_calendar_repo import GoogleCalendarRepository
 from services.oauth_token_service import OAuthTokenService
+from core.exceptions import ExpiredAccessTokenError
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +37,7 @@ class GoogleCalendarService(ICalendarService):
     ) -> List[CalendarEvent]:
         """
         Get user's calendar events within date range.
+        Handles automatic token refresh on expiration.
 
         Args:
             user_id: User identifier
@@ -52,9 +54,13 @@ class GoogleCalendarService(ICalendarService):
                 return []
 
             # Validate token before making API calls
-            if not self.calendar_repo.validate_token(access_token):
-                logger.warning(f"Invalid access token for user {user_id}")
-                return []
+            try:
+                if not self.calendar_repo.validate_token(access_token):
+                    logger.warning(f"Invalid access token for user {user_id}")
+                    return []
+            except ExpiredAccessTokenError:
+                # Token validation failed due to expiration, refresh will be handled below
+                pass
 
             # Fetch events from Google Calendar
             events_data = self.calendar_repo.fetch_events(
@@ -64,6 +70,25 @@ class GoogleCalendarService(ICalendarService):
             # Convert to domain entities
             return self._parse_events_to_domain(events_data, user_id)
 
+        except ExpiredAccessTokenError as e:
+            logger.info(f"Access token expired for user {user_id}, attempting refresh")
+            try:
+                # Refresh the token
+                new_token = self.oauth_service.refresh_access_token(user_id)
+                if new_token:
+                    # Retry the request with new token
+                    events_data = self.calendar_repo.fetch_events(
+                        new_token, start_date, end_date
+                    )
+                    return self._parse_events_to_domain(events_data, user_id)
+                else:
+                    logger.error(f"Failed to refresh token for user {user_id}")
+                    return []
+            except Exception as refresh_error:
+                logger.error(
+                    f"Error during token refresh for user {user_id}: {str(refresh_error)}"
+                )
+                return []
         except Exception as e:
             logger.error(f"Error fetching calendar events for user {user_id}: {str(e)}")
             return []
@@ -115,36 +140,34 @@ class GoogleCalendarService(ICalendarService):
         Returns:
             Google event ID if successful, None otherwise
         """
-        try:
-            if not event_details.user_id:
-                logger.error("User ID required to create calendar event")
-                return None
+        if not event_details.user_id:
+            logger.error("User ID required to create calendar event")
+            return None
 
+        # Prepare event data for Google Calendar
+        event_data = {
+            "title": event_details.title,
+            "description": event_details.description
+            or f"Sessão de tatuagem - ID: {session_id}",
+            "start_time": (
+                event_details.start_time.isoformat()
+                if event_details.start_time
+                else None
+            ),
+            "end_time": (
+                event_details.end_time.isoformat() if event_details.end_time else None
+            ),
+            "location": event_details.location or "",
+            "attendees": event_details.attendees or [],
+        }
+
+        try:
             # Get access token for user
             [REDACTED_ACCESS_TOKEN]
             if not [REDACTED_ACCESS_TOKEN]
                     f"No access token found for user {event_details.user_id}"
                 )
                 return None
-
-            # Prepare event data for Google Calendar
-            event_data = {
-                "title": event_details.title,
-                "description": event_details.description
-                or f"Sessão de tatuagem - ID: {session_id}",
-                "start_time": (
-                    event_details.start_time.isoformat()
-                    if event_details.start_time
-                    else None
-                ),
-                "end_time": (
-                    event_details.end_time.isoformat()
-                    if event_details.end_time
-                    else None
-                ),
-                "location": event_details.location or "",
-                "attendees": event_details.attendees or [],
-            }
 
             # Create event in Google Calendar
             google_event_id = self.calendar_repo.create_event(access_token, event_data)
@@ -156,6 +179,35 @@ class GoogleCalendarService(ICalendarService):
 
             return google_event_id
 
+        except ExpiredAccessTokenError as e:
+            logger.info(
+                f"Access token expired for user {event_details.user_id}, attempting refresh"
+            )
+            try:
+                # Refresh the token
+                new_token = self.oauth_service.refresh_access_token(
+                    str(event_details.user_id)
+                )
+                if new_token:
+                    # Retry the request with new token
+                    google_event_id = self.calendar_repo.create_event(
+                        new_token, event_data
+                    )
+                    if google_event_id:
+                        logger.info(
+                            f"Created Google Calendar event {google_event_id} for session {session_id} (after refresh)"
+                        )
+                    return google_event_id
+                else:
+                    logger.error(
+                        f"Failed to refresh token for user {event_details.user_id}"
+                    )
+                    return None
+            except Exception as refresh_error:
+                logger.error(
+                    f"Error during token refresh for user {event_details.user_id}: {str(refresh_error)}"
+                )
+                return None
         except Exception as e:
             logger.error(
                 f"Error creating calendar event for session {session_id}: {str(e)}"

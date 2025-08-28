@@ -18,17 +18,22 @@
                 <section>
                     <header class="main">
                         <h1>Criar Nova Sessão</h1>
+                        <!-- REMOVE CSS INLINE - USE EXISTING CLASSES, CHECK OTHER HTML PAGES -->
                     </header>
                     <form method="post" action="{{ url_for('sessoes.nova_sessao') }}" class="form">
                         <div style="max-width:600px;margin:0 auto;">
                             <div style="display:flex;flex-wrap:wrap;gap:1em;">
                                 <div style="flex:1 1 200px;min-width:180px;">
                                     <label for="data">Data</label>
-                                    <input type="date" name="data" id="data" required style="width:100%;">
+                                    <input type="date" name="data" id="data" required style="width:100%;" {% if event
+                                        and event.start_time %}value="{{ event.start_time.strftime('%Y-%m-%d') }}" {%
+                                        endif %}>
                                 </div>
                                 <div style="flex:1 1 200px;min-width:180px;">
                                     <label for="hora">Hora</label>
-                                    <input type="time" name="hora" id="hora" required style="width:100%;">
+                                    <input type="time" name="hora" id="hora" required style="width:100%;" {% if event
+                                        and event.start_time %}value="{{ event.start_time.strftime('%H:%M') }}" {% endif
+                                        %}>
                                 </div>
                                 <div style="flex:1 1 200px;min-width:180px;">
                                     <label for="cliente_id">Cliente</label>
@@ -56,8 +61,15 @@
                                 <div style="flex:1 1 100%;min-width:180px;">
                                     <label for="observacoes">Observações</label>
                                     <textarea name="observacoes" id="observacoes" rows="3"
-                                        style="width:100%;resize:vertical;"></textarea>
+                                        style="width:100%;resize:vertical;">{% if event %}{% if event_title_with_suffix %}{{ event_title_with_suffix }}{% else %}{{ event.title }}{% endif %}{% if event.description %}
+
+{{ event.description }}{% endif %}{% endif %}</textarea>
                                 </div>
+
+                                {% if event and event.google_event_id %}
+                                <!-- Hidden field to store the Google Calendar event ID -->
+                                <input type="hidden" name="google_event_id" value="{{ event.google_event_id }}">
+                                {% endif %}
                             </div>
                             <div style="display:flex;justify-content:center;gap:1em;margin-top:2em;">
                                 <button type="submit" class="button primary">Salvar</button>
@@ -81,18 +93,18 @@
                         <h2>Menu</h2>
                     </header>
                     <ul>
-						<li><a href="{{ url_for('index') }}">Homepage</a></li>
-						<li><a href="{{ url_for('client.client_list') }}">Clientes</a></li>
-						<li><a href="{{ url_for('calendar.calendar_page') }}">Agenda Google</a></li>
-						<li><a href="{{ url_for('estoque') }}">Estoque</a></li>
-						<li><a href="{{ url_for('sessoes') }}">Sessões</a></li>
-						<li><a href="{{ url_for('financeiro') }}">Financeiro</a></li>
-						<li><a href="{{ url_for('registrar_pagamento') }}">Registrar Pagamento</a></li>
-						<li><a href="{{ url_for('extrato') }}">Extrato</a></li>
-						<li><a href="{{ url_for('cadastro_interno') }}">Cadastro Interno</a></li>
-						<li><a href="{{ url_for('calculadora') }}">Calculadora</a></li>
-						<li><a href="{{ url_for('historico') }}">Historico</a></li>
-					</ul>
+                        <li><a href="{{ url_for('index') }}">Homepage</a></li>
+                        <li><a href="{{ url_for('client.client_list') }}">Clientes</a></li>
+                        <li><a href="{{ url_for('calendar.calendar_page') }}">Agenda Google</a></li>
+                        <li><a href="{{ url_for('estoque') }}">Estoque</a></li>
+                        <li><a href="{{ url_for('sessoes') }}">Sessões</a></li>
+                        <li><a href="{{ url_for('financeiro') }}">Financeiro</a></li>
+                        <li><a href="{{ url_for('registrar_pagamento') }}">Registrar Pagamento</a></li>
+                        <li><a href="{{ url_for('extrato') }}">Extrato</a></li>
+                        <li><a href="{{ url_for('cadastro_interno') }}">Cadastro Interno</a></li>
+                        <li><a href="{{ url_for('calculadora') }}">Calculadora</a></li>
+                        <li><a href="{{ url_for('historico') }}">Historico</a></li>
+                    </ul>
                 </nav>
             </div>
         </div>
