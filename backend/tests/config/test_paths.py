@@ -59,11 +59,11 @@ class TestPathResolver:
     def verify_imports():
         """Verify that critical modules can be imported."""
         import_results = {
-            "domain.entities": False,
-            "domain.interfaces": False,
+            "controllers.appointment_controller": False,
             "services.user_service": False,
             "repositories.user_repo": False,
             "schemas.dtos": False,
+            "core.security": False,
         }
 
         for module_name in import_results.keys():

@@ -7,7 +7,7 @@ from unittest.mock import MagicMock
 import pytest
 
 
-SCRIPT_PATH = "backend/scripts/migrate_inventory_order.py"
+SCRIPT_PATH = "scripts/migrate_inventory_order.py"
 
 
 def _make_engine_mock(dialect_name="postgresql"):

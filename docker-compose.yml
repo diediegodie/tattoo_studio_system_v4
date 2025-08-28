@@ -25,6 +25,7 @@ services:
     build:
       context: .
       dockerfile: ./backend/Dockerfile
+      target: ${DOCKER_TARGET:-development}  # Use development by default, production for prod
     container_name: tattoo_studio_app
     restart: always
     env_file:
@@ -43,14 +44,14 @@ services:
     ports:
       - "5000:5000"
     volumes:
-      - ./backend:/app
+      # For development: mount source code for hot reloading
+      - ./backend/app:/app/app
       - ./frontend:/app/frontend
     depends_on:
       db:
         condition: service_healthy
     networks:
       - tattoo_network
-    command: python app/app.py
 
 volumes:
   db_data:

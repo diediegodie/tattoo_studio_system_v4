@@ -40,8 +40,8 @@ def test_migration_integration_sqlite(tmp_path):
 
     # Run the migration as a separate Python process so it uses its own SQLAlchemy engine
     # Ensure PYTHONPATH includes the 'backend' package directory so 'app' is importable
-    env["PYTHONPATH"] = str(Path.cwd() / "backend")
-    cmd = [sys.executable, "backend/scripts/migrate_inventory_order.py"]
+    env["PYTHONPATH"] = str(Path.cwd())
+    cmd = [sys.executable, "scripts/migrate_inventory_order.py"]
     proc = subprocess.run(cmd, env=env, capture_output=True, text=True)
     assert proc.returncode == 0, f"Migration failed: {proc.stdout}\n{proc.stderr}"
 

@@ -304,6 +304,7 @@ def create_app():
     from controllers.artist_controller import artist_bp
     from controllers.calendar_controller import calendar_bp
     from controllers.inventory_controller import inventory_bp
+    from controllers.drag_drop_controller import drag_drop_bp
 
     app.register_blueprint(api_bp)
     app.register_blueprint(auth_bp)
@@ -312,6 +313,7 @@ def create_app():
     app.register_blueprint(artist_bp)
     app.register_blueprint(calendar_bp)
     app.register_blueprint(inventory_bp)
+    app.register_blueprint(drag_drop_bp)
 
     # Register OAuth blueprint - name already set at creation
     app.register_blueprint(google_oauth_bp, url_prefix="/auth")
