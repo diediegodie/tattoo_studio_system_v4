@@ -367,6 +367,9 @@ def calendar_page():
         is_authorized = calendar_service.is_user_authorized(str(current_user.id))
 
         events = []
+        # Keep track of which events already have a session
+        events_with_sessions = set()
+
         if is_authorized:
             try:
                 # Get events for the next 30 days
@@ -379,12 +382,39 @@ def calendar_page():
                 events.sort(
                     key=lambda x: x.start_time if x.start_time else datetime.min
                 )
+
+                # Check which events already have a corresponding session
+                if events:
+                    # Get a list of all Google event IDs that have already been converted to sessions
+                    from db.session import SessionLocal
+                    from db.base import Sessao
+
+                    db = SessionLocal()
+                    try:
+                        # Collect all google_event_ids that exist in the sessions table
+                        existing_event_ids = {
+                            row[0]
+                            for row in db.query(Sessao.google_event_id)
+                            .filter(Sessao.google_event_id.isnot(None))
+                            .all()
+                        }
+
+                        # Update the events_with_sessions set
+                        for event in events:
+                            if event.google_event_id in existing_event_ids:
+                                events_with_sessions.add(event.google_event_id)
+                    finally:
+                        db.close()
+
             except Exception as e:
                 logger.error(f"Error fetching events for page: {str(e)}")
                 flash("Erro ao buscar eventos do Google Calendar", "error")
 
         return render_template(
-            "agenda.html", events=events, calendar_connected=is_authorized
+            "agenda.html",
+            events=events,
+            calendar_connected=is_authorized,
+            events_with_sessions=events_with_sessions,
         )
 
     except Exception as e:
@@ -411,6 +441,10 @@ def sync_events():
             flash(
                 "Você precisa autorizar o acesso ao Google Calendar primeiro", "warning"
             )
+            # Set session flag to indicate this is a calendar sync operation
+            from flask import session
+
+            session["oauth_purpose"] = "calendar_sync"
             return redirect(
                 url_for("google_oauth_calendar.login")
             )  # Corrected endpoint

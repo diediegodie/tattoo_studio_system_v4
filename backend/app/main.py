@@ -1,4 +1,4 @@
-from flask import Flask, render_template, jsonify, redirect, url_for, flash
+from flask import Flask, render_template, jsonify, redirect, url_for, flash, session
 import os
 from sqlalchemy import text
 from db.session import engine
@@ -96,8 +96,16 @@ def google_logged_in(blueprint, token):
         login_user(db_user)  # Use database model for Flask-Login
         flash(f"Bem-vindo, {db_user.name}!", category="success")
 
-        # After successful OAuth login, redirect user to the calendar page
-        response = redirect(url_for("calendar.calendar_page"))
+        # Determine where to redirect based on the OAuth purpose
+        purpose = session.pop("oauth_purpose", None)  # Get and remove the purpose flag
+
+        if purpose == "calendar_sync":
+            next_url = url_for("calendar.calendar_page")  # Go back to calendar
+        else:
+            next_url = url_for("index")  # Default for general login
+
+        # After successful OAuth login, redirect user to the appropriate page
+        response = redirect(next_url)
         response.set_cookie(
             "access_token",
             jwt_token,
