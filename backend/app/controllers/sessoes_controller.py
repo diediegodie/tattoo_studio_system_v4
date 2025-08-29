@@ -161,6 +161,7 @@ def nova_sessao() -> Union[str, Response]:
                 cliente_id=cliente_id,
                 artista_id=artista_id,
                 google_event_id=google_event_id,  # This will be None if not from Google Calendar
+                status="active",  # Explicitly set status for new sessions
             )
 
             db.add(sessao)
@@ -181,27 +182,85 @@ def nova_sessao() -> Union[str, Response]:
     return redirect(url_for("sessoes.nova_sessao"))
 
 
-@sessoes_bp.route("/list")
+@sessoes_bp.route("/finalizar/<int:sessao_id>", methods=["POST"])
 @login_required
-def list_sessoes() -> str:
-    """List all sessions."""
+def finalizar_sessao(sessao_id: int) -> Response:
+    """Mark session as completed and redirect to payment registration."""
     db = None
     try:
         db = SessionLocal()
-        # Load sessions with their relationships (cliente and artista)
+
+        # Get session
+        sessao = db.query(Sessao).filter(Sessao.id == sessao_id).first()
+        if not sessao:
+            flash("Sessão não encontrada.", "error")
+            return redirect(url_for("sessoes.list_sessoes"))
+
+        # Check if already completed (handle None status)
+        current_status = getattr(sessao, "status", None)
+        if current_status and current_status == "completed":
+            flash("Esta sessão já foi finalizada.", "info")
+            return redirect(url_for("sessoes.list_sessoes"))
+
+        # Mark as completed (will be linked to payment when created)
+        setattr(sessao, "status", "completed")
+        setattr(sessao, "updated_at", datetime.now())
+        db.commit()
+
+        flash(
+            "Sessão marcada como finalizada. Redirecionando para registro de pagamento.",
+            "success",
+        )
+
+        # Redirect to payment registration with session data
+        data_value = getattr(sessao, "data", None)
+        valor_value = getattr(sessao, "valor", None)
+        observacoes_value = getattr(sessao, "observacoes", None)
+
+        data_str = data_value.isoformat() if data_value is not None else ""
+        valor_float = float(valor_value) if valor_value is not None else 0.0
+
+        return redirect(
+            url_for(
+                "financeiro.registrar_pagamento",
+                sessao_id=sessao_id,
+                data=data_str,
+                cliente_id=sessao.cliente_id,
+                artista_id=sessao.artista_id,
+                valor=valor_float,
+                observacoes=observacoes_value or "",
+            )
+        )
+
+    except Exception as e:
+        logger.error(f"Error finalizing session {sessao_id}: {str(e)}")
+        flash("Erro ao finalizar sessão.", "error")
+        return redirect(url_for("sessoes.list_sessoes"))
+    finally:
+        if db:
+            db.close()
+
+
+@sessoes_bp.route("/list")
+@login_required
+def list_sessoes() -> str:
+    """List all active sessions."""
+    db = None
+    try:
+        db = SessionLocal()
+        # Load active sessions only (not completed or archived)
         from sqlalchemy.orm import joinedload
 
         # Order sessions by date (ascending), then time (ascending)
-        # This ensures the closest upcoming sessions appear at the top
         sessoes = (
             db.query(Sessao)
             .options(joinedload(Sessao.cliente), joinedload(Sessao.artista))
+            .filter(Sessao.status == "active")  # Only active sessions
             .order_by(Sessao.data.asc(), Sessao.hora.asc())
             .all()
         )
 
-        # Also provide clients and artists (same pattern as nova_sessao) so
-        # templates can render user-friendly select options for edit modals.
+        # Also provide clients and artists for edit modals
         clients = db.query(Client).order_by(Client.name).all()
 
         user_service = _get_user_service()
@@ -315,6 +374,14 @@ def api_update_sessao(sessao_id: int):
         s = db.query(Sessao).get(sessao_id)
         if not s:
             return api_response(False, "Sessão não encontrada", None, 404)
+
+        # Server-side validation: forma_pagamento must be present and non-empty
+        if (
+            "forma_pagamento" not in payload
+            or payload.get("forma_pagamento") is None
+            or str(payload.get("forma_pagamento")).strip() == ""
+        ):
+            return api_response(False, "Forma de pagamento obrigatória", None, 400)
 
         # Update fields if provided
         try:

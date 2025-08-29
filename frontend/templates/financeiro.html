@@ -17,6 +17,34 @@
         <div id="main">
             <div class="inner">
 
+                <!-- Flash Messages -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                    <div class="flash-message {{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                {% endwith %}
+
+                <!-- Template selects for edit modal (hidden, reuse server-rendered options) -->
+                <div id="template-selects" style="display:none;">
+                    <select id="tmpl_cliente_select">
+                        <option value="">Selecione...</option>
+                        {% for client in clients %}
+                        <option value="{{ client.id }}">{{ client.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <select id="tmpl_artista_select">
+                        <option value="">Selecione...</option>
+                        {% for artist in artists %}
+                        <option value="{{ artist.id }}">{{ artist.name }}</option>
+                        {% endfor %}
+                    </select>
+                    {% include 'partials/_forma_pagamento_select.html' %}
+                </div>
+
                 <!-- Header -->
                 <header id="header">
                     <a href="index.html" class="logo"><strong>Gerenciamento</strong> de finanças</a>
@@ -27,7 +55,10 @@
                     <header class="main">
                         <h1>Financeiro</h1>
                     </header>
-
+                    <div style="margin-bottom: 1em;">
+                        <a href="{{ url_for('registrar_pagamento') }}" id="add-item-btn"
+                            class="button primary">Registrar Pagamento</a>
+                    </div>
                     <section>
                         <div class="table-wrapper">
                             <table>
@@ -44,41 +75,33 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr>
-                                        <td>14/08/2025</td>
-                                        <td>15:00</td>
-                                        <td>João Silva</td>
-                                        <td>Alma Negra</td>
-                                        <td>R$ 500,00</td>
-                                        <td>Pix</td>
-                                        <td>Pagamento à vista</td>
+                                    {% for pagamento in pagamentos %}
+                                    <tr data-id="{{ pagamento.id }}">
+                                        <td>{{ pagamento.data.strftime('%d/%m/%Y') if pagamento.data else '' }}</td>
+                                        <td>{{ pagamento.hora.strftime('%H:%M') if pagamento.hora else '' }}</td>
+                                        <td>{{ pagamento.cliente.name if pagamento.cliente else 'Cliente não encontrado'
+                                            }}</td>
+                                        <td>{{ pagamento.artista.name if pagamento.artista else 'Artista não encontrado'
+                                            }}</td>
+                                        <td>R$ {{ '{:,.2f}'.format(pagamento.valor) }}</td>
+                                        <td>{{ pagamento.forma_pagamento }}</td>
+                                        <td>{{ pagamento.observacoes }}</td>
                                         <td>
                                             <button class="button small options-btn"
                                                 onclick="toggleOptions(this)">Opções</button>
                                             <span class="options-actions" style="display:none;">
-                                                <button class="button small" style="margin-right:0.5em;">Editar</button>
-                                                <button class="button small">Excluir</button>
+                                                <button class="button small edit-btn"
+                                                    data-id="{{ pagamento.id }}">Editar</button>
+                                                <button class="button small delete-btn"
+                                                    data-id="{{ pagamento.id }}">Excluir</button>
                                             </span>
                                         </td>
                                     </tr>
+                                    {% else %}
                                     <tr>
-                                        <td>15/08/2025</td>
-                                        <td>17:30</td>
-                                        <td>Maria Souza</td>
-                                        <td>Alma Negra</td>
-                                        <td>R$ 300,00</td>
-                                        <td>Dinheiro</td>
-                                        <td>Parcelado em 2x</td>
-                                        <td>
-                                            <button class="button small options-btn"
-                                                onclick="toggleOptions(this)">Opções</button>
-                                            <span class="options-actions" style="display:none;">
-                                                <button class="button small" style="margin-right:0.5em;">Editar</button>
-                                                <button class="button small">Excluir</button>
-                                            </span>
-                                        </td>
+                                        <td colspan="8">Nenhum pagamento registrado.</td>
                                     </tr>
-                                    <!-- Adicione mais linhas conforme necessário -->
+                                    {% endfor %}
                                 </tbody>
                             </table>
                         </div>
@@ -101,38 +124,38 @@
         </div>
 
         <!-- Sidebar -->
-		<div id="sidebar" class="inactive">
-			<div class="toggle"></div>
-			<div class="inner">
+        <div id="sidebar" class="inactive">
+            <div class="toggle"></div>
+            <div class="inner">
 
-				<!-- Search -->
-				<section id="search" class="alt">
-					<form method="post" action="#">
-						<input type="text" name="query" id="query" placeholder="Search" />
-					</form>
-				</section>
+                <!-- Search -->
+                <section id="search" class="alt">
+                    <form method="post" action="#">
+                        <input type="text" name="query" id="query" placeholder="Search" />
+                    </form>
+                </section>
 
-				<!-- Menu -->
-				<nav id="menu">
-					<header class="major">
-						<h2>Menu</h2>
-					</header>
-					<ul>
-						<li><a href="{{ url_for('index') }}">Homepage</a></li>
-						<li><a href="{{ url_for('client.client_list') }}">Clientes</a></li>
-						<li><a href="{{ url_for('calendar.calendar_page') }}">Agenda Google</a></li>
-						<li><a href="{{ url_for('estoque') }}">Estoque</a></li>
-						<li><a href="{{ url_for('sessoes') }}">Sessões</a></li>
-						<li><a href="{{ url_for('financeiro') }}">Financeiro</a></li>
-						<li><a href="{{ url_for('registrar_pagamento') }}">Registrar Pagamento</a></li>
-						<li><a href="{{ url_for('extrato') }}">Extrato</a></li>
-						<li><a href="{{ url_for('cadastro_interno') }}">Cadastro Interno</a></li>
-						<li><a href="{{ url_for('calculadora') }}">Calculadora</a></li>
-						<li><a href="{{ url_for('historico') }}">Historico</a></li>
-					</ul>
-				</nav>
-			</div>
-		</div>
+                <!-- Menu -->
+                <nav id="menu">
+                    <header class="major">
+                        <h2>Menu</h2>
+                    </header>
+                    <ul>
+                        <li><a href="{{ url_for('index') }}">Homepage</a></li>
+                        <li><a href="{{ url_for('client.client_list') }}">Clientes</a></li>
+                        <li><a href="{{ url_for('calendar.calendar_page') }}">Agenda Google</a></li>
+                        <li><a href="{{ url_for('estoque') }}">Estoque</a></li>
+                        <li><a href="{{ url_for('sessoes') }}">Sessões</a></li>
+                        <li><a href="{{ url_for('financeiro') }}">Financeiro</a></li>
+                        <li><a href="{{ url_for('registrar_pagamento') }}">Registrar Pagamento</a></li>
+                        <li><a href="{{ url_for('extrato') }}">Extrato</a></li>
+                        <li><a href="{{ url_for('cadastro_interno') }}">Cadastro Interno</a></li>
+                        <li><a href="{{ url_for('calculadora') }}">Calculadora</a></li>
+                        <li><a href="{{ url_for('historico') }}">Historico</a></li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
 
     </div>
 
@@ -142,6 +165,10 @@
     <script src="{{ url_for('static', filename='js/breakpoints.min.js') }}"></script>
     <script src="{{ url_for('static', filename='js/util.js') }}"></script>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script>
+        window.FINANCEIRO_API_BASE = "{{ url_for('financeiro.api_list_pagamentos') }}";
+    </script>
+    <script src="{{ url_for('static', filename='js/financeiro.js') }}"></script>
 
 </body>
 

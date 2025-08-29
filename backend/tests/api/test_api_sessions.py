@@ -1,307 +1,197 @@
 """
-Unit tests for Session API endpoints.
-
-These tests validate that JSON responses include google_event_id field
-and maintain API completeness.
+Clean, minimal test fo        # Patch SessionLocal before controller import
+        with patch("db.session.SessionLocal", return_value=mock_db),
+             patch("flask_login.login_required", lambda f: f),
+             patch("flask_login.current_user", mock_user):essoes API endpoints using Flask test client.
+These tests patch the controller's SessionLocal to return mocked DB/session objects
+so the login_required decorator and request context are exercised via the client.
 """
 
 import pytest
+import sys
 from unittest.mock import Mock, patch
 from datetime import datetime, date, time
 from decimal import Decimal
+import importlib
 
 
 @pytest.mark.unit
 @pytest.mark.api
 class TestSessionsAPI:
-    """Test Sessions API endpoints for google_event_id field inclusion."""
-
     def test_api_list_includes_google_event_id(self, app, client):
-        """
-        P0 Test: Verify API list endpoint includes google_event_id.
+        """GET /sessoes/api should return a list and include google_event_id."""
+        app.config["LOGIN_DISABLED"] = True
 
-        Validates:
-        - JSON response structure includes google_event_id
-        - Field is properly serialized for both null and non-null values
-        """
-        with app.app_context():
-            # Mock database query and login
-            with patch("db.session.SessionLocal") as mock_session_local, patch(
-                "flask_login.current_user"
-            ) as mock_current_user:
+        # Mock current_user to bypass authentication
+        mock_user = Mock()
+        mock_user.is_authenticated = True
 
-                # Set up authenticated user
-                mock_current_user.is_authenticated = True
-                mock_current_user.id = 1
+        mock_db = Mock()
 
-                # Mock database session
-                mock_db = Mock()
-                mock_session_local.return_value = mock_db
-                mock_db.__enter__ = Mock(return_value=mock_db)
-                mock_db.__exit__ = Mock(return_value=None)
+        # Patch the controller's SessionLocal directly
+        with patch(
+            "app.controllers.sessoes_controller.SessionLocal", return_value=mock_db
+        ), patch("flask_login.login_required", lambda f: f), patch(
+            "flask_login.current_user", mock_user
+        ):
+            print(f"DEBUG: mock_db: {mock_db}")
 
-                # Mock session data with and without google_event_id
-                mock_session_with_google = Mock()
-                mock_session_with_google.id = 1
-                mock_session_with_google.data = date(2025, 8, 30)
-                mock_session_with_google.hora = time(14, 0)
-                mock_session_with_google.valor = Decimal("200.00")
-                mock_session_with_google.observacoes = "Test session with Google ID"
-                mock_session_with_google.google_event_id = "GOOGLE123"
-                mock_session_with_google.created_at = datetime(2025, 8, 28, 10, 0)
-                mock_session_with_google.updated_at = datetime(2025, 8, 28, 10, 0)
+            # prepare two sessions
+            s1 = Mock()
+            s1.id = 1
+            s1.data = date(2025, 8, 30)
+            s1.hora = time(14, 0)
+            s1.valor = Decimal("200.00")
+            s1.observacoes = "Test session with Google ID"
+            s1.google_event_id = "GOOGLE123"
+            s1.created_at = datetime(2025, 8, 28, 10, 0)
+            s1.updated_at = datetime(2025, 8, 28, 10, 0)
+            client_obj = Mock()
+            client_obj.id = 1
+            client_obj.name = "C"
+            artist_obj = Mock()
+            artist_obj.id = 1
+            artist_obj.name = "A"
+            s1.cliente = client_obj
+            s1.artista = artist_obj
 
-                # Mock client and artist
-                mock_client = Mock()
-                mock_client.id = 1
-                mock_client.name = "Test Client"
+            s2 = Mock()
+            s2.id = 2
+            s2.data = date(2025, 8, 31)
+            s2.hora = time(15, 0)
+            s2.valor = Decimal("150.00")
+            s2.observacoes = "Manual session"
+            s2.google_event_id = None
+            s2.created_at = datetime(2025, 8, 28, 11, 0)
+            s2.updated_at = datetime(2025, 8, 28, 11, 0)
+            s2.cliente = client_obj
+            s2.artista = artist_obj
 
-                mock_artist = Mock()
-                mock_artist.id = 1
-                mock_artist.name = "Test Artist"
+            q = Mock()
+            mock_db.query.return_value = q
+            q.options.return_value = q
+            q.order_by.return_value = q
+            q.all.return_value = [s1, s2]
 
-                mock_session_with_google.cliente = mock_client
-                mock_session_with_google.artista = mock_artist
+            resp = client.get("/sessoes/api")
+            print(f"DEBUG: Response status: {resp.status_code}")
+            print(f"DEBUG: Response data: {resp.get_json()}")
+            if resp.status_code != 200:
+                pytest.skip(f"API endpoint not available: {resp.status_code}")
 
-                # Mock session without google_event_id
-                mock_session_without_google = Mock()
-                mock_session_without_google.id = 2
-                mock_session_without_google.data = date(2025, 8, 31)
-                mock_session_without_google.hora = time(15, 0)
-                mock_session_without_google.valor = Decimal("150.00")
-                mock_session_without_google.observacoes = "Manual session"
-                mock_session_without_google.google_event_id = None
-                mock_session_without_google.created_at = datetime(2025, 8, 28, 11, 0)
-                mock_session_without_google.updated_at = datetime(2025, 8, 28, 11, 0)
-                mock_session_without_google.cliente = mock_client
-                mock_session_without_google.artista = mock_artist
+            data = resp.get_json()
+            assert isinstance(data, list)
+            if not data:
+                print("DEBUG: Empty data returned, checking if patch worked")
+                print(f"DEBUG: mock_db.query called: {mock_db.query.called}")
+                print(
+                    f"DEBUG: mock_db.query.return_value: {mock_db.query.return_value}"
+                )
+                print(f"DEBUG: q.all called: {q.all.called}")
+                print(f"DEBUG: q.all.return_value: {q.all.return_value}")
+            assert data[0]["google_event_id"] == "GOOGLE123"
+            assert data[1]["google_event_id"] is None
 
-                # Mock query to return our test sessions
-                mock_query = Mock()
-                mock_db.query.return_value = mock_query
-                mock_query.options.return_value = mock_query
-                mock_query.order_by.return_value = mock_query
-                mock_query.all.return_value = [
-                    mock_session_with_google,
-                    mock_session_without_google,
-                ]
+    def test_api_detail_includes_google_event_id(self, app, client):
+        """GET /sessoes/api/<id> should return an api_response containing google_event_id."""
+        app.config["LOGIN_DISABLED"] = True
 
-                # Test the API endpoint via HTTP
-                try:
-                    response = client.get("/sessions/api")
+        # Mock login_required to bypass authentication
+        def mock_login_required(f):
+            return f
 
-                    if response.status_code == 200:
-                        json_data = response.get_json()
-                        assert json_data["success"] is True
-                        assert "data" in json_data
+        s = Mock()
+        s.id = 1
+        s.data = date(2025, 8, 30)
+        s.hora = time(14, 0)
+        s.valor = Decimal("100.00")
+        s.observacoes = "Test session detail"
+        s.google_event_id = "DETAIL123"
+        s.created_at = datetime(2025, 8, 28, 10, 0)
+        s.updated_at = datetime(2025, 8, 28, 10, 0)
+        s.cliente = Mock()
+        s.cliente.id = 1
+        s.cliente.name = "C"
+        s.artista = Mock()
+        s.artista.id = 1
+        s.artista.name = "A"
 
-                        sessions = json_data["data"]
-                        assert len(sessions) == 2
-
-                        # Check first session (with google_event_id)
-                        session1 = sessions[0]
-                        assert "google_event_id" in session1
-                        assert session1["google_event_id"] == "GOOGLE123"
-
-                        # Check second session (without google_event_id)
-                        session2 = sessions[1]
-                        assert "google_event_id" in session2
-                        assert session2["google_event_id"] is None
-                    else:
-                        # If endpoint doesn't exist or has issues, skip the test
-                        pytest.skip(
-                            f"API endpoint not available: {response.status_code}"
-                        )
-
-                except Exception as e:
-                    pytest.skip(f"Could not test sessions API endpoint: {e}")
-
-    def test_api_detail_includes_google_event_id(self):
-        """
-        P0 Test: Verify API detail endpoint includes google_event_id.
-
-        Validates:
-        - Single session detail includes google_event_id field
-        - Proper serialization of google_event_id value
-        """
-        # Mock session with google_event_id
-        mock_session = Mock()
-        mock_session.id = 1
-        mock_session.data = date(2025, 8, 30)
-        mock_session.hora = time(14, 0)
-        mock_session.valor = Decimal("100.00")
-        mock_session.observacoes = "Test session detail"
-        mock_session.google_event_id = "DETAIL123"
-        mock_session.created_at = datetime(2025, 8, 28, 10, 0)
-        mock_session.updated_at = datetime(2025, 8, 28, 10, 0)
-
-        # Mock relationships
-        mock_client = Mock()
-        mock_client.id = 1
-        mock_client.name = "Detail Test Client"
-        mock_session.cliente = mock_client
-
-        mock_artist = Mock()
-        mock_artist.id = 1
-        mock_artist.name = "Detail Test Artist"
-        mock_session.artista = mock_artist
-
-        # Mock database query
-        with patch("db.session.SessionLocal") as mock_session_local:
+        with patch(
+            "app.controllers.sessoes_controller.login_required", mock_login_required
+        ), patch(
+            "app.controllers.sessoes_controller.SessionLocal"
+        ) as mock_session_local:
             mock_db = Mock()
             mock_session_local.return_value = mock_db
-            mock_db.__enter__ = Mock(return_value=mock_db)
-            mock_db.__exit__ = Mock(return_value=None)
+            # mock.get should return the session object
+            mock_db.query.return_value.get.return_value = s
 
-            # Mock query to return our test session
-            mock_db.query.return_value.get.return_value = mock_session
+            resp = client.get("/sessoes/api/1")
+            if resp.status_code != 200:
+                pytest.skip(f"API endpoint not available: {resp.status_code}")
 
-            # Mock Flask-Login current_user
-            with patch("flask_login.current_user") as mock_current_user:
-                mock_current_user.id = 1
-                mock_current_user.is_authenticated = True
+            j = resp.get_json()
+            assert j["success"] is True
+            assert j["data"]["google_event_id"] == "DETAIL123"
 
-                try:
-                    from app.controllers.sessoes_controller import api_get_sessao
+    def test_api_update_preserves_google_event_id(self, app, client):
+        """PUT /sessoes/api/<id> should preserve and return existing google_event_id."""
+        app.config["LOGIN_DISABLED"] = True
 
-                    # Call the API function with session ID
-                    response = api_get_sessao(1)
+        # Mock login_required to bypass authentication
+        def mock_login_required(f):
+            return f
 
-                    # Verify response
-                    if isinstance(response, tuple):
-                        response_data, status_code = response
-                        assert status_code == 200
+        s = Mock()
+        s.id = 1
+        s.data = date(2025, 8, 30)
+        s.hora = time(14, 0)
+        s.valor = Decimal("100.00")
+        s.observacoes = "Original session"
+        s.google_event_id = "UPDATE123"
+        s.created_at = datetime(2025, 8, 28, 10, 0)
+        s.updated_at = datetime(2025, 8, 28, 10, 0)
+        s.cliente = Mock()
+        s.cliente.id = 1
+        s.cliente.name = "C"
+        s.artista = Mock()
+        s.artista.id = 1
+        s.artista.name = "A"
 
-                        # Parse JSON response
-                        if hasattr(response_data, "get_json"):
-                            json_data = response_data.get_json()
-                        else:
-                            json_data = response_data
-
-                        assert json_data["success"] is True
-                        assert "data" in json_data
-
-                        session_data = json_data["data"]
-                        assert "google_event_id" in session_data
-                        assert session_data["google_event_id"] == "DETAIL123"
-
-                except ImportError:
-                    pytest.skip(
-                        "sessoes_controller.api_get_sessao not available for testing"
-                    )
-
-    def test_api_update_preserves_google_event_id(self):
-        """
-        P0 Test: Verify API update endpoint preserves google_event_id.
-
-        Validates:
-        - Update operations don't accidentally clear google_event_id
-        - Updated response includes google_event_id field
-        """
-        # Mock existing session with google_event_id
-        mock_session = Mock()
-        mock_session.id = 1
-        mock_session.data = date(2025, 8, 30)
-        mock_session.hora = time(14, 0)
-        mock_session.valor = Decimal("100.00")
-        mock_session.observacoes = "Original session"
-        mock_session.google_event_id = "UPDATE123"
-        mock_session.created_at = datetime(2025, 8, 28, 10, 0)
-        mock_session.updated_at = datetime(2025, 8, 28, 10, 0)
-
-        # Mock relationships
-        mock_client = Mock()
-        mock_client.id = 1
-        mock_client.name = "Update Test Client"
-        mock_session.cliente = mock_client
-
-        mock_artist = Mock()
-        mock_artist.id = 1
-        mock_artist.name = "Update Test Artist"
-        mock_session.artista = mock_artist
-
-        # Mock database operations
-        with patch("db.session.SessionLocal") as mock_session_local:
+        with patch(
+            "app.controllers.sessoes_controller.login_required", mock_login_required
+        ), patch(
+            "app.controllers.sessoes_controller.SessionLocal"
+        ) as mock_session_local:
             mock_db = Mock()
             mock_session_local.return_value = mock_db
-            mock_db.__enter__ = Mock(return_value=mock_db)
-            mock_db.__exit__ = Mock(return_value=None)
-
-            # Mock query to return our test session
-            mock_db.query.return_value.get.return_value = mock_session
+            mock_db.query.return_value.get.return_value = s
             mock_db.add = Mock()
             mock_db.commit = Mock()
             mock_db.refresh = Mock()
 
-            # Mock Flask-Login current_user
-            with patch("flask_login.current_user") as mock_current_user:
-                mock_current_user.id = 1
-                mock_current_user.is_authenticated = True
+            resp = client.put(
+                "/sessoes/api/1",
+                json={"observacoes": "Updated", "forma_pagamento": "cash"},
+            )
+            if resp.status_code != 200:
+                pytest.skip(f"API endpoint not available: {resp.status_code}")
 
-                # Mock Flask request with update data
-                with patch("flask.request") as mock_request:
-                    mock_request.get_json.return_value = {
-                        "observacoes": "Updated session notes"
-                        # Notably, not updating google_event_id
-                    }
-
-                    try:
-                        from app.controllers.sessoes_controller import api_update_sessao
-
-                        # Call the API function
-                        response = api_update_sessao(1)
-
-                        # Verify response
-                        if isinstance(response, tuple):
-                            response_data, status_code = response
-                            assert status_code == 200
-
-                            # Parse JSON response
-                            if hasattr(response_data, "get_json"):
-                                json_data = response_data.get_json()
-                            else:
-                                json_data = response_data
-
-                            assert json_data["success"] is True
-                            assert "data" in json_data
-
-                            session_data = json_data["data"]
-                            assert "google_event_id" in session_data
-                            # google_event_id should be preserved
-                            assert session_data["google_event_id"] == "UPDATE123"
-
-                    except ImportError:
-                        pytest.skip(
-                            "sessoes_controller.api_update_sessao not available for testing"
-                        )
+            j = resp.get_json()
+            assert j["success"] is True
+            assert j["data"]["google_event_id"] == "UPDATE123"
 
     def test_api_endpoints_exist_and_accessible(self):
-        """
-        Verification test: Ensure API endpoints exist and include google_event_id.
-
-        If this test fails, it indicates missing API functionality that needs to be implemented.
-        """
+        """Sanity check that handlers exist and are importable."""
         try:
-            # Try to import the API functions
             from app.controllers.sessoes_controller import (
                 api_list_sessoes,
                 api_get_sessao,
                 api_update_sessao,
             )
 
-            # Verify functions are callable
             assert callable(api_list_sessoes)
             assert callable(api_get_sessao)
             assert callable(api_update_sessao)
-
-            # This test passes if we can import the functions
-            # Individual functionality is tested in other test methods
-
         except ImportError as e:
-            pytest.fail(
-                f"Required API endpoints are not available: {e}\n"
-                "The following functions should be implemented in controllers.sessoes_controller:\n"
-                "- api_list_sessoes() -> List sessions with google_event_id field\n"
-                "- api_get_sessao(id) -> Get single session with google_event_id field\n"
-                "- api_update_sessao(id) -> Update session preserving google_event_id field"
-            )
+            pytest.fail(f"Required API endpoints are not available: {e}")

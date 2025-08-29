@@ -28,54 +28,94 @@
                         <h1>Registrar Pagamento</h1>
                     </header>
 
+                    <!-- Flash messages (show validation/server errors immediately) -->
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                    <div class="flash-messages">
+                        {% for category, message in messages %}
+                        <div class="flash-message {{ category }}">{{ message }}</div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    {% endwith %}
+
+                    {# Debug: show submitted form values when re-rendering (development only) #}
+                    {% if request.form %}
+                    <div style="background:#f8f8f8;border:1px solid #eee;padding:0.5rem;margin-bottom:1rem;">
+                        <strong>Debug POST values:</strong>
+                        <pre style="white-space:pre-wrap">{{ request.form }}</pre>
+                    </div>
+                    {% endif %}
+
                     <section>
-                        <form id="registrar-pagamento-form" style="max-width:600px;margin:0 auto;">
+                        <form id="registrar-pagamento-form" method="post"
+                            action="{{ url_for('financeiro.registrar_pagamento') }}"
+                            style="max-width:600px;margin:0 auto;">
+                            <!-- Hidden field for session linkage; prefer POSTed value when re-rendering -->
+                            <input type="hidden" name="sessao_id"
+                                value="{{ request.form.get('sessao_id') or sessao_id or '' }}">
                             <div style="display:flex;flex-wrap:wrap;gap:1em;">
                                 <div style="flex:1 1 200px;min-width:180px;">
                                     <label for="data">Data</label>
-                                    <input type="date" id="data" name="data" required style="width:100%;">
+                                    <input type="date" name="data" id="data" required style="width:100%;"
+                                        value="{{ request.form.get('data') or data or '' }}">
                                 </div>
                                 <div style="flex:1 1 200px;min-width:180px;">
-                                    <label for="valor">Valor</label>
-                                    <input type="number" id="valor" name="valor" step="0.01" min="0" required
-                                        style="width:100%;">
-                                </div>
-                                <div style="flex:1 1 200px;min-width:180px;">
-                                    <label for="forma-pagamento">Forma de pagamento</label>
-                                    <select id="forma-pagamento" name="forma-pagamento" required style="width:100%;">
-                                        <option value="">Selecione</option>
-                                        <option value="Pix">Pix</option>
-                                        <option value="Dinheiro">Dinheiro</option>
-                                        <option value="Cartão">Cartão</option>
-                                        <option value="Transferência">Transferência</option>
+                                    <label for="cliente_id">Cliente</label>
+                                    <select name="cliente_id" id="cliente_id" required style="width:100%;">
+                                        <option value="">Selecione...</option>
+                                        {% for client in clients %}
+                                        {% set sel_cliente = request.form.get('cliente_id') or cliente_id %}
+                                        <option value="{{ client.id }}" {% if sel_cliente and sel_cliente|int==client.id
+                                            %}selected{% endif %}>{{ client.name }}</option>
+                                        {% endfor %}
                                     </select>
                                 </div>
                                 <div style="flex:1 1 200px;min-width:180px;">
-                                    <label for="cliente">Cliente</label>
-                                    <input type="text" id="cliente" name="cliente" required style="width:100%;">
+                                    <label for="artista_id">Artista</label>
+                                    <select name="artista_id" id="artista_id" required style="width:100%;">
+                                        <option value="">Selecione...</option>
+                                        {% for artist in artists %}
+                                        {% set sel_artista = request.form.get('artista_id') or artista_id %}
+                                        <option value="{{ artist.id }}" {% if sel_artista and sel_artista|int==artist.id
+                                            %}selected{% endif %}>{{ artist.name }}</option>
+                                        {% endfor %}
+                                    </select>
                                 </div>
                                 <div style="flex:1 1 200px;min-width:180px;">
-                                    <label for="artista">Artista</label>
-                                    <input type="text" id="artista" name="artista" required style="width:100%;">
+                                    <label for="valor">Valor</label>
+                                    <input type="number" name="valor" id="valor" step="0.01" min="0" required
+                                        style="width:100%;" value="{{ request.form.get('valor') or valor or '' }}">
                                 </div>
                                 <div style="flex:1 1 200px;min-width:180px;">
-                                    <label for="comissao">Comissão</label>
-                                    <input type="number" id="comissao" name="comissao" step="0.01" min="0"
-                                        style="width:100%;">
+                                    <label for="forma_pagamento">Forma de Pagamento</label>
+                                    <select name="forma_pagamento" id="forma_pagamento" required style="width:100%;">
+                                        <option value="">Selecione...</option>
+                                        {% set sel_forma = request.form.get('forma_pagamento') or forma_pagamento %}
+                                        <option value="Dinheiro" {% if sel_forma=='Dinheiro' %}selected{% endif %}>
+                                            Dinheiro</option>
+                                        <option value="Pix" {% if sel_forma=='Pix' %}selected{% endif %}>Pix</option>
+                                        <option value="Cartão de Crédito" {% if sel_forma=='Cartão de Crédito'
+                                            %}selected{% endif %}>Crédito</option>
+                                        <option value="Cartão de Débito" {% if sel_forma=='Cartão de Débito'
+                                            %}selected{% endif %}>Débito</option>
+                                        <option value="Transferência" {% if sel_forma=='Transferência' %}selected{%
+                                            endif %}>Outros</option>
+                                    </select>
                                 </div>
                                 <div style="flex:1 1 100%;min-width:180px;">
-                                    <label for="observacao">Observação</label>
-                                    <textarea id="observacao" name="observacao" rows="2"
-                                        style="width:100%;resize:vertical;"></textarea>
+                                    <label for="observacoes">Observações</label>
+                                    <textarea name="observacoes" id="observacoes" rows="3"
+                                        style="width:100%;resize:vertical;">{{ request.form.get('observacoes') or observacoes or '' }}</textarea>
                                 </div>
                             </div>
                             <div style="display:flex;justify-content:center;gap:1em;margin-top:2em;">
-                                <button type="submit" class="button primary">Registrar</button>
+                                <button type="submit" class="button primary">Salvar</button>
                                 <button type="reset" class="button">Limpar</button>
+                                <a href="{{ url_for('financeiro.financeiro_home') }}" class="button">Cancelar</a>
                             </div>
                         </form>
                     </section>
-
                     <script>
                         function toggleOptions(btn) {
                             var actions = btn.nextElementSibling;
@@ -94,38 +134,38 @@
 
 
         <!-- Sidebar -->
-		<div id="sidebar" class="inactive">
-			<div class="toggle"></div>
-			<div class="inner">
+        <div id="sidebar" class="inactive">
+            <div class="toggle"></div>
+            <div class="inner">
 
-				<!-- Search -->
-				<section id="search" class="alt">
-					<form method="post" action="#">
-						<input type="text" name="query" id="query" placeholder="Search" />
-					</form>
-				</section>
+                <!-- Search -->
+                <section id="search" class="alt">
+                    <form method="post" action="#">
+                        <input type="text" name="query" id="query" placeholder="Search" />
+                    </form>
+                </section>
 
-				<!-- Menu -->
-				<nav id="menu">
-					<header class="major">
-						<h2>Menu</h2>
-					</header>
-					<ul>
-						<li><a href="{{ url_for('index') }}">Homepage</a></li>
-						<li><a href="{{ url_for('client.client_list') }}">Clientes</a></li>
-						<li><a href="{{ url_for('calendar.calendar_page') }}">Agenda Google</a></li>
-						<li><a href="{{ url_for('estoque') }}">Estoque</a></li>
-						<li><a href="{{ url_for('sessoes') }}">Sessões</a></li>
-						<li><a href="{{ url_for('financeiro') }}">Financeiro</a></li>
-						<li><a href="{{ url_for('registrar_pagamento') }}">Registrar Pagamento</a></li>
-						<li><a href="{{ url_for('extrato') }}">Extrato</a></li>
-						<li><a href="{{ url_for('cadastro_interno') }}">Cadastro Interno</a></li>
-						<li><a href="{{ url_for('calculadora') }}">Calculadora</a></li>
-						<li><a href="{{ url_for('historico') }}">Historico</a></li>
-					</ul>
-				</nav>
-			</div>
-		</div>
+                <!-- Menu -->
+                <nav id="menu">
+                    <header class="major">
+                        <h2>Menu</h2>
+                    </header>
+                    <ul>
+                        <li><a href="{{ url_for('index') }}">Homepage</a></li>
+                        <li><a href="{{ url_for('client.client_list') }}">Clientes</a></li>
+                        <li><a href="{{ url_for('calendar.calendar_page') }}">Agenda Google</a></li>
+                        <li><a href="{{ url_for('estoque') }}">Estoque</a></li>
+                        <li><a href="{{ url_for('sessoes') }}">Sessões</a></li>
+                        <li><a href="{{ url_for('financeiro') }}">Financeiro</a></li>
+                        <li><a href="{{ url_for('registrar_pagamento') }}">Registrar Pagamento</a></li>
+                        <li><a href="{{ url_for('extrato') }}">Extrato</a></li>
+                        <li><a href="{{ url_for('cadastro_interno') }}">Cadastro Interno</a></li>
+                        <li><a href="{{ url_for('calculadora') }}">Calculadora</a></li>
+                        <li><a href="{{ url_for('historico') }}">Historico</a></li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
         <!-- Scripts -->
         <script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
         <script src="{{ url_for('static', filename='js/browser.min.js') }}"></script>

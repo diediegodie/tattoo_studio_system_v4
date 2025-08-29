@@ -132,15 +132,59 @@ class Sessao(Base):
     google_event_id = Column(
         String(100), nullable=True, unique=True
     )  # Added for Google Calendar integration
+    status = Column(
+        String(20), nullable=False, default="active"
+    )  # active, completed, archived
+    payment_id = Column(
+        Integer, ForeignKey("pagamentos.id"), nullable=True
+    )  # Link to payment
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     # Relationships (ORM navigation)
     cliente = relationship("Client", foreign_keys=[cliente_id], backref="sessoes")
     artista = relationship("User", foreign_keys=[artista_id], backref="sessoes_artista")
+    payment = relationship(
+        "Pagamento", backref="session", uselist=False, foreign_keys=[payment_id]
+    )  # Link to payment
 
     def __repr__(self):
         return (
             f"<Sessao(id={self.id}, data={self.data}, hora={self.hora}, valor={self.valor}, "
-            f"cliente_id={self.cliente_id}, artista_id={self.artista_id})>"
+            f"cliente_id={self.cliente_id}, artista_id={self.artista_id}, status={self.status})>"
+        )
+
+
+class Pagamento(Base):
+    """Pagamento (Payment) model for financial records"""
+
+    __tablename__ = "pagamentos"
+
+    id = Column(Integer, primary_key=True, index=True)
+    data = Column(Date, nullable=False)
+    valor = Column(Numeric(10, 2), nullable=False)
+    forma_pagamento = Column(String(50), nullable=False)
+    observacoes = Column(String(255), nullable=True)
+    comissao = Column(Numeric(10, 2), nullable=True)  # For future implementation
+    cliente_id = Column(Integer, ForeignKey("clients.id"), nullable=False)
+    artista_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    sessao_id = Column(
+        Integer, ForeignKey("sessoes.id"), nullable=True
+    )  # Link to session
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    # Relationships
+    cliente = relationship("Client", foreign_keys=[cliente_id], backref="pagamentos")
+    artista = relationship(
+        "User", foreign_keys=[artista_id], backref="pagamentos_artista"
+    )
+    sessao = relationship(
+        "Sessao", backref="pagamento", uselist=False, foreign_keys=[sessao_id]
+    )  # Link to session
+
+    def __repr__(self):
+        return (
+            f"<Pagamento(id={self.id}, data={self.data}, valor={self.valor}, "
+            f"forma_pagamento={self.forma_pagamento}, sessao_id={self.sessao_id})>"
         )

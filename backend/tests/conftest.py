@@ -191,6 +191,11 @@ def app():
         if create_app is None:
             raise ImportError("create_app not found in 'app.main' module")
 
+        # Set LOGIN_DISABLED before creating the app
+        import os
+
+        os.environ["LOGIN_DISABLED"] = "true"
+
         app = create_app()
         app.config["TESTING"] = True
         app.config["WTF_CSRF_ENABLED"] = False  # Disable CSRF for testing

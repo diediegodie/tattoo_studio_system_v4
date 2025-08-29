@@ -150,6 +150,9 @@ def create_app():
     app.config["SECRET_KEY"] = os.getenv("FLASK_SECRET_KEY", "dev-secret-change-me")
     app.config["GOOGLE_OAUTH_CLIENT_ID"] = os.getenv("GOOGLE_CLIENT_ID")
     app.config["GOOGLE_OAUTH_CLIENT_SECRET"] = os.getenv("GOOGLE_CLIENT_SECRET")
+    app.config["LOGIN_DISABLED"] = (
+        os.getenv("LOGIN_DISABLED", "false").lower() == "true"
+    )
 
     # Initialize Flask-Login
     login_manager = LoginManager()
@@ -245,7 +248,8 @@ def create_app():
     @app.route("/financeiro")
     @login_required
     def financeiro():
-        return render_template("financeiro.html")
+        # Redirect to the SOLID-compliant financeiro controller
+        return redirect(url_for("financeiro.financeiro_home"))
 
     @app.route("/historico")
     @login_required
@@ -255,7 +259,8 @@ def create_app():
     @app.route("/registrar_pagamento")
     @login_required
     def registrar_pagamento():
-        return render_template("registrar_pagamento.html")
+        # Redirect to the SOLID-compliant registrar_pagamento controller
+        return redirect(url_for("financeiro.registrar_pagamento"))
 
     @app.route("/sessoes")
     @login_required
@@ -305,6 +310,7 @@ def create_app():
     from controllers.calendar_controller import calendar_bp
     from controllers.inventory_controller import inventory_bp
     from controllers.drag_drop_controller import drag_drop_bp
+    from controllers.financeiro_controller import financeiro_bp
 
     app.register_blueprint(api_bp)
     app.register_blueprint(auth_bp)
@@ -314,6 +320,7 @@ def create_app():
     app.register_blueprint(calendar_bp)
     app.register_blueprint(inventory_bp)
     app.register_blueprint(drag_drop_bp)
+    app.register_blueprint(financeiro_bp)
 
     # Register OAuth blueprint - name already set at creation
     app.register_blueprint(google_oauth_bp, url_prefix="/auth")

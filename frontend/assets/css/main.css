@@ -400,6 +400,45 @@ ul.actions {
   padding-left: 0;
 }
 
+/* Modal helpers (reusable classes to replace inline styles in JS-created modals) */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0,0,0,0.5);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.modal-container {
+  background: #fff;
+  border-radius: 8px;
+  min-width: 300px;
+  max-width: 90vw;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+}
+.modal-scrollable {
+  padding: 2em 2em 1em 2em;
+  overflow-y: auto;
+  flex: 1 1 auto;
+}
+.modal-scrollable h2 { margin-top: 0; }
+.modal-footer {
+  padding: 1em 2em 2em 2em;
+  border-top: 1px solid #eee;
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.modal-error { border: 1px solid #f44336 !important; box-shadow: 0 0 0 1px rgba(244,67,54,0.12); }
+.field-error-msg { color: #f44336; font-size: 0.9em; margin-top: 0.25em; display:block; }
+
 ul.actions li {
   padding: 0 0 0 1em;
   vertical-align: middle;

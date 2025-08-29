@@ -1,0 +1,390 @@
+(function (window) {
+  'use strict';
+
+  // FINANCEIRO.JS - Generic edit/delete/finish wiring for financial records
+  // Requirements (must be present in template/backend):
+  // - Rows must have `data-id="<id>"` on the <tr>
+  // - Backend API endpoints under /financeiro/api (GET /, GET /<id>, PUT /<id>, DELETE /<id>)
+
+  // Safe feature-detect the shared utilities and api base
+  const apiBase = (typeof window !== 'undefined' && window.FINANCEIRO_API_BASE) ? window.FINANCEIRO_API_BASE : '/financeiro/api';
+  let financeiroClient = null;
+  try {
+    if (typeof makeResourceClient === 'function') financeiroClient = makeResourceClient(apiBase);
+  } catch (e) {
+    console.error('makeResourceClient unavailable:', e);
+    financeiroClient = null;
+  }
+
+  const domHelpers = (typeof window !== 'undefined' && window.domHelpers) ? window.domHelpers : null;
+
+  function getStatusHelper() {
+    return typeof window.showStatus === 'function' ? window.showStatus : function (msg, ok) { try { if (window.showToast) window.showToast(msg, ok ? 'success' : 'error', 3000); else console.log(msg); } catch(e){ console.log(msg); } };
+  }
+
+  // Function to handle the Finalizar button - this is the key functionality
+  async function finalizarPagamento(id) {
+    if (!id) return console.warn('finalizarPagamento called without id');
+
+    console.log('finalizarPagamento called with id:', id);
+    console.log('Button clicked with id:', id);
+    getStatusHelper()('Carregando dados do pagamento...', true);
+
+    // Try to obtain payment data
+    let data = null;
+    try {
+      console.log('Fetching payment data...');
+      if (financeiroClient && typeof financeiroClient.get === 'function') {
+        console.log('Using financeiroClient.get');
+        data = await financeiroClient.get(id);
+      } else {
+        console.log('Using fetch API');
+        const r = await fetch(`/financeiro/api/${id}`, { headers: { 'Accept': 'application/json' } });
+        console.log('Fetch response status:', r.status);
+        if (r.ok) {
+          data = await r.json();
+          console.log('Fetched data:', data);
+        } else {
+          throw new Error(`HTTP ${r.status}: ${r.statusText}`);
+        }
+      }
+    } catch (err) {
+      console.error('Could not fetch payment data:', err);
+      getStatusHelper()('Erro ao carregar dados do pagamento.', false);
+      return;
+    }
+
+    if (!data || !data.data) {
+      console.warn('No data received from API');
+      getStatusHelper()('Dados do pagamento não encontrados.', false);
+      return;
+    }
+
+    // Extract the payment data from the API response
+    const paymentData = data.data;
+    console.log('Payment data loaded successfully:', paymentData);
+
+    // Build the redirect URL with query parameters
+    let redirectUrl = '/financeiro/registrar-pagamento';
+    const params = new URLSearchParams();
+    
+    if (paymentData.data) params.append('data', paymentData.data);
+    if (paymentData.cliente && paymentData.cliente.id) params.append('cliente_id', paymentData.cliente.id);
+    if (paymentData.artista && paymentData.artista.id) params.append('artista_id', paymentData.artista.id);
+    if (paymentData.valor) params.append('valor', paymentData.valor);
+    if (paymentData.forma_pagamento) params.append('forma_pagamento', paymentData.forma_pagamento);
+    if (paymentData.observacoes) params.append('observacoes', paymentData.observacoes);
+    
+    redirectUrl += '?' + params.toString();
+    console.log('Redirecting to:', redirectUrl);
+    
+    // Redirect to the registrar_pagamento page with pre-filled data
+    window.location.href = redirectUrl;
+  }
+
+  async function deletePagamento(id) {
+    if (!id) return console.warn('deletePagamento called without id');
+    if (!confirm('Tem certeza que deseja excluir este pagamento?')) return;
+    getStatusHelper()('Excluindo...', true);
+
+    try {
+      let payload;
+      if (financeiroClient && typeof financeiroClient.delete === 'function') {
+        payload = await financeiroClient.delete(id);
+      } else {
+        const r = await fetch(`${apiBase}/${id}`, { method: 'DELETE', headers: { 'Accept': 'application/json' } });
+        const ct = r.headers.get('Content-Type') || '';
+        if (ct.includes('application/json')) {
+          payload = await r.json();
+        } else {
+          // non-json (HTML error), read text and surface safe message
+          const text = await r.text();
+          throw new Error(`Server returned non-JSON response: ${r.status}`);
+        }
+      }
+
+      if (payload && payload.success) {
+        const removed = domHelpers && typeof domHelpers.removeRowById === 'function'
+          ? domHelpers.removeRowById('.table-wrapper table', id)
+          : false;
+
+        if (!removed) {
+          window.location.reload();
+          return;
+        }
+
+        getStatusHelper()(payload.message || 'Pagamento excluído.', true);
+      } else {
+        const msg = (payload && payload.message) || 'Erro ao excluir pagamento.';
+        getStatusHelper()(msg, false);
+      }
+    } catch (err) {
+      // handle HTML or text responses gracefully
+      const msg = (err && err.message) || 'Erro ao excluir pagamento.';
+      getStatusHelper()(msg, false);
+      console.error('deletePagamento error', err);
+    }
+  }
+
+  async function editPagamento(id) {
+    if (!id) return console.warn('editPagamento called without id');
+
+    getStatusHelper()('Carregando pagamento para edição...', true);
+
+    try {
+      let res;
+      if (financeiroClient && typeof financeiroClient.get === 'function') {
+        res = await financeiroClient.get(id);
+      } else {
+        const r = await fetch(`${apiBase}/${id}`, { headers: { 'Accept': 'application/json' } });
+        const ct = r.headers.get('Content-Type') || '';
+        if (ct.includes('application/json')) {
+          res = await r.json();
+        } else {
+          throw new Error('Server returned non-JSON response');
+        }
+      }
+
+      if (!res || !res.success) {
+        const msg = (res && res.message) || 'Erro ao carregar pagamento.';
+        getStatusHelper()(msg, false);
+        return;
+      }
+
+      const p = res.data;
+
+      // Build or reuse modal similar to inventory.js
+      let modal = document.getElementById('financeiro-edit-modal');
+      if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'financeiro-edit-modal';
+        modal.innerHTML = `
+          <div class="modal-overlay">
+            <div class="modal-container">
+              <div class="modal-scrollable">
+                <h2>Editar Pagamento</h2>
+                <form id="financeiro-edit-form">
+                  <label>Data:<br><input type="date" name="data" required></label><br><br>
+                  <label>Hora:<br><input type="time" name="hora"></label><br><br>
+                  <label>Valor:<br><input type="number" step="0.01" name="valor" required></label><br><br>
+                  <label>Forma de pagamento:<br>
+                    <select name="forma_pagamento" id="financeiro-edit-forma_pagamento"></select>
+                  </label><br><br>
+                  <label>Cliente:<br>
+                    <select name="cliente_id" id="financeiro-edit-cliente"></select>
+                  </label><br><br>
+                  <label>Artista:<br>
+                    <select name="artista_id" id="financeiro-edit-artista"></select>
+                  </label><br><br>
+                  <label>Observações:<br><textarea name="observacoes"></textarea></label><br><br>
+                </form>
+              </div>
+              <div class="modal-footer">
+                <button type="submit" form="financeiro-edit-form" class="button primary">Salvar</button>
+                <button type="button" id="financeiro-cancel-edit" class="button">Cancelar</button>
+              </div>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(modal);
+      }
+
+      // Fill selects from template hidden selects if present
+  const tmplCliente = document.getElementById('tmpl_cliente_select');
+  const tmplArtista = document.getElementById('tmpl_artista_select');
+  const tmplForma = document.getElementById('tmpl_forma_pagamento_select');
+  const clienteSelect = modal.querySelector('#financeiro-edit-cliente');
+  const artistaSelect = modal.querySelector('#financeiro-edit-artista');
+  const formaSelect = modal.querySelector('#financeiro-edit-forma_pagamento');
+
+  if (tmplCliente && clienteSelect) clienteSelect.innerHTML = tmplCliente.innerHTML;
+  if (tmplArtista && artistaSelect) artistaSelect.innerHTML = tmplArtista.innerHTML;
+  if (tmplForma && formaSelect) formaSelect.innerHTML = tmplForma.innerHTML;
+
+      // Prefill values
+      const form = modal.querySelector('#financeiro-edit-form');
+      form.elements['data'].value = p.data || '';
+      // hora might not be present; keep empty otherwise
+      form.elements['hora'].value = p.hora || '';
+      form.elements['valor'].value = (p.valor !== null && typeof p.valor !== 'undefined') ? p.valor : '';
+      // Prefill forma_pagamento select after cloning options
+      try {
+        if (form.elements['forma_pagamento']) form.elements['forma_pagamento'].value = p.forma_pagamento || '';
+      } catch (e) {
+        console.warn('Could not prefill forma_pagamento select', e);
+      }
+      if (p.cliente && p.cliente.id) form.elements['cliente_id'].value = p.cliente.id;
+      if (p.artista && p.artista.id) form.elements['artista_id'].value = p.artista.id;
+      form.elements['observacoes'].value = p.observacoes || '';
+
+      modal.style.display = 'block';
+
+      modal.querySelector('#financeiro-cancel-edit').onclick = function () {
+        modal.style.display = 'none';
+        modal.remove();
+      };
+
+      form.onsubmit = function (e) {
+        e.preventDefault();
+        getStatusHelper()('Salvando...', true);
+        const formData = new FormData(form);
+        // Client-side validation: forma_pagamento must be selected
+        const formaVal = formData.get('forma_pagamento');
+        const formaEl = form.querySelector('[name="forma_pagamento"]');
+        // remove previous error state
+        if (formaEl) { formaEl.classList.remove('modal-error'); const prev = form.querySelector('.field-error-msg'); if (prev) prev.remove(); }
+        if (!formaVal) {
+          getStatusHelper()('Escolha uma forma de pagamento.', false);
+          if (formaEl) {
+            formaEl.classList.add('modal-error');
+            const err = document.createElement('span'); err.className = 'field-error-msg'; err.textContent = 'Escolha uma forma de pagamento.'; formaEl.parentNode.appendChild(err);
+            formaEl.focus();
+          }
+          return;
+        }
+        const payload = {
+          data: formData.get('data') || null,
+          hora: formData.get('hora') || null,
+          valor: formData.get('valor') || null,
+          forma_pagamento: formData.get('forma_pagamento') || null,
+          cliente_id: formData.get('cliente_id') || null,
+          artista_id: formData.get('artista_id') || null,
+          observacoes: formData.get('observacoes') || null,
+        };
+
+        (async function () {
+          try {
+            let updated;
+            if (financeiroClient && typeof financeiroClient.update === 'function') {
+              updated = await financeiroClient.update(id, payload);
+            } else {
+              const r = await fetch(`${apiBase}/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                body: JSON.stringify(payload),
+              });
+              const ct = r.headers.get('Content-Type') || '';
+              if (ct.includes('application/json')) {
+                updated = await r.json();
+              } else {
+                throw new Error('Server returned non-JSON response');
+              }
+            }
+
+            if (updated && updated.success) {
+              // Update DOM row if present
+              const row = document.querySelector(`tr[data-id='${id}']`);
+              if (row) {
+                // update relevant columns (data, hora, cliente, artista, valor, forma_pagamento, observacoes)
+                const cols = row.querySelectorAll('td');
+                // Expect columns: Data, Hora, Cliente, Artista, Valor, Forma de pagamento, Observações, Opções
+                if (cols && cols.length >= 7) {
+                  cols[0].textContent = updated.data.data ? new Date(updated.data.data).toLocaleDateString() : '';
+                  cols[1].textContent = updated.data.hora || '';
+                  cols[2].textContent = (updated.data.cliente && updated.data.cliente.name) ? updated.data.cliente.name : 'Cliente não encontrado';
+                  cols[3].textContent = (updated.data.artista && updated.data.artista.name) ? updated.data.artista.name : 'Artista não encontrado';
+                  cols[4].textContent = (typeof updated.data.valor !== 'undefined' && updated.data.valor !== null) ? ('R$ ' + Number(updated.data.valor).toFixed(2)) : '';
+                  cols[5].textContent = updated.data.forma_pagamento || '';
+                  cols[6].textContent = updated.data.observacoes || '';
+                }
+              }
+
+              getStatusHelper()(updated.message || 'Pagamento atualizado.', true);
+              modal.style.display = 'none';
+              modal.remove();
+            } else {
+              const msg = (updated && updated.message) || 'Erro ao salvar pagamento.';
+              getStatusHelper()(msg, false);
+            }
+          } catch (err) {
+            const msg = (err && err.message) || 'Erro ao salvar pagamento.';
+            getStatusHelper()(msg, false);
+            console.error('editPagamento save error', err);
+          }
+        })();
+      };
+
+    } catch (err) {
+      const msg = (err && err.message) || 'Erro ao carregar pagamento.';
+      getStatusHelper()(msg, false);
+      console.error('editPagamento error', err);
+    }
+  }
+
+  function findRowId(el) {
+    if (!el) return null;
+    // Try navigating up to find the row
+    let current = el;
+    
+    // First log the element we're starting with
+    console.log('Finding row ID starting from:', current.tagName, current.className);
+    
+    // Look for parent tr with data-id
+    const tr = current.closest('tr');
+    console.log('Found parent tr:', tr ? 'yes' : 'no');
+    
+    if (tr) {
+      // Prefer dataset.id
+      if (tr.dataset && tr.dataset.id) {
+        console.log('Found ID from dataset:', tr.dataset.id);
+        return tr.dataset.id;
+      }
+      
+      // Try attribute
+      const attr = tr.getAttribute('data-id');
+      if (attr) {
+        console.log('Found ID from attribute:', attr);
+        return attr;
+      }
+      
+      console.log('TR found but no data-id', tr);
+    }
+    
+    // If all else fails, check the button itself
+    if (current.dataset && current.dataset.id) {
+      return current.dataset.id;
+    }
+    
+    console.log('No ID found');
+    return null;
+  }
+
+  // Wire events on DOMContentLoaded
+  document.addEventListener('DOMContentLoaded', function () {
+    console.log('DOM loaded, attaching event handlers');
+    // Attach handlers to finish/edit/delete buttons if present
+    document.querySelectorAll('.options-actions').forEach(span => {
+      const finishBtn = span.querySelector('.finish-btn');
+      const editBtn = span.querySelector('.edit-btn');
+      const delBtn = span.querySelector('.delete-btn');
+
+      if (finishBtn) finishBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        e.preventDefault();
+        const id = findRowId(this);
+        console.log('Finish button clicked, found id:', id);
+        if (!id) return console.warn('No data-id found for this row. Add data-id to <tr> in template.');
+        finalizarPagamento(id);
+      });
+
+      if (editBtn) editBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        const id = findRowId(this) || this.dataset.id;
+        if (!id) return console.warn('No data-id found for this row. Add data-id to <tr> in template.');
+        editPagamento(id);
+      });
+
+      if (delBtn) delBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        const id = findRowId(this) || this.dataset.id;
+        if (!id) return console.warn('No data-id found for this row. Add data-id to <tr> in template.');
+        deletePagamento(id);
+      });
+    });
+  });
+
+  // Expose for debugging
+  window.financeiroClient = financeiroClient;
+  window.financeiroHelpers = { deletePagamento, editPagamento, finalizarPagamento };
+
+})(typeof window !== 'undefined' ? window : this);

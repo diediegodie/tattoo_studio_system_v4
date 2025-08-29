@@ -106,10 +106,10 @@
       modal = document.createElement('div');
       modal.id = 'sessoes-edit-modal';
       modal.innerHTML = `
-        <div style="position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.5);z-index:10000;display:flex;align-items:center;justify-content:center;">
-          <div style="background:#fff;border-radius:8px;min-width:300px;max-width:90vw;max-height:90vh;display:flex;flex-direction:column;">
-            <div style="padding:2em 2em 1em 2em;overflow-y:auto;flex:1;">
-              <h2 style="margin-top:0;">Editar Sessão</h2>
+        <div class="modal-overlay">
+          <div class="modal-container">
+            <div class="modal-scrollable">
+              <h2>Editar Sessão</h2>
               <form id="sessoes-edit-form">
                 <label>Data:<br><input type="date" name="data" required></label><br><br>
                 <label>Hora:<br><input type="time" name="hora" required></label><br><br>
@@ -119,7 +119,7 @@
                 <label>Observações:<br><textarea name="observacoes"></textarea></label><br><br>
               </form>
             </div>
-            <div style="padding:1em 2em 2em 2em;border-top:1px solid #eee;display:flex;gap:8px;justify-content:flex-end;">
+            <div class="modal-footer">
               <button type="submit" form="sessoes-edit-form" class="button primary">Salvar</button>
               <button type="button" id="sessoes-cancel-edit" class="button">Cancelar</button>
             </div>
@@ -203,13 +203,32 @@
     form.onsubmit = function (e) {
       e.preventDefault();
       getStatusHelper()('Salvando alterações...', true);
-      
-      const fd = new FormData(form);
+      const data = new FormData(form);
+      // Client-side validation: ensure forma_pagamento is selected
+      const formaVal = data.get('forma_pagamento');
+      const formaEl = form.querySelector('[name="forma_pagamento"]');
+      if (formaEl) { formaEl.classList.remove('modal-error'); const prev = form.querySelector('.field-error-msg'); if (prev) prev.remove(); }
+      if (!formaVal) {
+        // Use the shared status helper for consistent UX
+        getStatusHelper()('Escolha uma forma de pagamento.', false);
+        if (formaEl) {
+          formaEl.classList.add('modal-error');
+          const err = document.createElement('span'); err.className = 'field-error-msg'; err.textContent = 'Escolha uma forma de pagamento.'; formaEl.parentNode.appendChild(err);
+          formaEl.focus();
+        }
+        return;
+      }
+
+      const params = new URLSearchParams();
+      for (const [k, v] of data.entries()) params.append(k, v);
+
+      // Build payload for PUT
+      const fd = data;
       const payload = {
         data: fd.get('data'),
         hora: fd.get('hora'),
-        cliente_id: parseInt(fd.get('cliente_id'), 10),
-        artista_id: parseInt(fd.get('artista_id'), 10),
+        cliente_id: parseInt(fd.get('cliente_id'), 10) || null,
+        artista_id: parseInt(fd.get('artista_id'), 10) || null,
         valor: parseFloat(fd.get('valor')) || 0,
         observacoes: fd.get('observacoes') || ''
       };
@@ -252,6 +271,69 @@
     };
   }
 
+  // Function to handle the Finalizar button - call server to finalize, then follow server redirect
+  async function finalizarSessao(button) {
+    // Get data from button data attributes
+    const id = button.dataset.id;
+    const data = button.dataset.data;
+    const clienteId = button.dataset.clienteId;
+    const artistaId = button.dataset.artistaId;
+    const valor = button.dataset.valor;
+    const observacoes = button.dataset.observacoes;
+
+    console.log('finalizarSessao called with data:', { id, data, clienteId, artistaId, valor, observacoes });
+
+    const statusHelper = getStatusHelper();
+    statusHelper('Finalizando sessão...', true);
+
+    try {
+      if (!id) throw new Error('Sessão inválida (sem id)');
+
+      const endpoint = `/sessoes/finalizar/${encodeURIComponent(id)}`;
+
+      // Try to read CSRF token from meta tag if present (common patterns)
+      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || null;
+
+      const headers = {};
+      if (csrfToken) {
+        // Add common header names for various CSRF setups
+        headers['X-CSRFToken'] = csrfToken;
+        headers['X-CSRF-Token'] = csrfToken;
+      }
+
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        credentials: 'same-origin', // include session cookie
+        headers: headers,
+        redirect: 'follow',
+      });
+
+      if (!res) throw new Error('No response from server');
+
+      // If server returned an error status, surface it
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        console.error('finalizarSessao: server error', res.status, text);
+        statusHelper('Erro ao finalizar sessão.', false);
+        return;
+      }
+
+      // Use the final response URL after redirects (Flask redirects to registrar_pagamento)
+      const finalUrl = res.url || res.headers.get('Location');
+      console.log('finalizarSessao: server responded, navigating to', finalUrl, 'redirected=', res.redirected);
+
+      if (finalUrl) {
+        window.location.href = finalUrl;
+      } else {
+        // Fallback to known page
+        window.location.href = '/financeiro/registrar-pagamento';
+      }
+    } catch (err) {
+      console.error('finalizarSessao error', err);
+      statusHelper('Erro ao finalizar sessão.', false);
+    }
+  }
+
   function findRowId(el) {
     if (!el) return null;
     const tr = el.closest('tr');
@@ -266,10 +348,21 @@
 
   // Wire events on DOMContentLoaded
   document.addEventListener('DOMContentLoaded', function () {
-    // Attach handlers to edit/delete buttons if present
+    console.log('DOM loaded, setting up event handlers');
+    // Attach handlers to finish/edit/delete buttons if present
     document.querySelectorAll('.options-actions').forEach(span => {
+      const finishBtn = span.querySelector('.finish-btn');
       const editBtn = span.querySelector('.edit-btn') || span.querySelector('button:nth-child(1)');
       const delBtn = span.querySelector('.delete-btn') || span.querySelector('button:nth-child(2)');
+
+      if (finishBtn) {
+        finishBtn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          e.preventDefault();
+          console.log('Finalizar button clicked with data-attributes:', this.dataset);
+          finalizarSessao(this);
+        });
+      }
 
       if (editBtn) editBtn.addEventListener('click', function (e) {
         e.stopPropagation();
@@ -289,6 +382,6 @@
 
   // Expose for debugging
   window.sessoesClient = sessoesClient;
-  window.sessoesHelpers = { deleteSessao, editSessao };
+  window.sessoesHelpers = { deleteSessao, editSessao, finalizarSessao };
 
 })(typeof window !== 'undefined' ? window : this);
