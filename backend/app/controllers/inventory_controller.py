@@ -7,16 +7,17 @@ This controller:
 - Can be easily extended without modification (Open/Closed)
 """
 
+from typing import Optional
 from flask import Blueprint, request, jsonify
 
 
 def api_response(
-    success: bool, message: str, data: dict = None, status_code: int = 200
+    success: bool, message: str, data: Optional[dict] = None, status_code: int = 200
 ):
     return jsonify({"success": success, "message": message, "data": data}), status_code
 
 
-from flask_login import login_required
+from flask_login import login_required, current_user
 from db.session import SessionLocal
 from repositories.inventory_repository import InventoryRepository
 from services.inventory_service import InventoryService

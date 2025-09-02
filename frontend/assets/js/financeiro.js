@@ -19,7 +19,13 @@
   const domHelpers = (typeof window !== 'undefined' && window.domHelpers) ? window.domHelpers : null;
 
   function getStatusHelper() {
-    return typeof window.showStatus === 'function' ? window.showStatus : function (msg, ok) { try { if (window.showToast) window.showToast(msg, ok ? 'success' : 'error', 3000); else console.log(msg); } catch(e){ console.log(msg); } };
+  return typeof window.showStatus === 'function' ? window.showStatus : function (msg, ok) { try { if (window.showToast) window.showToast(msg, ok ? 'success' : 'error', 8000); else console.log(msg); } catch(e){ console.log(msg); } };
+  }
+
+  // Async confirm helper to allow promise-based usage
+  function confirmAction(message) {
+    if (typeof window.confirm === 'function') return Promise.resolve(window.confirm(message));
+    return Promise.resolve(true);
   }
 
   // Function to handle the Finalizar button - this is the key functionality
@@ -83,8 +89,8 @@
   }
 
   async function deletePagamento(id) {
-    if (!id) return console.warn('deletePagamento called without id');
-    if (!confirm('Tem certeza que deseja excluir este pagamento?')) return;
+  if (!id) return console.warn('deletePagamento called without id');
+  if (!(await confirmAction('Tem certeza que deseja excluir este pagamento?'))) return;
     getStatusHelper()('Excluindo...', true);
 
     try {
@@ -92,7 +98,10 @@
       if (financeiroClient && typeof financeiroClient.delete === 'function') {
         payload = await financeiroClient.delete(id);
       } else {
-        const r = await fetch(`${apiBase}/${id}`, { method: 'DELETE', headers: { 'Accept': 'application/json' } });
+  const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || null;
+  const headers = { 'Accept': 'application/json' };
+  if (csrf) { headers['X-CSRFToken'] = csrf; headers['X-CSRF-Token'] = csrf; }
+  const r = await fetch(`${apiBase}/${id}`, { method: 'DELETE', headers: headers, credentials: 'same-origin' });
         const ct = r.headers.get('Content-Type') || '';
         if (ct.includes('application/json')) {
           payload = await r.json();

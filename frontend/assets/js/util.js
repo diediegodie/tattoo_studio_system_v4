@@ -611,7 +611,7 @@
 		return 'info';
 	}
 
-	window.showToast = function(message, category = 'info', duration = 3000) {
+	window.showToast = function(message, category = 'info', duration = 8000) {
 		try {
 			const container = ensureContainer();
 			const cat = mapCategory(category);
@@ -658,7 +658,7 @@
 					// category usually present as additional class
 					const category = classes.find(c => c !== 'flash-message') || 'info';
 					const text = item.textContent.trim();
-					if (text) window.showToast(text, category, 3000);
+					if (text) window.showToast(text, category, 6000);
 				});
 				// Remove the original container so it doesn't show twice
 				fc.remove();

@@ -9,29 +9,13 @@ from pathlib import Path
 import pytest
 from unittest.mock import Mock
 
-# Make sure the backend/app package is importable during pytest collection.
-# Insert backend directory at the front of sys.path so `import app.xxx` works.
-sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
-
-# Ensure test import paths are set up
 from tests.config import setup_test_imports
 
 setup_test_imports()
 
-# `tests.config.import_setup` adds both backend and backend/app to sys.path which can
-# cause `import app.services` to resolve `app` to the module file `backend/app/app.py`
-# instead of the `app` package. Remove the backend/app path so the package import
-# resolves to the directory package at `<workspace>/backend/app` via the backend entry.
-backend_dir = Path(__file__).resolve().parents[2]
-app_dir = backend_dir / "app"
-app_dir_str = str(app_dir)
-if app_dir_str in sys.path:
-    sys.path = [p for p in sys.path if p != app_dir_str]
-
-
 from app.services.inventory_service import InventoryService
 from tests.factories.repository_factories import InventoryRepositoryFactory
-from app.domain.entities import InventoryItem as DomainInventoryItem
+from domain.entities import InventoryItem as DomainInventoryItem
 
 
 @pytest.fixture

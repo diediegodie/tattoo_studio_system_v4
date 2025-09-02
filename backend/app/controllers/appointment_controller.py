@@ -18,7 +18,7 @@ from schemas.dtos import (
     AppointmentResponse,
     ErrorResponse,
 )
-from core.auth_decorators import jwt_required, get_current_user
+from flask_login import login_required, current_user
 
 
 appointment_bp = Blueprint("appointments", __name__, url_prefix="/api/appointments")
@@ -275,7 +275,7 @@ class AppointmentController:
 
 
 @appointment_bp.route("", methods=["POST"])
-@jwt_required
+@login_required
 def create_appointment():
     """Create appointment endpoint."""
     # In a real implementation, the controller would be injected with dependencies
@@ -285,14 +285,14 @@ def create_appointment():
 
 
 @appointment_bp.route("/<int:appointment_id>", methods=["GET"])
-@jwt_required
+@login_required
 def get_appointment(appointment_id: int):
     """Get appointment endpoint."""
     return jsonify({"message": f"Get appointment {appointment_id} - DI setup needed"})
 
 
 @appointment_bp.route("/<int:appointment_id>", methods=["PUT"])
-@jwt_required
+@login_required
 def update_appointment(appointment_id: int):
     """Update appointment endpoint."""
     return jsonify(
@@ -301,7 +301,7 @@ def update_appointment(appointment_id: int):
 
 
 @appointment_bp.route("/user/<int:user_id>", methods=["GET"])
-@jwt_required
+@login_required
 def get_user_appointments(user_id: int):
     """Get user appointments endpoint."""
     return jsonify(
@@ -310,7 +310,7 @@ def get_user_appointments(user_id: int):
 
 
 @appointment_bp.route("/<int:appointment_id>/cancel", methods=["POST"])
-@jwt_required
+@login_required
 def cancel_appointment(appointment_id: int):
     """Cancel appointment endpoint."""
     return jsonify(

@@ -188,3 +188,29 @@ class Pagamento(Base):
             f"<Pagamento(id={self.id}, data={self.data}, valor={self.valor}, "
             f"forma_pagamento={self.forma_pagamento}, sessao_id={self.sessao_id})>"
         )
+
+
+class Comissao(Base):
+    """Comissao model to record commissions for artists based on pagamentos."""
+
+    __tablename__ = "comissoes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    pagamento_id = Column(Integer, ForeignKey("pagamentos.id"), nullable=False)
+    artista_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    percentual = Column(Numeric(5, 2), nullable=False)
+    valor = Column(Numeric(10, 2), nullable=False)
+    observacoes = Column(String(255), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    pagamento = relationship(
+        "Pagamento", foreign_keys=[pagamento_id], backref="comissoes"
+    )
+    artista = relationship("User", foreign_keys=[artista_id])
+
+    def __repr__(self):
+        return (
+            f"<Comissao(id={self.id}, pagamento_id={self.pagamento_id}, artista_id={self.artista_id}, "
+            f"percentual={self.percentual}, valor={self.valor})>"
+        )

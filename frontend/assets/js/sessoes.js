@@ -19,12 +19,18 @@
   const domHelpers = (typeof window !== 'undefined' && window.domHelpers) ? window.domHelpers : null;
 
   function getStatusHelper() {
-    return typeof window.showStatus === 'function' ? window.showStatus : function (msg, ok) { try { if (window.showToast) window.showToast(msg, ok ? 'success' : 'error', 3000); else console.log(msg); } catch(e){ console.log(msg); } };
+  return typeof window.showStatus === 'function' ? window.showStatus : function (msg, ok) { try { if (window.showToast) window.showToast(msg, ok ? 'success' : 'error', 8000); else console.log(msg); } catch(e){ console.log(msg); } };
+  }
+
+  // Async confirm helper to allow promise-based usage
+  function confirmAction(message) {
+    if (typeof window.confirm === 'function') return Promise.resolve(window.confirm(message));
+    return Promise.resolve(true);
   }
 
   async function deleteSessao(id) {
     if (!id) return console.warn('deleteSessao called without id');
-    if (!confirm('Tem certeza que deseja excluir esta sessão?')) return;
+    if (!(await confirmAction('Tem certeza que deseja excluir esta sessão?'))) return;
 
     getStatusHelper()('Excluindo...', true);
 
@@ -33,8 +39,12 @@
       if (sessoesClient && typeof sessoesClient.delete === 'function') {
         res = await sessoesClient.delete(id);
       } else {
-        const r = await fetch(`/sessoes/api/${id}`, { method: 'DELETE', headers: { 'Accept': 'application/json' } });
-        res = await r.json();
+  const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || null;
+  const headers = { 'Accept': 'application/json' };
+  if (csrf) { headers['X-CSRFToken'] = csrf; headers['X-CSRF-Token'] = csrf; }
+  const r = await fetch(`/sessoes/api/${id}`, { method: 'DELETE', headers: headers, credentials: 'same-origin' });
+  const ct = r.headers.get('Content-Type') || '';
+  if (ct.includes('application/json')) res = await r.json(); else res = await r.json().catch(() => ({ success: false, message: 'Resposta inesperada do servidor.' }));
       }
 
       if (res && res.success) {
@@ -241,16 +251,21 @@
           if (sessoesClient && typeof sessoesClient.update === 'function') {
             res = await sessoesClient.update(id, payload);
           } else {
+            const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || null;
+            const headers = { 'Content-Type': 'application/json' };
+            if (csrf) { headers['X-CSRFToken'] = csrf; headers['X-CSRF-Token'] = csrf; }
             const r = await fetch(`/sessoes/api/${id}`, { 
               method: 'PUT', 
-              headers: { 'Content-Type': 'application/json' }, 
+              headers: headers,
+              credentials: 'same-origin',
               body: JSON.stringify(payload) 
             });
             
             if (!r.ok) {
               throw new Error(`HTTP ${r.status}: ${r.statusText}`);
             }
-            res = await r.json();
+            const ct = r.headers.get('Content-Type') || '';
+            if (ct.includes('application/json')) res = await r.json(); else res = await r.json().catch(() => ({ success: false, message: 'Resposta inesperada do servidor.' }));
           }
 
           if (res && res.success) {

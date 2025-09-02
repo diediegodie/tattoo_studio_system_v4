@@ -254,7 +254,8 @@ def create_app():
     @app.route("/historico")
     @login_required
     def historico():
-        return render_template("historico.html")
+        # Redirect to the SOLID-compliant historico controller
+        return redirect(url_for("historico.historico_home"))
 
     @app.route("/registrar_pagamento")
     @login_required
@@ -311,6 +312,7 @@ def create_app():
     from controllers.inventory_controller import inventory_bp
     from controllers.drag_drop_controller import drag_drop_bp
     from controllers.financeiro_controller import financeiro_bp
+    from controllers.historico_controller import historico_bp
 
     app.register_blueprint(api_bp)
     app.register_blueprint(auth_bp)
@@ -321,6 +323,7 @@ def create_app():
     app.register_blueprint(inventory_bp)
     app.register_blueprint(drag_drop_bp)
     app.register_blueprint(financeiro_bp)
+    app.register_blueprint(historico_bp)
 
     # Register OAuth blueprint - name already set at creation
     app.register_blueprint(google_oauth_bp, url_prefix="/auth")

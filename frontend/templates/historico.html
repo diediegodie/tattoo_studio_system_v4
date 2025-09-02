@@ -5,10 +5,11 @@
     <title>Histórico</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+    <!-- Historico uses JWT-based auth for API requests; no CSRF meta required -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}" />
 </head>
 
-<body class="is-preload">
+<body id="historico-page" class="is-preload">
 
     <!-- Wrapper -->
     <div id="wrapper">
@@ -44,25 +45,33 @@
                                         <th>Observações</th>
                                         <th>Opções</th>
                                     </tr>
-                                </thead>
+
+                                    <head>
                                 <tbody>
-                                    <tr>
-                                        <td>14/08/2025</td>
-                                        <td>João Silva</td>
-                                        <td>Alma Negra</td>
-                                        <td>R$ 500,00</td>
-                                        <td>Pix</td>
-                                        <td>Primeira sessão</td>
+                                    {% for p in pagamentos %}
+                                    <tr data-id="{{ p.id }}">
+                                        <td>{{ p.data.strftime('%d/%m/%Y') if p.data else '' }}</td>
+                                        <td>{{ p.cliente.name if p.cliente else '' }}</td>
+                                        <td>{{ p.artista.name if p.artista else '' }}</td>
+
+                                        <td>{{ p.forma_pagamento }}</td>
+                                        <td>{{ p.observacoes or '' }}</td>
                                         <td>
-                                            <button class="button small options-btn"
+                                            <button type="button" class="button small options-btn"
                                                 onclick="toggleOptions(this)">Opções</button>
                                             <span class="options-actions" style="display:none;">
-                                                <button class="button small" style="margin-right:0.5em;">Editar</button>
-                                                <button class="button small">Excluir</button>
+                                                <button class="button small edit-btn" data-id="{{ p.id }}"
+                                                    style="margin-right:0.5em;">Editar</button>
+                                                <button class="button small delete-btn"
+                                                    data-id="{{ p.id }}">Excluir</button>
                                             </span>
                                         </td>
                                     </tr>
-                                    <!-- Adicione mais linhas conforme necessário -->
+                                    {% else %}
+                                    <tr>
+                                        <td colspan="7">Nenhum pagamento encontrado.</td>
+                                    </tr>
+                                    {% endfor %}
                                 </tbody>
                             </table>
                         </div>
@@ -84,23 +93,32 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr>
-                                        <td>14/08/2025</td>
-                                        <td>Alma Negra</td>
-                                        <td>João Silva</td>
-                                        <td>R$ 500,00</td>
-                                        <td>R$ 100,00</td>
-                                        <td>Comissão sobre pagamento</td>
+                                    {% for c in comissoes %}
+                                    <tr data-id="com-{{ c.id }}">
+                                        <td>{{ c.created_at.strftime('%d/%m/%Y') if c.created_at else '' }}</td>
+                                        <td>{{ c.artista.name if c.artista else '' }}</td>
+                                        <td>{{ c.pagamento.cliente.name if c.pagamento and c.pagamento.cliente else ''
+                                            }}</td>
+                                        <td>{{ 'R$ %.2f' % c.pagamento.valor if c.pagamento and c.pagamento.valor is not
+                                            none else '' }}</td>
+                                        <td>{{ 'R$ %.2f' % c.valor }}</td>
+                                        <td>{{ c.observacoes or '' }}</td>
                                         <td>
-                                            <button class="button small options-btn"
+                                            <button type="button" class="button small options-btn"
                                                 onclick="toggleOptions(this)">Opções</button>
                                             <span class="options-actions" style="display:none;">
-                                                <button class="button small" style="margin-right:0.5em;">Editar</button>
-                                                <button class="button small">Excluir</button>
+                                                <button class="button small edit-comissao-btn" data-id="{{ c.id }}"
+                                                    style="margin-right:0.5em;">Editar</button>
+                                                <button class="button small delete-comissao-btn"
+                                                    data-id="{{ c.id }}">Excluir</button>
                                             </span>
                                         </td>
                                     </tr>
-                                    <!-- Adicione mais linhas conforme necessário -->
+                                    {% else %}
+                                    <tr>
+                                        <td colspan="7">Nenhuma comissão encontrada.</td>
+                                    </tr>
+                                    {% endfor %}
                                 </tbody>
                             </table>
                         </div>
@@ -121,22 +139,29 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr>
-                                        <td>14/08/2025</td>
-                                        <td>João Silva</td>
-                                        <td>Alma Negra</td>
-                                        <td>R$ 500,00</td>
-                                        <td>Primeira sessão</td>
+                                    {% for s in sessoes %}
+                                    <tr data-id="sess-{{ s.id }}">
+                                        <td>{{ s.data.strftime('%d/%m/%Y') if s.data else '' }}</td>
+                                        <td>{{ s.cliente.name if s.cliente else '' }}</td>
+                                        <td>{{ s.artista.name if s.artista else '' }}</td>
+                                        <td>{{ 'R$ %.2f' % s.valor if s.valor is not none else '' }}</td>
+                                        <td>{{ s.observacoes or '' }}</td>
                                         <td>
-                                            <button class="button small options-btn"
+                                            <button type="button" class="button small options-btn"
                                                 onclick="toggleOptions(this)">Opções</button>
                                             <span class="options-actions" style="display:none;">
-                                                <button class="button small" style="margin-right:0.5em;">Editar</button>
-                                                <button class="button small">Excluir</button>
+                                                <button class="button small edit-sessao-btn" data-id="{{ s.id }}"
+                                                    style="margin-right:0.5em;">Editar</button>
+                                                <button class="button small delete-sessao-btn"
+                                                    data-id="{{ s.id }}">Excluir</button>
                                             </span>
                                         </td>
                                     </tr>
-                                    <!-- Adicione mais linhas conforme necessário -->
+                                    {% else %}
+                                    <tr>
+                                        <td colspan="6">Nenhuma sessão encontrada.</td>
+                                    </tr>
+                                    {% endfor %}
                                 </tbody>
                             </table>
                         </div>
@@ -159,38 +184,38 @@
         </div>
 
         <!-- Sidebar -->
-		<div id="sidebar" class="inactive">
-			<div class="toggle"></div>
-			<div class="inner">
+        <div id="sidebar" class="inactive">
+            <div class="toggle"></div>
+            <div class="inner">
 
-				<!-- Search -->
-				<section id="search" class="alt">
-					<form method="post" action="#">
-						<input type="text" name="query" id="query" placeholder="Search" />
-					</form>
-				</section>
+                <!-- Search -->
+                <section id="search" class="alt">
+                    <form method="post" action="#">
+                        <input type="text" name="query" id="query" placeholder="Search" />
+                    </form>
+                </section>
 
-				<!-- Menu -->
-				<nav id="menu">
-					<header class="major">
-						<h2>Menu</h2>
-					</header>
-					<ul>
-						<li><a href="{{ url_for('index') }}">Homepage</a></li>
-						<li><a href="{{ url_for('client.client_list') }}">Clientes</a></li>
-						<li><a href="{{ url_for('calendar.calendar_page') }}">Agenda Google</a></li>
-						<li><a href="{{ url_for('estoque') }}">Estoque</a></li>
-						<li><a href="{{ url_for('sessoes') }}">Sessões</a></li>
-						<li><a href="{{ url_for('financeiro') }}">Financeiro</a></li>
-						<li><a href="{{ url_for('registrar_pagamento') }}">Registrar Pagamento</a></li>
-						<li><a href="{{ url_for('extrato') }}">Extrato</a></li>
-						<li><a href="{{ url_for('cadastro_interno') }}">Cadastro Interno</a></li>
-						<li><a href="{{ url_for('calculadora') }}">Calculadora</a></li>
-						<li><a href="{{ url_for('historico') }}">Historico</a></li>
-					</ul>
-				</nav>
-			</div>
-		</div>
+                <!-- Menu -->
+                <nav id="menu">
+                    <header class="major">
+                        <h2>Menu</h2>
+                    </header>
+                    <ul>
+                        <li><a href="{{ url_for('index') }}">Homepage</a></li>
+                        <li><a href="{{ url_for('client.client_list') }}">Clientes</a></li>
+                        <li><a href="{{ url_for('calendar.calendar_page') }}">Agenda Google</a></li>
+                        <li><a href="{{ url_for('estoque') }}">Estoque</a></li>
+                        <li><a href="{{ url_for('sessoes') }}">Sessões</a></li>
+                        <li><a href="{{ url_for('financeiro') }}">Financeiro</a></li>
+                        <li><a href="{{ url_for('registrar_pagamento') }}">Registrar Pagamento</a></li>
+                        <li><a href="{{ url_for('extrato') }}">Extrato</a></li>
+                        <li><a href="{{ url_for('cadastro_interno') }}">Cadastro Interno</a></li>
+                        <li><a href="{{ url_for('calculadora') }}">Calculadora</a></li>
+                        <li><a href="{{ url_for('historico') }}">Historico</a></li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
 
     </div>
 
@@ -200,6 +225,9 @@
     <script src="{{ url_for('static', filename='js/breakpoints.min.js') }}"></script>
     <script src="{{ url_for('static', filename='js/util.js') }}"></script>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/financeiro.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/sessoes.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/historico.js') }}"></script>
 
 </body>
 

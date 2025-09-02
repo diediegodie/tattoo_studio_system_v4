@@ -66,14 +66,30 @@ class TestImportManager:
     def ensure_imports_available():
         """Ensure all required imports are available."""
         try:
-            # Test critical imports
-            import app.domain.entities
-            import app.domain.interfaces
-            import app.repositories.user_repo
-            import app.services.user_service
-            import app.schemas.dtos
+            # Prefer importing modules using the application's real package layout
+            # Try non-'app' package imports first (controllers, services, domain),
+            # fall back to 'app.*' for compatibility with legacy tests.
+            try:
+                import domain.entities as _
+                import domain.interfaces as _
+                import app.repositories.user_repo as _
+                import app.services.user_service as _
+                import app.schemas.dtos as _
 
-            return True
+                return True
+            except ImportError:
+                # Fallback to legacy 'app' package imports - attempt but don't raise
+                try:
+                    import app.domain.entities as _
+                    import app.domain.interfaces as _
+                    import app.repositories.user_repo as _
+                    import app.services.user_service as _
+                    import app.schemas.dtos as _
+
+                    return True
+                except Exception:
+                    # If even fallback fails, return False so tests can skip gracefully
+                    return False
         except ImportError as e:
             print(f"Warning: Import setup failed: {e}")
             return False

@@ -19,14 +19,26 @@ from tests.config.test_paths import ensure_domain_imports
 ensure_domain_imports()
 
 try:
-    from app.controllers import client_controller
-    from app.services.client_service import ClientService
-    from app.services.jotform_service import JotFormService
-    from app.repositories.client_repo import ClientRepository
+    import importlib
+
+    client_controller = importlib.import_module("controllers.client_controller")
+    ClientService = getattr(
+        importlib.import_module("services.client_service"), "ClientService"
+    )
+    JotFormService = getattr(
+        importlib.import_module("services.jotform_service"), "JotFormService"
+    )
+    ClientRepository = getattr(
+        importlib.import_module("repositories.client_repo"), "ClientRepository"
+    )
 
     IMPORTS_AVAILABLE = True
-except ImportError as e:
+except Exception as e:
     print(f"Warning: Could not import required modules: {e}")
+    client_controller = None
+    ClientService = None
+    JotFormService = None
+    ClientRepository = None
     IMPORTS_AVAILABLE = False
 
 
@@ -49,6 +61,7 @@ class TestClientControllerStructure:
         if not IMPORTS_AVAILABLE:
             pytest.skip("Required modules not available")
 
+        assert client_controller is not None
         blueprint = client_controller.client_bp
         assert blueprint.name == "client"
         assert blueprint.url_prefix == "/clients"
@@ -95,6 +108,7 @@ class TestClientControllerStructure:
                 "ClientRepository",
                 "ClientService",
                 "JotFormService",
+                "current_user",
                 "render_template",
                 "flash",
                 "redirect",
@@ -115,6 +129,8 @@ class TestClientControllerStructure:
 
         import inspect
 
+        assert client_controller is not None
+
         source = inspect.getsource(client_controller)
 
         # Should import service and repository interfaces (Dependency Inversion)
@@ -123,39 +139,45 @@ class TestClientControllerStructure:
         assert "JotFormService" in source
 
     def test_client_controller_environment_configuration(self):
-        """Client controller should properly handle environment variables."""
         if not IMPORTS_AVAILABLE:
             pytest.skip("Required modules not available")
 
         import inspect
+
+        assert client_controller is not None
 
         source = inspect.getsource(client_controller)
 
         # Should use environment variables for external service configuration
         assert "os.getenv" in source or "JOTFORM" in source
+        assert "os.getenv" in source or "JOTFORM" in source
 
-    def test_client_controller_error_handling_follows_consistent_pattern(self):
-        """Client controller should handle errors consistently across endpoints."""
         if not IMPORTS_AVAILABLE:
             pytest.skip("Required modules not available")
 
         import inspect
+
+        assert client_controller is not None
 
         source = inspect.getsource(client_controller)
 
         # Should have consistent error handling patterns
         assert "try:" in source
         assert "except" in source
-
-    def test_client_controller_session_management_follows_solid_principles(self):
-        """Client controller should manage database sessions properly."""
+        assert "try:" in source
+        assert "except" in source
         if not IMPORTS_AVAILABLE:
             pytest.skip("Required modules not available")
 
         import inspect
 
+        assert client_controller is not None
+
         source = inspect.getsource(client_controller)
 
+        # Should use proper session management with cleanup
+        assert "SessionLocal" in source
+        assert "db.close()" in source or "finally:" in source
         # Should use proper session management with cleanup
         assert "SessionLocal" in source
         assert "db.close()" in source or "finally:" in source

@@ -8,7 +8,7 @@ This controller:
 """
 
 from flask import Blueprint, render_template, jsonify, flash, redirect, url_for
-from flask_login import login_required
+from flask_login import login_required, current_user
 from db.session import SessionLocal
 from repositories.client_repo import ClientRepository
 from services.client_service import ClientService

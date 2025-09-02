@@ -49,19 +49,20 @@ document.addEventListener('DOMContentLoaded', function() {
     form.addEventListener('submit', function(e) {
         e.preventDefault();
         const order = Array.from(tbody.querySelectorAll('tr[data-id]')).map(row => row.getAttribute('data-id'));
+        const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || null;
+        const headers = { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' };
+        if (csrf) { headers['X-CSRFToken'] = csrf; headers['X-CSRF-Token'] = csrf; }
         fetch(form.action, {
             method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
-            },
+            headers: headers,
+            credentials: 'same-origin',
             body: JSON.stringify({ order: order })
         })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
                 // Always reload inventory from backend to reflect new order
-                fetch('/inventory/')
+                fetch('/inventory/', { credentials: 'same-origin' })
                     .then(res => res.json())
                     .then(invData => {
                         // Replace local inventoryData and re-render if needed
@@ -74,9 +75,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         window.location.href = data.redirect_url;
                     });
             } else {
-                alert('Erro ao aplicar ordem.');
+                if (window.showToast) window.showToast('Erro ao aplicar ordem.', 'error');
             }
         })
-        .catch(() => alert('Erro na requisição.'));
+        .catch((err) => { console.error('Drag-drop submit error', err); if (window.showToast) window.showToast('Erro na requisição.', 'error'); });
     });
 });
