@@ -28,9 +28,9 @@ class TestSessionsAPI:
 
         mock_db = Mock()
 
-        # Patch the controller's SessionLocal directly
+        # Patch the controller's SessionLocal directly (adapted to controllers package)
         with patch(
-            "app.controllers.sessoes_controller.SessionLocal", return_value=mock_db
+            "controllers.sessoes_controller.SessionLocal", return_value=mock_db
         ), patch("flask_login.login_required", lambda f: f), patch(
             "flask_login.current_user", mock_user
         ):
@@ -117,10 +117,8 @@ class TestSessionsAPI:
         s.artista.name = "A"
 
         with patch(
-            "app.controllers.sessoes_controller.login_required", mock_login_required
-        ), patch(
-            "app.controllers.sessoes_controller.SessionLocal"
-        ) as mock_session_local:
+            "controllers.sessoes_controller.login_required", mock_login_required
+        ), patch("controllers.sessoes_controller.SessionLocal") as mock_session_local:
             mock_db = Mock()
             mock_session_local.return_value = mock_db
             # mock.get should return the session object
@@ -159,10 +157,8 @@ class TestSessionsAPI:
         s.artista.name = "A"
 
         with patch(
-            "app.controllers.sessoes_controller.login_required", mock_login_required
-        ), patch(
-            "app.controllers.sessoes_controller.SessionLocal"
-        ) as mock_session_local:
+            "controllers.sessoes_controller.login_required", mock_login_required
+        ), patch("controllers.sessoes_controller.SessionLocal") as mock_session_local:
             mock_db = Mock()
             mock_session_local.return_value = mock_db
             mock_db.query.return_value.get.return_value = s
@@ -184,14 +180,13 @@ class TestSessionsAPI:
     def test_api_endpoints_exist_and_accessible(self):
         """Sanity check that handlers exist and are importable."""
         try:
-            from app.controllers.sessoes_controller import (
-                api_list_sessoes,
-                api_get_sessao,
-                api_update_sessao,
-            )
+            mod = importlib.import_module("controllers.sessoes_controller")
+            api_list_sessoes = getattr(mod, "api_list_sessoes", None)
+            api_get_sessao = getattr(mod, "api_get_sessao", None)
+            api_update_sessao = getattr(mod, "api_update_sessao", None)
 
             assert callable(api_list_sessoes)
             assert callable(api_get_sessao)
             assert callable(api_update_sessao)
-        except ImportError as e:
+        except Exception as e:
             pytest.fail(f"Required API endpoints are not available: {e}")

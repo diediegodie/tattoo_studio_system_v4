@@ -19,7 +19,7 @@ async function loadInventory() {
         if (inventoryClient && typeof inventoryClient.getAll === 'function') {
             inventoryData = await inventoryClient.getAll();
         } else {
-            const response = await fetch('/inventory/');
+            const response = await fetch('/inventory/', { credentials: 'same-origin' });
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             inventoryData = await response.json();
         }
@@ -152,12 +152,13 @@ async function changeQuantity(id, delta) {
     highlightLowQuantity();
     // Sync with backend
     try {
+        const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || null;
+        const headers = { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' };
+        if (csrf) { headers['X-CSRFToken'] = csrf; headers['X-CSRF-Token'] = csrf; }
         const response = await fetch(`/inventory/${id}/quantity`, {
             method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
-            },
+            headers: headers,
+            credentials: 'same-origin',
             body: JSON.stringify({ delta: delta })
         });
         if (response.ok) {
@@ -177,7 +178,7 @@ async function changeQuantity(id, delta) {
 function editItem(id) {
     const item = inventoryData.find(i => i.id == id);
     if (!item) {
-        alert('Item não encontrado.');
+        if (window.showToast) window.showToast('Item não encontrado.', 'error');
         return;
     }
     let modal = document.getElementById('edit-modal');
@@ -218,9 +219,13 @@ function editItem(id) {
                 if (inventoryClient && typeof inventoryClient.update === 'function') {
                     json = await inventoryClient.update(id, payload);
                 } else {
+                    const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || null;
+                    const headers = { 'Content-Type': 'application/json' };
+                    if (csrf) { headers['X-CSRFToken'] = csrf; headers['X-CSRF-Token'] = csrf; }
                     const res = await fetch(`/inventory/${id}`, {
                         method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: headers,
+                        credentials: 'same-origin',
                         body: JSON.stringify(payload)
                     });
                     json = await res.json();
@@ -247,15 +252,21 @@ function editItem(id) {
 
 // Excluir item
 function deleteItem(id) {
-    if (!confirm('Tem certeza que deseja excluir este item?')) return;
+    // use async confirm helper if available
+    if (typeof window.confirm === 'function') {
+        if (!window.confirm('Tem certeza que deseja excluir este item?')) return;
+    }
     showStatus('Excluindo...', true);
     (async function () {
         try {
             let json;
-            if (inventoryClient && typeof inventoryClient.delete === 'function') {
+                if (inventoryClient && typeof inventoryClient.delete === 'function') {
                 json = await inventoryClient.delete(id);
             } else {
-                const res = await fetch(`/inventory/${id}`, { method: 'DELETE' });
+                const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || null;
+                const headers = {};
+                if (csrf) { headers['X-CSRFToken'] = csrf; headers['X-CSRF-Token'] = csrf; }
+                const res = await fetch(`/inventory/${id}`, { method: 'DELETE', headers: headers, credentials: 'same-origin' });
                 json = await res.json();
             }
 
@@ -286,7 +297,7 @@ function showStatus(message, success = true) {
     // Thin wrapper: delegate to the global toast. Keep minimal fallback.
     try {
         if (window.showToast) {
-            window.showToast(message, success ? 'success' : 'error', 3000);
+            window.showToast(message, success ? 'success' : 'error', 8000);
             return;
         }
     } catch (e) {

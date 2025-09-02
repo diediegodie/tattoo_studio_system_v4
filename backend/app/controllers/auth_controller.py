@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify, make_response
 from typing import Dict
-from flask_login import login_required
+from flask_login import login_required, current_user
 
 from db.session import SessionLocal
 from repositories.user_repo import UserRepository

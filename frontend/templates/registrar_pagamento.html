@@ -103,6 +103,14 @@
                                             endif %}>Outros</option>
                                     </select>
                                 </div>
+                                <div style="flex:1 1 200px;min-width:180px;">
+                                    <label for="comissao_percent">Porcentagem de Comissão do Artista (%)</label>
+                                    <input type="number" name="comissao_percent" id="comissao_percent" min="0" max="100"
+                                        step="0.01" placeholder="Opcional" style="width:100%;"
+                                        value="{{ request.form.get('comissao_percent') or '' }}">
+                                    <small style="display:block;color:#666;margin-top:.25rem;">Deixe em branco ou zero
+                                        para não registrar comissão</small>
+                                </div>
                                 <div style="flex:1 1 100%;min-width:180px;">
                                     <label for="observacoes">Observações</label>
                                     <textarea name="observacoes" id="observacoes" rows="3"

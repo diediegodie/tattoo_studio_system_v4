@@ -3,16 +3,8 @@ Example protected routes demonstrating JWT authentication decorators.
 These routes show different authentication patterns.
 """
 
-from flask import Blueprint, jsonify, g, request, make_response
-from flask_login import logout_user
-from flask_login import current_user
-
-from core.auth_decorators import (
-    jwt_required,
-    jwt_optional,
-    login_required_hybrid,
-    get_current_user,
-)
+from flask import Blueprint, jsonify, request, make_response
+from flask_login import logout_user, current_user, login_required
 
 # Create a blueprint for API routes
 api_bp = Blueprint("api", __name__, url_prefix="/api")
@@ -33,14 +25,14 @@ def api_logout():
 
 
 @api_bp.route("/profile", methods=["GET"])
-@jwt_required
+@login_required
 def get_user_profile():
     """Get current user profile (JWT required).
 
     Example usage:
     curl -H "Authorization: Bearer <token>" http://localhost:5000/api/profile
     """
-    user = g.current_user
+    user = current_user
 
     return jsonify(
         {
@@ -58,7 +50,7 @@ def get_user_profile():
 
 
 @api_bp.route("/dashboard", methods=["GET"])
-@login_required_hybrid
+@login_required
 def dashboard():
     """Dashboard that works with both session and JWT auth.
 
@@ -66,28 +58,32 @@ def dashboard():
     1. Web browser with session cookie
     2. API client with JWT token
     """
-    user = get_current_user()
-
-    if not user:
+    # Using Flask-Login session user
+    user = current_user
+    if not user or not getattr(user, "is_authenticated", False):
         return jsonify({"error": "Authentication required"}), 401
-
     return jsonify(
         {
             "message": f"Welcome to your dashboard, {user.name}!",
             "user_id": user.id,
-            "auth_method": "jwt" if hasattr(g, "current_user") else "session",
+            "auth_method": "session",
         }
     )
 
 
 @api_bp.route("/public", methods=["GET"])
-@jwt_optional
 def public_endpoint():
     """Public endpoint with optional authentication.
 
     Returns different content for authenticated vs anonymous users.
     """
-    user = g.current_user
+    # Use Flask-Login's current_user for optional auth
+    try:
+        user = (
+            current_user if getattr(current_user, "is_authenticated", False) else None
+        )
+    except Exception:
+        user = None
 
     if user:
         return jsonify(
@@ -108,13 +104,13 @@ def public_endpoint():
 
 
 @api_bp.route("/admin", methods=["GET"])
-@jwt_required
+@login_required
 def admin_only():
     """Example admin-only endpoint.
 
     In a real app, you'd check user roles/permissions here.
     """
-    user = g.current_user
+    user = current_user
 
     # Example: Check if user has admin privileges
     # For now, just check if it's a specific email

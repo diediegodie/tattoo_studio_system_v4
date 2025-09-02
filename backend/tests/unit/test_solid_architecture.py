@@ -10,13 +10,14 @@ This test file demonstrates proper testing with the new:
 import pytest
 from unittest.mock import Mock, patch
 from datetime import datetime
+from typing import cast, Any
 
 # Import the new architecture components
 from domain.entities import User as DomainUser
 from domain.interfaces import IUserRepository
 from app.services.user_service import UserService
-from schemas.dtos import UserCreateRequest, UserResponse
-from repositories.user_repo import UserRepository
+from app.schemas.dtos import UserCreateRequest, UserResponse
+from app.repositories.user_repo import UserRepository
 
 
 class TestDomainEntities:
@@ -171,7 +172,6 @@ class TestUserRepositoryMapping:
         # Mock database session
         mock_db = Mock()
         repo = UserRepository(mock_db)
-
         # Create a simple mock that doesn't cause recursion
         class MockDbUser:
             def __init__(self):
@@ -185,7 +185,8 @@ class TestUserRepositoryMapping:
                 self.updated_at = datetime.now()
 
         mock_db_user = MockDbUser()
-        domain_user = repo._to_domain(mock_db_user)
+        # Cast to Any to satisfy static type checkers that expect the DB model type
+        domain_user = repo._to_domain(cast(Any, mock_db_user))
 
         assert isinstance(domain_user, DomainUser)
         assert domain_user.id == 123

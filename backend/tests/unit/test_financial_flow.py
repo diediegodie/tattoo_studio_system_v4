@@ -7,9 +7,9 @@ from datetime import date, time
 from decimal import Decimal
 from unittest.mock import Mock, patch, MagicMock
 
-from controllers.sessoes_controller import finalizar_sessao
-from controllers.financeiro_controller import registrar_pagamento
-from db.base import Sessao, Pagamento
+from app.controllers.sessoes_controller import finalizar_sessao
+from app.controllers.financeiro_controller import registrar_pagamento
+from app.db.base import Sessao, Pagamento
 from flask import Flask
 
 
@@ -224,12 +224,22 @@ class TestSessionListingFilter:
 
         with patch(
             "controllers.sessoes_controller.SessionLocal", return_value=mock_db_session
-        ), patch("controllers.sessoes_controller.render_template") as mock_render:
+        ), patch(
+            "controllers.sessoes_controller.render_template"
+        ) as mock_render, patch(
+            "controllers.sessoes_controller.flash"
+        ):
 
             # Act
-            from controllers.sessoes_controller import list_sessoes
+            from app.controllers.sessoes_controller import list_sessoes
 
-            result = list_sessoes()
+            # Prevent _get_user_service and any flash/url_for usage from requiring
+            # an active Flask request context by mocking the dependency and related helpers.
+            with patch(
+                "controllers.sessoes_controller._get_user_service"
+            ) as mock_get_user_svc:
+                mock_get_user_svc.return_value.list_artists.return_value = []
+                result = list_sessoes()
 
             # Assert
             mock_query.filter.assert_called_once()
@@ -268,4 +278,5 @@ class TestFinancialFlowIntegration:
         assert len(expected_flow) == 10
         assert "session" in expected_flow[0].lower()
         assert "payment" in expected_flow[5].lower()
-        assert "finalized" in expected_flow[9].lower()
+        # The final step describes that the session no longer appears in the active listing.
+        assert "no longer" in expected_flow[9].lower()
