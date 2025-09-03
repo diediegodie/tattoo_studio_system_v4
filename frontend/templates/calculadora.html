@@ -29,23 +29,25 @@
                     </header>
 
                     <section>
-                        <form id="calculadora-form" style="max-width:400px;margin:0 auto;">
-                            <div style="display:flex;flex-wrap:wrap;gap:1em;">
-                                <div style="flex:1 1 200px;min-width:180px;">
+                        <div class="calc-container">
+                            <form id="calculadora-form" class="box">
+                                <div class="calc-field">
                                     <label for="valor-total">Valor total</label>
                                     <input type="number" id="valor-total" name="valor-total" step="0.01" min="0"
-                                        required style="width:100%;">
+                                        required>
                                 </div>
-                                <div style="flex:1 1 200px;min-width:180px;">
+                                <div class="calc-field">
                                     <label for="porcentagem">Porcentagem (%)</label>
                                     <input type="number" id="porcentagem" name="porcentagem" step="0.01" min="0"
-                                        max="100" required style="width:100%;">
+                                        max="100" required>
                                 </div>
-                            </div>
-                            <div style="display:flex;justify-content:center;gap:1em;margin-top:2em;">
-                                <button type="submit" class="button primary">Calcular</button>
-                            </div>
-                        </form>
+                                <div class="calc-actions">
+                                    <button type="submit" class="button primary">Calcular</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Result modal will be injected by frontend/assets/js/calculadora.js -->
                     </section>
 
                     <script>
@@ -66,45 +68,46 @@
 
 
         <!-- Sidebar -->
-		<div id="sidebar" class="inactive">
-			<div class="toggle"></div>
-			<div class="inner">
+        <div id="sidebar" class="inactive">
+            <div class="toggle"></div>
+            <div class="inner">
 
-				<!-- Search -->
-				<section id="search" class="alt">
-					<form method="post" action="#">
-						<input type="text" name="query" id="query" placeholder="Search" />
-					</form>
-				</section>
+                <!-- Search -->
+                <section id="search" class="alt">
+                    <form method="post" action="#">
+                        <input type="text" name="query" id="query" placeholder="Search" />
+                    </form>
+                </section>
 
-				<!-- Menu -->
-				<nav id="menu">
-					<header class="major">
-						<h2>Menu</h2>
-					</header>
-					<ul>
-						<li><a href="{{ url_for('index') }}">Homepage</a></li>
-						<li><a href="{{ url_for('client.client_list') }}">Clientes</a></li>
-						<li><a href="{{ url_for('calendar.calendar_page') }}">Agenda Google</a></li>
-						<li><a href="{{ url_for('estoque') }}">Estoque</a></li>
-						<li><a href="{{ url_for('sessoes') }}">Sessões</a></li>
-						<li><a href="{{ url_for('financeiro') }}">Financeiro</a></li>
-						<li><a href="{{ url_for('registrar_pagamento') }}">Registrar Pagamento</a></li>
-						<li><a href="{{ url_for('extrato') }}">Extrato</a></li>
-						<li><a href="{{ url_for('cadastro_interno') }}">Cadastro Interno</a></li>
-						<li><a href="{{ url_for('calculadora') }}">Calculadora</a></li>
-						<li><a href="{{ url_for('historico') }}">Historico</a></li>
-					</ul>
-				</nav>
-			</div>
-		</div>
-        
+                <!-- Menu -->
+                <nav id="menu">
+                    <header class="major">
+                        <h2>Menu</h2>
+                    </header>
+                    <ul>
+                        <li><a href="{{ url_for('index') }}">Homepage</a></li>
+                        <li><a href="{{ url_for('client.client_list') }}">Clientes</a></li>
+                        <li><a href="{{ url_for('calendar.calendar_page') }}">Agenda Google</a></li>
+                        <li><a href="{{ url_for('estoque') }}">Estoque</a></li>
+                        <li><a href="{{ url_for('sessoes') }}">Sessões</a></li>
+                        <li><a href="{{ url_for('financeiro') }}">Financeiro</a></li>
+                        <li><a href="{{ url_for('registrar_pagamento') }}">Registrar Pagamento</a></li>
+                        <li><a href="{{ url_for('extrato') }}">Extrato</a></li>
+                        <li><a href="{{ url_for('cadastro_interno') }}">Cadastro Interno</a></li>
+                        <li><a href="{{ url_for('calculadora') }}">Calculadora</a></li>
+                        <li><a href="{{ url_for('historico') }}">Historico</a></li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+
         <!-- Scripts -->
         <script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
         <script src="{{ url_for('static', filename='js/browser.min.js') }}"></script>
         <script src="{{ url_for('static', filename='js/breakpoints.min.js') }}"></script>
         <script src="{{ url_for('static', filename='js/util.js') }}"></script>
         <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+        <script src="{{ url_for('static', filename='js/calculadora.js') }}"></script>
 
 </body>
 
