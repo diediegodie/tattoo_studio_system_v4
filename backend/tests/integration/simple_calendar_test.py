@@ -33,8 +33,8 @@ def test_basic_integration():
     # Test 2: Import Check
     print("\n2. Testing imports...")
     try:
-        from app.domain.entities import CalendarEvent
-        from app.domain.interfaces import ICalendarService
+        from domain.entities import CalendarEvent
+        from domain.interfaces import ICalendarService
         from app.services.google_calendar_service import GoogleCalendarService
         from app.controllers.calendar_controller import calendar_bp
 

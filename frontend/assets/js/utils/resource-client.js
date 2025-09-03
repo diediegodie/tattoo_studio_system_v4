@@ -79,8 +79,6 @@
     async function create(payload) {
       try {
         const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
-        const csrf = getCsrfToken();
-        if (csrf) { headers['X-CSRFToken'] = csrf; headers['X-CSRF-Token'] = csrf; }
         const res = await fetch(buildUrl(), {
           method: 'POST',
           headers: headers,
@@ -97,8 +95,6 @@
       if (typeof id === 'undefined' || id === null) throw new Error('update(id, payload) requires id');
       try {
         const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
-        const csrf = getCsrfToken();
-        if (csrf) { headers['X-CSRFToken'] = csrf; headers['X-CSRF-Token'] = csrf; }
         const res = await fetch(buildUrl(String(id)), {
           method: 'PUT',
           headers: headers,
@@ -114,10 +110,8 @@
     async function del(id) {
       if (typeof id === 'undefined' || id === null) throw new Error('delete(id) requires id');
       try {
-  const headers = { 'Accept': 'application/json' };
-  const csrf = getCsrfToken();
-  if (csrf) { headers['X-CSRFToken'] = csrf; headers['X-CSRF-Token'] = csrf; }
-  const res = await fetch(buildUrl(String(id)), { method: 'DELETE', headers: headers, credentials: 'same-origin' });
+        const headers = { 'Accept': 'application/json' };
+        const res = await fetch(buildUrl(String(id)), { method: 'DELETE', headers: headers, credentials: 'same-origin' });
         return handleResponse(res);
       } catch (err) {
         return handleError(err);

@@ -4,8 +4,8 @@ Script to force create the pagamentos table.
 
 from sqlalchemy import inspect
 
-from db.session import engine, Base
-from db.base import Pagamento  # Ensure the model is imported to be known by SQLAlchemy
+from app.db.session import engine, Base
+from app.db.base import Pagamento  # Ensure the model is imported to be known by SQLAlchemy
 
 
 def create_pagamentos_table():

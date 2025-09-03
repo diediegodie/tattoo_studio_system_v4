@@ -95,8 +95,10 @@
 													data-artista-id="{{ sessao.artista.id if sessao.artista else '' }}"
 													data-valor="{{ sessao.valor }}"
 													data-observacoes="{{ sessao.observacoes or '' }}">Finalizar</button>
-												<button class="button small edit-btn">Editar</button>
-												<button class="button small delete-btn">Excluir</button>
+												<button class="button small edit-sessao-btn"
+													data-id="{{ sessao.id }}">Editar</button>
+												<button class="button small delete-sessao-btn"
+													data-id="{{ sessao.id }}">Excluir</button>
 											</span>
 										</td>
 									</tr>

@@ -29,7 +29,8 @@
   }
 
   async function deleteSessao(id) {
-    if (!id) return console.warn('deleteSessao called without id');
+  console.log('sessoes.deleteSessao invoked with id:', id);
+  if (!id) return console.warn('deleteSessao called without id');
     if (!(await confirmAction('Tem certeza que deseja excluir esta sessão?'))) return;
 
     getStatusHelper()('Excluindo...', true);
@@ -39,17 +40,15 @@
       if (sessoesClient && typeof sessoesClient.delete === 'function') {
         res = await sessoesClient.delete(id);
       } else {
-  const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || null;
-  const headers = { 'Accept': 'application/json' };
-  if (csrf) { headers['X-CSRFToken'] = csrf; headers['X-CSRF-Token'] = csrf; }
-  const r = await fetch(`/sessoes/api/${id}`, { method: 'DELETE', headers: headers, credentials: 'same-origin' });
-  const ct = r.headers.get('Content-Type') || '';
-  if (ct.includes('application/json')) res = await r.json(); else res = await r.json().catch(() => ({ success: false, message: 'Resposta inesperada do servidor.' }));
+        const headers = { 'Accept': 'application/json' };
+        const r = await fetch(`/sessoes/api/${id}`, { method: 'DELETE', headers: headers, credentials: 'same-origin' });
+        const ct = r.headers.get('Content-Type') || '';
+        if (ct.includes('application/json')) res = await r.json(); else res = await r.json().catch(() => ({ success: false, message: 'Resposta inesperada do servidor.' }));
       }
 
       if (res && res.success) {
         const removed = domHelpers && typeof domHelpers.removeRowById === 'function'
-          ? domHelpers.removeRowById('.table-wrapper table', id)
+          ? domHelpers.removeRowById('.table-wrapper table', `sess-${id}`)
           : false;
 
         if (!removed) {
@@ -108,7 +107,7 @@
 
     // Extract the actual session data from the API response
     const sessionData = data.data || data; // Handle both wrapped and unwrapped responses
-    console.log('Session data loaded successfully:', sessionData);
+    console.log('[DEBUG] Session data loaded successfully:', sessionData);
 
     // Build or reuse a modal
     let modal = document.getElementById('sessoes-edit-modal');
@@ -167,15 +166,13 @@
         console.warn('Missing artista template or modal element');
       }
 
-      // Populate form fields with fetched data
-      console.log('Populating form fields with data:', sessionData);
+            // Populate form fields with fetched data
+      console.log('[DEBUG] Populating form fields with data:', sessionData);
       
       const dateField = form.querySelector('[name="data"]');
       const timeField = form.querySelector('[name="hora"]');
       const valueField = form.querySelector('[name="valor"]');
-      const obsField = form.querySelector('[name="observacoes"]');
-      
-      console.log('Form fields found:', { dateField, timeField, valueField, obsField });
+      const obsField = form.querySelector('[name="observacoes"]');      console.log('[DEBUG] Form fields found:', { dateField, timeField, valueField, obsField });
       
       if (dateField) dateField.value = sessionData.data || '';
       if (timeField) timeField.value = sessionData.hora || '';
@@ -187,15 +184,15 @@
       const clientId = sessionData.cliente ? sessionData.cliente.id : (sessionData.cliente_id || '');
       const artistId = sessionData.artista ? sessionData.artista.id : (sessionData.artista_id || '');
       
-      console.log('Setting dropdown values:', { clientId, artistId });
+      console.log('[DEBUG] Setting dropdown values:', { clientId, artistId });
       
       if (clientId && modalCliente) {
         modalCliente.value = clientId;
-        console.log('Set cliente_id to:', clientId, 'actual value:', modalCliente.value);
+        console.log('[DEBUG] Set cliente_id to:', clientId, 'actual value:', modalCliente.value);
       }
       if (artistId && modalArtista) {
         modalArtista.value = artistId;
-        console.log('Set artista_id to:', artistId, 'actual value:', modalArtista.value);
+        console.log('[DEBUG] Set artista_id to:', artistId, 'actual value:', modalArtista.value);
       }
       
     } catch (e) {
@@ -214,19 +211,19 @@
       e.preventDefault();
       getStatusHelper()('Salvando alterações...', true);
       const data = new FormData(form);
-      // Client-side validation: ensure forma_pagamento is selected
-      const formaVal = data.get('forma_pagamento');
-      const formaEl = form.querySelector('[name="forma_pagamento"]');
-      if (formaEl) { formaEl.classList.remove('modal-error'); const prev = form.querySelector('.field-error-msg'); if (prev) prev.remove(); }
-      if (!formaVal) {
-        // Use the shared status helper for consistent UX
-        getStatusHelper()('Escolha uma forma de pagamento.', false);
-        if (formaEl) {
-          formaEl.classList.add('modal-error');
-          const err = document.createElement('span'); err.className = 'field-error-msg'; err.textContent = 'Escolha uma forma de pagamento.'; formaEl.parentNode.appendChild(err);
-          formaEl.focus();
+      // Client-side validation: ensure required fields are present
+      const requiredFields = ['data', 'hora', 'cliente_id', 'artista_id', 'valor'];
+      for (const fieldName of requiredFields) {
+        const fieldEl = form.querySelector(`[name="${fieldName}"]`);
+        if (fieldEl && (!data.get(fieldName) || data.get(fieldName).trim() === '')) {
+          getStatusHelper()(`Campo ${fieldName} é obrigatório.`, false);
+          if (fieldEl) {
+            fieldEl.classList.add('modal-error');
+            const err = document.createElement('span'); err.className = 'field-error-msg'; err.textContent = `Campo ${fieldName} é obrigatório.`; fieldEl.parentNode.appendChild(err);
+            fieldEl.focus();
+          }
+          return;
         }
-        return;
       }
 
       const params = new URLSearchParams();
@@ -243,7 +240,11 @@
         observacoes: fd.get('observacoes') || ''
       };
 
-      console.log('Submitting payload:', payload);
+      console.log('[DEBUG] Submitting payload:', payload);
+
+      // Debug: Log the actual request details
+      console.log('[DEBUG] Sending PUT request to:', `/sessoes/api/${id}`);
+      console.log('[DEBUG] Payload keys:', Object.keys(payload));
 
       (async function () {
         try {
@@ -251,9 +252,7 @@
           if (sessoesClient && typeof sessoesClient.update === 'function') {
             res = await sessoesClient.update(id, payload);
           } else {
-            const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || null;
             const headers = { 'Content-Type': 'application/json' };
-            if (csrf) { headers['X-CSRFToken'] = csrf; headers['X-CSRF-Token'] = csrf; }
             const r = await fetch(`/sessoes/api/${id}`, { 
               method: 'PUT', 
               headers: headers,
@@ -306,15 +305,7 @@
 
       const endpoint = `/sessoes/finalizar/${encodeURIComponent(id)}`;
 
-      // Try to read CSRF token from meta tag if present (common patterns)
-      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || null;
-
-      const headers = {};
-      if (csrfToken) {
-        // Add common header names for various CSRF setups
-        headers['X-CSRFToken'] = csrfToken;
-        headers['X-CSRF-Token'] = csrfToken;
-      }
+      const headers = { 'Accept': 'application/json' };
 
       const res = await fetch(endpoint, {
         method: 'POST',
@@ -354,44 +345,63 @@
     const tr = el.closest('tr');
     if (!tr) return null;
     // Prefer dataset.id
-    if (tr.dataset && tr.dataset.id) return tr.dataset.id;
+    if (tr.dataset && tr.dataset.id) {
+      const raw = String(tr.dataset.id);
+      const m = raw.match(/^(?:sess|com)-(.+)$/);
+      return m ? m[1] : raw;
+    }
     // Try attribute
     const attr = tr.getAttribute('data-id') || tr.getAttribute('data-id');
-    if (attr) return attr;
+    if (attr) {
+      const raw = String(attr);
+      const m = raw.match(/^(?:sess|com)-(.+)$/);
+      return m ? m[1] : raw;
+    }
     return null;
   }
 
-  // Wire events on DOMContentLoaded
+  // Wire events on DOMContentLoaded - Use event delegation for dynamic buttons
   document.addEventListener('DOMContentLoaded', function () {
-    console.log('DOM loaded, setting up event handlers');
-    // Attach handlers to finish/edit/delete buttons if present
-    document.querySelectorAll('.options-actions').forEach(span => {
-      const finishBtn = span.querySelector('.finish-btn');
-      const editBtn = span.querySelector('.edit-btn') || span.querySelector('button:nth-child(1)');
-      const delBtn = span.querySelector('.delete-btn') || span.querySelector('button:nth-child(2)');
+    console.log('[sessoes] Event delegation handlers bound');
 
-      if (finishBtn) {
-        finishBtn.addEventListener('click', function (e) {
-          e.stopPropagation();
-          e.preventDefault();
-          console.log('Finalizar button clicked with data-attributes:', this.dataset);
-          finalizarSessao(this);
-        });
+    // Use event delegation to handle dynamically added session buttons
+    document.addEventListener('click', function(e) {
+      // Handle session edit buttons
+      const editBtn = e.target.closest('.edit-sessao-btn');
+      if (editBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        const id = editBtn.dataset.id || editBtn.getAttribute('data-id');
+        if (!id) {
+          console.warn('[sessoes] No data-id found for edit button');
+          return;
+        }
+        editSessao(id);
+        return;
       }
 
-      if (editBtn) editBtn.addEventListener('click', function (e) {
+      // Handle session delete buttons
+      const delBtn = e.target.closest('.delete-sessao-btn');
+      if (delBtn) {
+        e.preventDefault();
         e.stopPropagation();
-        const id = findRowId(this) || this.dataset.id;
-        if (!id) return console.warn('No data-id found for this row. Add data-id to <tr> in template.');
-        editSessao(id);
-      });
-
-      if (delBtn) delBtn.addEventListener('click', function (e) {
-        e.stopPropagation();
-        const id = findRowId(this) || this.dataset.id;
-        if (!id) return console.warn('No data-id found for this row. Add data-id to <tr> in template.');
+        const id = delBtn.dataset.id || delBtn.getAttribute('data-id');
+        if (!id) {
+          console.warn('[sessoes] No data-id found for delete button');
+          return;
+        }
         deleteSessao(id);
-      });
+        return;
+      }
+
+      // Handle finish buttons (legacy support)
+      const finishBtn = e.target.closest('.finish-btn');
+      if (finishBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        finalizarSessao(finishBtn);
+        return;
+      }
     });
   });
 

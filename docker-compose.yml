@@ -32,6 +32,7 @@ services:
       - .env
     environment:
       - [REDACTED_DATABASE_URL]
+      - FLASK_APP=${FLASK_APP:-app.py}
       - FLASK_ENV=${FLASK_ENV:-development}
       - FLASK_DEBUG=${FLASK_DEBUG:-1}
       - FLASK_SECRET_KEY=${FLASK_SECRET_KEY:-dev-secret-change-me}
