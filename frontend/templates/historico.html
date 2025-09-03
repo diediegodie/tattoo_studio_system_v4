@@ -29,6 +29,22 @@
                         <h1>Histórico</h1>
                     </header>
 
+                    <!-- Template selects for edit modal (hidden, reuse server-rendered options) -->
+                    <div id="template-selects" style="display:none;">
+                        <select id="tmpl_cliente_select">
+                            <option value="">Selecione...</option>
+                            {% for client in clients %}
+                            <option value="{{ client.id }}">{{ client.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <select id="tmpl_artista_select">
+                            <option value="">Selecione...</option>
+                            {% for artist in artists %}
+                            <option value="{{ artist.id }}">{{ artist.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
                     <section>
                         <header class="major">
                             <h2>Pagamentos</h2>
@@ -45,14 +61,14 @@
                                         <th>Observações</th>
                                         <th>Opções</th>
                                     </tr>
-
-                                    <head>
+                                </thead>
                                 <tbody>
                                     {% for p in pagamentos %}
                                     <tr data-id="{{ p.id }}">
                                         <td>{{ p.data.strftime('%d/%m/%Y') if p.data else '' }}</td>
                                         <td>{{ p.cliente.name if p.cliente else '' }}</td>
                                         <td>{{ p.artista.name if p.artista else '' }}</td>
+                                        <td>{{ 'R$ %.2f' % p.valor if p.valor is not none else '' }}</td>
 
                                         <td>{{ p.forma_pagamento }}</td>
                                         <td>{{ p.observacoes or '' }}</td>
@@ -60,9 +76,9 @@
                                             <button type="button" class="button small options-btn"
                                                 onclick="toggleOptions(this)">Opções</button>
                                             <span class="options-actions" style="display:none;">
-                                                <button class="button small edit-btn" data-id="{{ p.id }}"
+                                                <button class="button small edit-pagamento-btn" data-id="{{ p.id }}"
                                                     style="margin-right:0.5em;">Editar</button>
-                                                <button class="button small delete-btn"
+                                                <button class="button small delete-pagamento-btn"
                                                     data-id="{{ p.id }}">Excluir</button>
                                             </span>
                                         </td>
@@ -167,17 +183,6 @@
                         </div>
                     </section>
 
-                    <script>
-                        function toggleOptions(btn) {
-                            var actions = btn.nextElementSibling;
-                            if (actions.style.display === "none" || actions.style.display === "") {
-                                actions.style.display = "inline-block";
-                            } else {
-                                actions.style.display = "none";
-                            }
-                        }
-                    </script>
-
                 </section>
 
             </div>
@@ -225,6 +230,20 @@
     <script src="{{ url_for('static', filename='js/breakpoints.min.js') }}"></script>
     <script src="{{ url_for('static', filename='js/util.js') }}"></script>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script>
+        // Define toggleOptions function before other scripts
+        function toggleOptions(btn) {
+            var actions = btn.nextElementSibling;
+            if (actions.style.display === "none" || actions.style.display === "") {
+                actions.style.display = "inline-block";
+            } else {
+                actions.style.display = "none";
+            }
+        }
+    </script>
+    <!-- Utility scripts required by financeiro/sessoes/historico -->
+    <script src="{{ url_for('static', filename='js/utils/dom-helpers.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/utils/resource-client.js') }}"></script>
     <script src="{{ url_for('static', filename='js/financeiro.js') }}"></script>
     <script src="{{ url_for('static', filename='js/sessoes.js') }}"></script>
     <script src="{{ url_for('static', filename='js/historico.js') }}"></script>

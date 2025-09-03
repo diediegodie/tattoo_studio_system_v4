@@ -94,12 +94,12 @@ function renderInventory() {
         spanActions.className = 'options-actions';
         spanActions.style.display = 'none';
         const btnEdit = document.createElement('button');
-        btnEdit.className = 'button small edit-btn';
+        btnEdit.className = 'button small edit-item-btn';
         btnEdit.textContent = 'Editar';
         btnEdit.onclick = function(e) { e.stopPropagation(); editItem(item.id); };
         spanActions.appendChild(btnEdit);
         const btnDelete = document.createElement('button');
-        btnDelete.className = 'button small delete-btn';
+        btnDelete.className = 'button small delete-item-btn';
         btnDelete.textContent = 'Excluir';
         btnDelete.onclick = function(e) { e.stopPropagation(); deleteItem(item.id); };
         spanActions.appendChild(btnDelete);

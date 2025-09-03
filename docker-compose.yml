@@ -32,6 +32,7 @@ services:
       - .env
     environment:
       - DATABASE_URL=${DATABASE_URL:-postgresql://admin:secret123@db:5432/tattoo_studio}
+      - FLASK_APP=${FLASK_APP:-app.py}
       - FLASK_ENV=${FLASK_ENV:-development}
       - FLASK_DEBUG=${FLASK_DEBUG:-1}
       - FLASK_SECRET_KEY=${FLASK_SECRET_KEY:-dev-secret-change-me}

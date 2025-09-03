@@ -137,9 +137,54 @@ def test_database_connection():
 
 
 def create_app():
-    # Use absolute paths for Docker container
-    template_folder = "/app/frontend/templates"
-    static_folder = "/app/frontend/assets"
+    # Calculate paths based on the actual file system structure
+    script_dir = os.path.dirname(
+        os.path.abspath(__file__)
+    )  # backend/app (local) or /app/app (Docker)
+
+    # Check if we're in Docker by looking for the /app mount point
+    if script_dir.startswith("/app"):
+        # Running in Docker container
+        # In Docker: script is at /app/app/main.py, frontend is at /app/frontend
+        template_folder = "/app/frontend/templates"
+        static_folder = "/app/frontend/assets"
+        print("[DEBUG] Detected Docker environment")
+    else:
+        # Running locally
+        # Local: script is at /path/to/project/backend/app/main.py
+        # Need to go up: backend/app -> backend -> project-root -> frontend
+        backend_dir = os.path.dirname(script_dir)  # backend
+        project_root = os.path.dirname(backend_dir)  # project-root
+        template_folder = os.path.join(project_root, "frontend", "templates")
+        static_folder = os.path.join(project_root, "frontend", "assets")
+        print("[DEBUG] Detected local environment")
+
+    print(f"[DEBUG] Script dir: {script_dir}")
+    print(f"[DEBUG] Template folder: {template_folder}")
+    print(f"[DEBUG] Static folder: {static_folder}")
+    print(f"[DEBUG] Current working directory: {os.getcwd()}")
+    print(f"[DEBUG] Template folder exists: {os.path.exists(template_folder)}")
+
+    if os.path.exists(template_folder):
+        print(
+            f"[DEBUG] Index.html exists: {os.path.exists(os.path.join(template_folder, 'index.html'))}"
+        )
+        print(
+            f"[DEBUG] Contents of template folder: {os.listdir(template_folder)[:5]}..."
+        )  # Show first 5 files
+    else:
+        print(f"[DEBUG] Template folder does not exist at: {template_folder}")
+        # Try to find it in alternative locations
+        alt_paths = [
+            "/app/frontend/templates",
+            "../frontend/templates",
+            "./frontend/templates",
+            os.path.join(os.getcwd(), "frontend", "templates"),
+        ]
+        for alt_path in alt_paths:
+            exists = os.path.exists(alt_path)
+            print(f"[DEBUG] Alternative path {alt_path} exists: {exists}")
+
     app = Flask(
         __name__,
         template_folder=template_folder,

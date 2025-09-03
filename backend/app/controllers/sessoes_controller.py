@@ -375,13 +375,15 @@ def api_update_sessao(sessao_id: int):
         if not s:
             return api_response(False, "Sessão não encontrada", None, 404)
 
-        # Server-side validation: forma_pagamento must be present and non-empty
-        if (
-            "forma_pagamento" not in payload
-            or payload.get("forma_pagamento") is None
-            or str(payload.get("forma_pagamento")).strip() == ""
-        ):
-            return api_response(False, "Forma de pagamento obrigatória", None, 400)
+        # Server-side validation: ensure required fields are present
+        required_fields = ["data", "hora", "cliente_id", "artista_id", "valor"]
+        for field in required_fields:
+            if (
+                field not in payload
+                or payload.get(field) is None
+                or str(payload.get(field)).strip() == ""
+            ):
+                return api_response(False, f"Campo {field} é obrigatório", None, 400)
 
         # Update fields if provided
         try:

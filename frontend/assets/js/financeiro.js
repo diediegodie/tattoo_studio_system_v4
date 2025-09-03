@@ -89,6 +89,7 @@
   }
 
   async function deletePagamento(id) {
+  console.log('financeiro.deletePagamento invoked with id:', id);
   if (!id) return console.warn('deletePagamento called without id');
   if (!(await confirmAction('Tem certeza que deseja excluir este pagamento?'))) return;
     getStatusHelper()('Excluindo...', true);
@@ -98,10 +99,8 @@
       if (financeiroClient && typeof financeiroClient.delete === 'function') {
         payload = await financeiroClient.delete(id);
       } else {
-  const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || null;
-  const headers = { 'Accept': 'application/json' };
-  if (csrf) { headers['X-CSRFToken'] = csrf; headers['X-CSRF-Token'] = csrf; }
-  const r = await fetch(`${apiBase}/${id}`, { method: 'DELETE', headers: headers, credentials: 'same-origin' });
+        const headers = { 'Accept': 'application/json' };
+        const r = await fetch(`${apiBase}/${id}`, { method: 'DELETE', headers: headers, credentials: 'same-origin' });
         const ct = r.headers.get('Content-Type') || '';
         if (ct.includes('application/json')) {
           payload = await r.json();
@@ -335,17 +334,24 @@
     if (tr) {
       // Prefer dataset.id
       if (tr.dataset && tr.dataset.id) {
-        console.log('Found ID from dataset:', tr.dataset.id);
-        return tr.dataset.id;
+        // strip common prefixes like 'sess-' or 'com-' if present so callers receive the raw id
+        const raw = String(tr.dataset.id);
+        const m = raw.match(/^(?:sess|com)-(.+)$/);
+        const id = m ? m[1] : raw;
+        console.log('Found ID from dataset:', tr.dataset.id, '-> normalized:', id);
+        return id;
       }
-      
+
       // Try attribute
       const attr = tr.getAttribute('data-id');
       if (attr) {
-        console.log('Found ID from attribute:', attr);
-        return attr;
+        const raw = String(attr);
+        const m = raw.match(/^(?:sess|com)-(.+)$/);
+        const id = m ? m[1] : raw;
+        console.log('Found ID from attribute:', attr, '-> normalized:', id);
+        return id;
       }
-      
+
       console.log('TR found but no data-id', tr);
     }
     
@@ -358,37 +364,53 @@
     return null;
   }
 
-  // Wire events on DOMContentLoaded
+  // Wire events on DOMContentLoaded - Use event delegation for dynamic buttons
   document.addEventListener('DOMContentLoaded', function () {
-    console.log('DOM loaded, attaching event handlers');
-    // Attach handlers to finish/edit/delete buttons if present
-    document.querySelectorAll('.options-actions').forEach(span => {
-      const finishBtn = span.querySelector('.finish-btn');
-      const editBtn = span.querySelector('.edit-btn');
-      const delBtn = span.querySelector('.delete-btn');
+    console.log('[financeiro] Event delegation handlers bound');
 
-      if (finishBtn) finishBtn.addEventListener('click', function (e) {
-        e.stopPropagation();
+    // Use event delegation to handle dynamically added payment buttons
+    document.addEventListener('click', function(e) {
+      // Handle payment edit buttons
+      const editBtn = e.target.closest('.edit-pagamento-btn');
+      if (editBtn) {
         e.preventDefault();
-        const id = findRowId(this);
-        console.log('Finish button clicked, found id:', id);
-        if (!id) return console.warn('No data-id found for this row. Add data-id to <tr> in template.');
-        finalizarPagamento(id);
-      });
-
-      if (editBtn) editBtn.addEventListener('click', function (e) {
         e.stopPropagation();
-        const id = findRowId(this) || this.dataset.id;
-        if (!id) return console.warn('No data-id found for this row. Add data-id to <tr> in template.');
+        const id = editBtn.dataset.id || editBtn.getAttribute('data-id');
+        if (!id) {
+          console.warn('[financeiro] No data-id found for payment edit button');
+          return;
+        }
         editPagamento(id);
-      });
+        return;
+      }
 
-      if (delBtn) delBtn.addEventListener('click', function (e) {
+      // Handle payment delete buttons
+      const delBtn = e.target.closest('.delete-pagamento-btn');
+      if (delBtn) {
+        e.preventDefault();
         e.stopPropagation();
-        const id = findRowId(this) || this.dataset.id;
-        if (!id) return console.warn('No data-id found for this row. Add data-id to <tr> in template.');
+        const id = delBtn.dataset.id || delBtn.getAttribute('data-id');
+        if (!id) {
+          console.warn('[financeiro] No data-id found for payment delete button');
+          return;
+        }
         deletePagamento(id);
-      });
+        return;
+      }
+
+      // Handle finish buttons (legacy support)
+      const finishBtn = e.target.closest('.finish-btn');
+      if (finishBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        const id = finishBtn.dataset.id || finishBtn.getAttribute('data-id');
+        if (!id) {
+          console.warn('[financeiro] No data-id found for finish button');
+          return;
+        }
+        finalizarPagamento(id);
+        return;
+      }
     });
   });
 
