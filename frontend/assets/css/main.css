@@ -1275,3 +1275,18 @@ button.primary:active,
   padding: 0 4px;
   font-weight: bold;
 }
+
+/* Calculator specific helpers */
+.calc-container {
+  max-width: 480px;
+  margin: 0 auto;
+  text-align: center;
+}
+.calc-field {
+  margin-bottom: 1.25em;
+  text-align: left; /* label left, input full width */
+}
+.calc-field input[type="number"] {
+  width: 100%;
+}
+.calc-actions { text-align: center; }

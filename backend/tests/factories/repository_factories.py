@@ -24,8 +24,12 @@ try:
         IInventoryReader,
         IInventoryWriter,
         IInventoryRepository,
+        IClientReader,
+        IClientWriter,
+        IClientRepository,
+        IJotFormService,
     )
-    from domain.entities import User, Appointment, InventoryItem
+    from domain.entities import User, Appointment, InventoryItem, Client
 
     IMPORTS_AVAILABLE = True
 except ImportError as e:
@@ -257,6 +261,127 @@ class InventoryRepositoryFactory:
             mock_repo.update_stock.return_value = True
 
         return mock_repo
+
+
+class ClientRepositoryFactory:
+    """Factory for creating Client repository mocks following Interface Segregation."""
+
+    @staticmethod
+    def create_mock_reader() -> Mock:
+        """Create mock that only implements IClientReader operations."""
+        if not IMPORTS_AVAILABLE:
+            return Mock()
+
+        mock_reader = Mock(spec=IClientReader)
+
+        # Set up default return values
+        mock_reader.get_by_id.return_value = None
+        mock_reader.get_all.return_value = []
+        mock_reader.get_by_jotform_id.return_value = None
+
+        return mock_reader
+
+    @staticmethod
+    def create_mock_writer() -> Mock:
+        """Create mock that only implements IClientWriter operations."""
+        if not IMPORTS_AVAILABLE:
+            return Mock()
+
+        mock_writer = Mock(spec=IClientWriter)
+
+        # Set up default return values
+        mock_writer.create.return_value = None
+        mock_writer.update.return_value = None
+        mock_writer.delete.return_value = False
+
+        return mock_writer
+
+    @staticmethod
+    def create_mock_full() -> Mock:
+        """Create full client repository mock implementing IClientRepository."""
+        if not IMPORTS_AVAILABLE:
+            return Mock()
+
+        mock_repo = Mock(spec=IClientRepository)
+
+        # Set up default return values for read operations
+        mock_repo.get_by_id.return_value = None
+        mock_repo.get_all.return_value = []
+        mock_repo.get_by_jotform_id.return_value = None
+
+        # Set up default return values for write operations
+        mock_repo.create.return_value = None
+        mock_repo.update.return_value = None
+        mock_repo.delete.return_value = False
+
+        return mock_repo
+
+    @staticmethod
+    def create_populated_mock(client_data: dict = None) -> Mock:
+        """Create mock repository with pre-populated client data."""
+        if not IMPORTS_AVAILABLE:
+            return Mock()
+
+        mock_repo = ClientRepositoryFactory.create_mock_full()
+
+        if client_data:
+            mock_client = Client(**client_data) if IMPORTS_AVAILABLE else Mock()
+            mock_repo.get_by_id.return_value = mock_client
+            mock_repo.get_all.return_value = [mock_client]
+            mock_repo.get_by_jotform_id.return_value = mock_client
+            mock_repo.create.return_value = mock_client
+            mock_repo.update.return_value = mock_client
+            mock_repo.delete.return_value = True
+
+        return mock_repo
+
+
+class JotFormServiceFactory:
+    """Factory for creating JotForm service mocks."""
+
+    @staticmethod
+    def create_mock() -> Mock:
+        """Create mock that implements IJotFormService operations."""
+        if not IMPORTS_AVAILABLE:
+            return Mock()
+
+        mock_service = Mock(spec=IJotFormService)
+
+        # Set up default return values
+        mock_service.fetch_submissions.return_value = []
+        mock_service.parse_client_name.return_value = ""
+        mock_service.format_submission_data.return_value = {}
+
+        return mock_service
+
+    @staticmethod
+    def create_mock_with_submissions(submissions_data: List[dict] = None) -> Mock:
+        """Create mock service with pre-populated submission data."""
+        if not IMPORTS_AVAILABLE:
+            return Mock()
+
+        mock_service = JotFormServiceFactory.create_mock()
+
+        if submissions_data:
+            mock_service.fetch_submissions.return_value = submissions_data
+
+            # Mock parse_client_name to return name from submission
+            def mock_parse_name(submission):
+                return submission.get("client_name", "Test Client")
+
+            mock_service.parse_client_name.side_effect = mock_parse_name
+
+            # Mock format_submission_data
+            def mock_format_data(submission):
+                return {
+                    "id": submission.get("id"),
+                    "client_name": submission.get("client_name", "Test Client"),
+                    "status": submission.get("status", "active"),
+                }
+
+            mock_service.format_submission_data.side_effect = mock_format_data
+
+        return mock_service
 
 
 class RepositoryFactoryUtils:
