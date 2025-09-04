@@ -1,8 +1,8 @@
 from typing import List, Optional
-from ..core.interfaces.repository_interface import InventoryRepositoryInterface
-from ..domain.entities import InventoryItem
-from ..db.base import Inventory
-from ..db.session import SessionLocal
+from app.core.interfaces.repository_interface import InventoryRepositoryInterface
+from app.domain.entities import InventoryItem
+from app.db.base import Inventory
+from app.db.session import SessionLocal
 
 
 class InventoryRepository(InventoryRepositoryInterface):

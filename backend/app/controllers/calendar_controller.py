@@ -8,8 +8,8 @@ from flask_login import login_required, current_user
 from datetime import datetime, timedelta
 import logging
 
-from ..domain.interfaces import ICalendarService
-from ..services.google_calendar_service import GoogleCalendarService
+from app.domain.interfaces import ICalendarService
+from app.services.google_calendar_service import GoogleCalendarService
 
 logger = logging.getLogger(__name__)
 
@@ -244,7 +244,7 @@ def create_event():
             )
 
         # Create CalendarEvent domain entity
-        from ..domain.entities import CalendarEvent
+        from app.domain.entities import CalendarEvent
 
         calendar_event = CalendarEvent(
             title=data["title"],
@@ -386,8 +386,8 @@ def calendar_page():
                 # Check which events already have a corresponding session
                 if events:
                     # Get a list of all Google event IDs that have already been converted to sessions
-                    from ..db.session import SessionLocal
-                    from ..db.base import Sessao
+                    from app.db.session import SessionLocal
+                    from app.db.base import Sessao
 
                     db = SessionLocal()
                     try:

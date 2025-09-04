@@ -1,5 +1,7 @@
 """
-Central pytest configuration for the tattoo studio system tests.
+Central pyte# Add /app to sys.path for relative imports to work in Docker
+sys.path.insert(0, '/app')
+sys.path.insert(0, '/app/backend') configuration for the tattoo studio system tests.
 
 This file provides common fixtures, test markers, and setup
 for both unit and integration tests following SOLID principles.
@@ -13,6 +15,9 @@ from pathlib import Path
 from unittest.mock import Mock
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
+
+# Add /app to sys.path for relative imports to work in Docker
+sys.path.insert(0, "/app")
 
 # Test database configuration (set early so import-time engines use it)
 TEST_DATABASE_URL = "sqlite:///:memory:"  # In-memory SQLite for fast tests
@@ -182,7 +187,7 @@ def app_config():
 
 @pytest.fixture
 def app():
-    """Create a Flask application for testing."""
+    """Create a Flask application for testing with proper configuration."""
     try:
         import importlib
 
@@ -191,30 +196,48 @@ def app():
         if create_app is None:
             raise ImportError("create_app not found in 'app.main' module")
 
-        # Set LOGIN_DISABLED before creating the app
+        # Set environment variables for testing
         import os
 
         os.environ["LOGIN_DISABLED"] = "true"
+        os.environ["TESTING"] = "true"
+        os.environ["SECRET_KEY"] = "test-secret-key"
+        os.environ["JWT_SECRET_KEY"] = "test-jwt-secret"
 
         app = create_app()
-        app.config["TESTING"] = True
-        app.config["WTF_CSRF_ENABLED"] = False  # Disable CSRF for testing
-        app.config["LOGIN_DISABLED"] = True  # Disable login requirement for testing
+
+        # Ensure test configuration is applied
+        app.config.update(
+            {
+                "TESTING": True,
+                "WTF_CSRF_ENABLED": False,  # Disable CSRF for testing
+                "LOGIN_DISABLED": True,  # Disable login requirement for testing
+                "SECRET_KEY": "test-secret-key",
+                "JWT_SECRET_KEY": "test-jwt-secret",
+                "PROPAGATE_EXCEPTIONS": True,  # Show exceptions in tests
+            }
+        )
+
         return app
     except Exception as e:
         print(f"Warning: Could not create real Flask app: {e}")
         # Return a mock app if the real one can't be imported
         mock_app = Mock()
-        mock_app.config = {"TESTING": True}
+        mock_app.config = {
+            "TESTING": True,
+            "SECRET_KEY": "test-secret-key",
+            "JWT_SECRET_KEY": "test-jwt-secret",
+        }
         return mock_app
 
 
 @pytest.fixture
 def client(app):
-    """Create a test client for Flask application."""
+    """Create a test client for Flask application with proper context."""
     if hasattr(app, "test_client"):
         with app.test_client() as client:
-            yield client
+            with app.app_context():
+                yield client
     else:
         # Mock client for when app is mocked
         mock_client = Mock()
@@ -224,6 +247,129 @@ def client(app):
         mock_client.post.return_value = mock_response
         mock_client.get.return_value = mock_response
         yield mock_client
+
+
+@pytest.fixture
+def app_context(app):
+    """Provide Flask application context for tests that need it."""
+    with app.app_context():
+        yield app
+
+
+@pytest.fixture
+def request_context(app):
+    """Provide Flask request context for tests that access request/session/g objects."""
+    with app.test_request_context():
+        yield
+
+
+@pytest.fixture
+def test_client(app):
+    """Enhanced test client with both app and request context."""
+    with app.test_client() as client:
+        with app.app_context():
+            yield client
+
+
+@pytest.fixture
+def authenticated_client(app, mock_user):
+    """Test client with authenticated user context."""
+    with app.test_client() as client:
+        with app.app_context():
+            # Mock current_user for authentication
+            from flask_login import login_user
+
+            try:
+                login_user(mock_user)
+            except Exception:
+                # If login_user fails, just continue - some tests don't need it
+                pass
+            yield client
+
+
+@pytest.fixture
+def request_context_with_user(app, mock_user):
+    """Request context with authenticated user for tests that need current_user."""
+    with app.test_request_context():
+        with app.app_context():
+            # Set up user in session if needed
+            from flask import session
+
+            try:
+                session["user_id"] = mock_user.id
+                session["user_email"] = mock_user.email
+            except Exception:
+                # If session setup fails, just continue
+                pass
+            yield
+
+
+@pytest.fixture
+def flask_context(app):
+    """Combined Flask context manager for tests that need both app and request context."""
+    with app.app_context():
+        with app.test_request_context():
+            yield
+
+
+@pytest.fixture
+def mock_flask_context():
+    """Mock Flask context objects to prevent 'Working outside of request context' errors."""
+    from unittest.mock import patch
+
+    # Mock Flask local objects
+    mock_patches = [
+        patch("flask.request", new_callable=lambda: Mock()),
+        patch("flask.session", new_callable=lambda: Mock()),
+        patch("flask.g", new_callable=lambda: Mock()),
+        patch("flask.current_app", new_callable=lambda: Mock()),
+    ]
+
+    # Start all patches
+    started_patches = []
+    for mock_patch in mock_patches:
+        started_patch = mock_patch.start()
+        started_patches.append(started_patch)
+
+    try:
+        yield
+    finally:
+        # Stop all patches
+        for started_patch in started_patches:
+            started_patch.stop()
+
+
+@pytest.fixture
+def test_context_with_client(app, mock_user):
+    """Test context with Flask app context, request context, and test client."""
+    from unittest.mock import patch
+
+    with app.app_context():
+        with app.test_request_context():
+            # Mock Flask local objects to prevent context errors
+            with patch("flask.request") as mock_request, patch(
+                "flask.session"
+            ) as mock_session, patch("flask.g") as mock_g, patch(
+                "flask.current_app", app
+            ):
+
+                # Configure mocks
+                mock_request.method = "GET"
+                mock_session.__setitem__ = Mock()
+                mock_session.__getitem__ = Mock(return_value=None)
+                mock_g.user = mock_user
+
+                # Create test client
+                client = app.test_client()
+
+                yield {
+                    "app": app,
+                    "client": client,
+                    "request": mock_request,
+                    "session": mock_session,
+                    "g": mock_g,
+                    "user": mock_user,
+                }
 
 
 # =====================================================

@@ -124,15 +124,17 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     let html = '<h3>Comissões</h3><div class="table-wrapper"><table><thead><tr>';
-    html += '<th>Data</th><th>Artista</th><th>Cliente</th><th>Percentual</th><th>Valor</th></tr></thead><tbody>';
+    html += '<th>Data</th><th>Artista</th><th>Cliente</th><th>Valor do Pagamento</th><th>Percentual</th><th>Comissão (R$)</th><th>Observações</th></tr></thead><tbody>';
 
     comissoes.forEach(c => {
       html += '<tr>';
       html += `<td>${formatDate(c.created_at)}</td>`;
       html += `<td>${c.artista_name || 'N/A'}</td>`;
       html += `<td>${c.cliente_name || 'N/A'}</td>`;
+      html += `<td>${nf.format(c.pagamento_valor || 0)}</td>`;
       html += `<td>${(c.percentual || 0).toFixed(1)}%</td>`;
       html += `<td>${nf.format(c.valor || 0)}</td>`;
+      html += `<td>${c.observacoes || ''}</td>`;
       html += '</tr>';
     });
 

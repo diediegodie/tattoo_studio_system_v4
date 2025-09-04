@@ -1,8 +1,8 @@
 from typing import Dict, Optional, List
 
-from ..domain.interfaces import IUserRepository
-from ..domain.entities import User as DomainUser
-from ..core.security import hash_password, verify_password
+from app.domain.interfaces import IUserRepository
+from app.domain.entities import User as DomainUser
+from app.core.security import hash_password, verify_password
 
 
 class UserService:
@@ -82,7 +82,7 @@ class UserService:
         password_hash = hash_password(password)
         # Note: This would require extending the repository interface
         # For now, we'll use a direct method call
-        from ..repositories.user_repo import UserRepository
+        from app.repositories.user_repo import UserRepository
 
         if isinstance(self.repo, UserRepository):
             return self.repo.set_password(user_id, password_hash)

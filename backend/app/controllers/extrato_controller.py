@@ -4,8 +4,8 @@ Extrato controller - handles extrato API endpoints and web pages.
 
 from flask import Blueprint, jsonify, request
 from flask_login import login_required
-from ..db.session import SessionLocal
-from ..db.base import Extrato
+from app.db.session import SessionLocal
+from app.db.base import Extrato
 import json
 import logging
 

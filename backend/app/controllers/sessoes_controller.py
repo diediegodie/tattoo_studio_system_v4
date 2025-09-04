@@ -20,10 +20,10 @@ from flask_login import login_required, current_user
 from typing import Union
 import logging
 
-from ..services.user_service import UserService
-from ..repositories.user_repo import UserRepository
-from ..db.session import SessionLocal
-from ..db.base import Client, Sessao
+from app.services.user_service import UserService
+from app.repositories.user_repo import UserRepository
+from app.db.session import SessionLocal
+from app.db.base import Client, Sessao
 from decimal import Decimal
 from datetime import datetime, date, time
 
@@ -73,7 +73,9 @@ def nova_sessao() -> Union[str, Response]:
             # If event_id is provided, fetch the event data from calendar service
             if event_id:
                 try:
-                    from ..services.google_calendar_service import GoogleCalendarService
+                    from app.services.google_calendar_service import (
+                        GoogleCalendarService,
+                    )
                     from flask_login import current_user
                     from datetime import timedelta
 

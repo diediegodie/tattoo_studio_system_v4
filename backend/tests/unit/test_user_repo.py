@@ -286,7 +286,7 @@ class TestUserRepositoryCreation:
         db_user.is_active = True
 
         # Mock the DbUser constructor and session methods
-        with patch("repositories.user_repo.DbUser") as MockDbUser:
+        with patch("app.repositories.user_repo.DbUser") as MockDbUser:
             mock_db_instance = Mock()
             MockDbUser.return_value = mock_db_instance
 
@@ -324,7 +324,7 @@ class TestUserRepositoryCreation:
             email="", name="New User", role="client", is_active=True
         )
 
-        with patch("repositories.user_repo.DbUser") as MockDbUser:
+        with patch("app.repositories.user_repo.DbUser") as MockDbUser:
             mock_db_instance = Mock()
             MockDbUser.return_value = mock_db_instance
 

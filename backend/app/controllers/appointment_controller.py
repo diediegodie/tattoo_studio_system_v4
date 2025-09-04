@@ -11,8 +11,8 @@ from flask import Blueprint, request, jsonify
 from datetime import datetime
 from typing import Dict, Any, Union, Tuple
 
-from ..services.appointment_service import AppointmentService
-from ..schemas.dtos import (
+from app.services.appointment_service import AppointmentService
+from app.schemas.dtos import (
     AppointmentCreateRequest,
     AppointmentUpdateRequest,
     AppointmentResponse,

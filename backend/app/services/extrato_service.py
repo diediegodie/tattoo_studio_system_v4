@@ -6,8 +6,8 @@ Reuses logic from generate_monthly_extrato.py for modularity.
 import json
 from datetime import datetime, timedelta
 from sqlalchemy.orm import joinedload
-from ..db.session import SessionLocal
-from ..db.base import Pagamento, Sessao, Comissao, Extrato, Client, User
+from app.db.session import SessionLocal
+from app.db.base import Pagamento, Sessao, Comissao, Extrato, Client, User
 
 
 def get_previous_month():

@@ -30,7 +30,7 @@ class TestSessionsAPI:
 
         # Patch the controller's SessionLocal directly (adapted to controllers package)
         with patch(
-            "controllers.sessoes_controller.SessionLocal", return_value=mock_db
+            "app.controllers.sessoes_controller.SessionLocal", return_value=mock_db
         ), patch("flask_login.login_required", lambda f: f), patch(
             "flask_login.current_user", mock_user
         ):
@@ -117,8 +117,10 @@ class TestSessionsAPI:
         s.artista.name = "A"
 
         with patch(
-            "controllers.sessoes_controller.login_required", mock_login_required
-        ), patch("controllers.sessoes_controller.SessionLocal") as mock_session_local:
+            "app.controllers.sessoes_controller.login_required", mock_login_required
+        ), patch(
+            "app.controllers.sessoes_controller.SessionLocal"
+        ) as mock_session_local:
             mock_db = Mock()
             mock_session_local.return_value = mock_db
             # mock.get should return the session object
@@ -157,8 +159,10 @@ class TestSessionsAPI:
         s.artista.name = "A"
 
         with patch(
-            "controllers.sessoes_controller.login_required", mock_login_required
-        ), patch("controllers.sessoes_controller.SessionLocal") as mock_session_local:
+            "app.controllers.sessoes_controller.login_required", mock_login_required
+        ), patch(
+            "app.controllers.sessoes_controller.SessionLocal"
+        ) as mock_session_local:
             mock_db = Mock()
             mock_session_local.return_value = mock_db
             mock_db.query.return_value.get.return_value = s
@@ -180,7 +184,7 @@ class TestSessionsAPI:
     def test_api_endpoints_exist_and_accessible(self):
         """Sanity check that handlers exist and are importable."""
         try:
-            mod = importlib.import_module("controllers.sessoes_controller")
+            mod = importlib.import_module("app.controllers.sessoes_controller")
             api_list_sessoes = getattr(mod, "api_list_sessoes", None)
             api_get_sessao = getattr(mod, "api_get_sessao", None)
             api_update_sessao = getattr(mod, "api_update_sessao", None)

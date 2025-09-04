@@ -5,9 +5,9 @@ Appointment service following SOLID principles.
 from typing import List, Optional
 from datetime import datetime, timedelta
 
-from ..domain.interfaces import IAppointmentRepository, IUserRepository
-from ..domain.entities import Appointment as DomainAppointment
-from ..schemas.dtos import (
+from app.domain.interfaces import IAppointmentRepository, IUserRepository
+from app.domain.entities import Appointment as DomainAppointment
+from app.schemas.dtos import (
     AppointmentCreateRequest,
     AppointmentUpdateRequest,
     AppointmentResponse,
