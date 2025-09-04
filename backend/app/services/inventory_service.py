@@ -1,7 +1,7 @@
 from typing import Optional
-from core.interfaces.service_interface import InventoryServiceInterface
-from core.interfaces.repository_interface import InventoryRepositoryInterface
-from domain.entities import InventoryItem
+from ..core.interfaces.service_interface import InventoryServiceInterface
+from ..core.interfaces.repository_interface import InventoryRepositoryInterface
+from ..domain.entities import InventoryItem
 
 
 class InventoryService(InventoryServiceInterface):

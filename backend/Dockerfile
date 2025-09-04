@@ -7,7 +7,7 @@ FROM python:3.11-slim AS base
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PYTHONPATH=/app
+    PYTHONPATH=/app/backend
 
 # Install system dependencies
 RUN apt-get update \
@@ -19,7 +19,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory to where the app code will be
-WORKDIR /app
+WORKDIR /app/backend
 
 # Copy and install Python dependencies
 COPY ../requirements.txt .
@@ -42,7 +42,7 @@ RUN adduser --disabled-password --gecos '' appuser \
 USER appuser
 
 # Set working directory to the app directory for proper Python path resolution
-WORKDIR /app/app
+# WORKDIR /app/app
 
 # Expose port
 EXPOSE 5000

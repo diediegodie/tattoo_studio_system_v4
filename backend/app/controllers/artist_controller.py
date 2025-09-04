@@ -11,9 +11,9 @@ from flask import Blueprint, request, jsonify
 from typing import Dict, Any
 import logging
 
-from services.user_service import UserService
-from repositories.user_repo import UserRepository
-from db.session import SessionLocal
+from ..services.user_service import UserService
+from ..repositories.user_repo import UserRepository
+from ..db.session import SessionLocal
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -161,12 +161,12 @@ def create_artist_form() -> Dict[str, Any]:
         # Return JSON response for AJAX calls
         return (
             jsonify(
-                    {
+                {
                     "success": True,
                     "artist": {
-                    "id": artist.id,
-                    "name": artist.name,
-                    "email": artist.email,
+                        "id": artist.id,
+                        "name": artist.name,
+                        "email": artist.email,
                     },
                 }
             ),

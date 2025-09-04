@@ -1,11 +1,11 @@
 from flask import Blueprint, render_template, flash, jsonify, request
 from flask_login import login_required, current_user
-from db.session import SessionLocal
-from db.base import Pagamento, Comissao, Sessao
+from ..db.session import SessionLocal
+from ..db.base import Pagamento, Comissao, Sessao
 from sqlalchemy.orm import joinedload
 import logging
-from repositories.user_repo import UserRepository
-from services.user_service import UserService
+from ..repositories.user_repo import UserRepository
+from ..services.user_service import UserService
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +26,11 @@ def _safe_redirect(path_or_endpoint: str):
 @historico_bp.route("/", methods=["GET"])
 @login_required
 def historico_home():
+    # Generate extrato for previous month if not exists
+    from ..services.extrato_service import check_and_generate_extrato
+
+    check_and_generate_extrato()
+
     db = None
     try:
         db = SessionLocal()
@@ -63,7 +68,7 @@ def historico_home():
             except Exception:
                 # Safe fallback: query Client class if available via relationship navigation
                 try:
-                    from db.base import Client
+                    from ..db.base import Client
 
                     clients = db.query(Client).order_by(Client.name).all()
                 except Exception:

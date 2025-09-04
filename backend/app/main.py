@@ -1,7 +1,7 @@
 from flask import Flask, render_template, jsonify, redirect, url_for, flash, session
 import os
 from sqlalchemy import text
-from db.session import engine
+from .db.session import engine
 from flask_dance.contrib.google import make_google_blueprint, google
 from flask_dance.consumer import oauth_authorized
 from flask_login import (
@@ -54,11 +54,11 @@ def google_logged_in(blueprint, token):
         f"[DEBUG] Google user ID: {google_user_id}, email: {google_info.get('email')}"
     )
 
-    from db.session import SessionLocal
-    from repositories.user_repo import UserRepository
-    from services.user_service import UserService
-    from services.oauth_token_service import OAuthTokenService
-    from core.security import create_user_token
+    from .db.session import SessionLocal
+    from .repositories.user_repo import UserRepository
+    from .services.user_service import UserService
+    from .services.oauth_token_service import OAuthTokenService
+    from .core.security import create_user_token
 
     db = SessionLocal()
     try:
@@ -206,11 +206,11 @@ def create_app():
     login_manager.login_message = "Por favor, faça login para acessar esta página."
 
     # Import models after app creation
-    from db.base import User, OAuth
+    from .db.base import User, OAuth
 
     @login_manager.user_loader
     def load_user(user_id):
-        from db.session import SessionLocal
+        from .db.session import SessionLocal
 
         db = SessionLocal()
         try:
@@ -248,9 +248,9 @@ def create_app():
     @login_required
     def cadastro_interno():
         # Load artists to display in the table
-        from services.user_service import UserService
-        from repositories.user_repo import UserRepository
-        from db.session import SessionLocal
+        from .services.user_service import UserService
+        from .repositories.user_repo import UserRepository
+        from .db.session import SessionLocal
 
         db_session = SessionLocal()
         try:
@@ -269,9 +269,9 @@ def create_app():
     @app.route("/estoque")
     @login_required
     def estoque():
-        from repositories.inventory_repository import InventoryRepository
-        from services.inventory_service import InventoryService
-        from db.session import SessionLocal
+        from .repositories.inventory_repository import InventoryRepository
+        from .services.inventory_service import InventoryService
+        from .db.session import SessionLocal
 
         db = SessionLocal()
         repository = InventoryRepository(db)
@@ -288,6 +288,10 @@ def create_app():
     @app.route("/extrato")
     @login_required
     def extrato():
+        # Generate extrato for previous month if not exists
+        from .services.extrato_service import check_and_generate_extrato
+
+        check_and_generate_extrato()
         return render_template("extrato.html")
 
     @app.route("/financeiro")
@@ -348,16 +352,17 @@ def create_app():
 
     # Register blueprints/controllers here
 
-    from controllers.api_controller import api_bp
-    from controllers.auth_controller import auth_bp
-    from controllers.client_controller import client_bp
-    from controllers.sessoes_controller import sessoes_bp
-    from controllers.artist_controller import artist_bp
-    from controllers.calendar_controller import calendar_bp
-    from controllers.inventory_controller import inventory_bp
-    from controllers.drag_drop_controller import drag_drop_bp
-    from controllers.financeiro_controller import financeiro_bp
-    from controllers.historico_controller import historico_bp
+    from .controllers.api_controller import api_bp
+    from .controllers.auth_controller import auth_bp
+    from .controllers.client_controller import client_bp
+    from .controllers.sessoes_controller import sessoes_bp
+    from .controllers.artist_controller import artist_bp
+    from .controllers.calendar_controller import calendar_bp
+    from .controllers.inventory_controller import inventory_bp
+    from .controllers.drag_drop_controller import drag_drop_bp
+    from .controllers.financeiro_controller import financeiro_bp
+    from .controllers.historico_controller import historico_bp
+    from .controllers.extrato_controller import extrato_bp
 
     app.register_blueprint(api_bp)
     app.register_blueprint(auth_bp)
@@ -369,6 +374,7 @@ def create_app():
     app.register_blueprint(drag_drop_bp)
     app.register_blueprint(financeiro_bp)
     app.register_blueprint(historico_bp)
+    app.register_blueprint(extrato_bp)
 
     # Register OAuth blueprint - name already set at creation
     app.register_blueprint(google_oauth_bp, url_prefix="/auth")

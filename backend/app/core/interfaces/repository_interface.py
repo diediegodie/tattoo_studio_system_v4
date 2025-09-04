@@ -1,5 +1,5 @@
 from typing import List, Optional
-from domain.entities import InventoryItem
+from ...domain.entities import InventoryItem
 
 
 class InventoryRepositoryInterface:
