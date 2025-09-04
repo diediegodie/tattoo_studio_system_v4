@@ -8,8 +8,8 @@ import requests
 from typing import List, Optional, Dict
 from datetime import datetime
 
-from ..domain.interfaces import IGoogleCalendarRepository
-from ..core.exceptions import ExpiredAccessTokenError
+from app.domain.interfaces import IGoogleCalendarRepository
+from app.core.exceptions import ExpiredAccessTokenError
 
 logger = logging.getLogger(__name__)
 

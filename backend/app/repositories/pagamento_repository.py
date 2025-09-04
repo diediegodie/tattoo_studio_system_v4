@@ -1,7 +1,7 @@
 from typing import List, Optional, Dict, Any, Union
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
-from ..db.base import Pagamento
+from app.db.base import Pagamento
 
 
 class PagamentoRepository:

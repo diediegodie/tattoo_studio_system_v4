@@ -10,13 +10,33 @@ from sqlalchemy import (
     Time,
     Numeric,
     UniqueConstraint,
+    JSON,
 )
 from sqlalchemy.sql import func
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.ext.mutable import MutableDict
 from flask_login import UserMixin
 from flask_dance.consumer.storage.sqla import OAuthConsumerMixin
 from .session import Base
 from sqlalchemy.orm import relationship
+
+
+def get_json_type():
+    """Return appropriate JSON type based on database dialect."""
+    # For PostgreSQL, use JSONB for better performance
+    # For SQLite and other databases, use JSON
+    try:
+        from flask import current_app
+
+        if current_app and "postgresql" in current_app.config.get(
+            "SQLALCHEMY_DATABASE_URI", ""
+        ):
+            return JSONB
+        else:
+            return JSON
+    except (RuntimeError, ImportError):
+        # Fallback to JSON if Flask context is not available
+        return JSON
 
 
 class User(UserMixin, Base):
@@ -233,12 +253,12 @@ class Extrato(Base):
     ano = Column(Integer, nullable=False)  # ex.: 2025
 
     # Snapshots (lists) of objects: pagamentos, sessoes, comissoes
-    pagamentos = Column(JSONB, nullable=False)
-    sessoes = Column(JSONB, nullable=False)
-    comissoes = Column(JSONB, nullable=False)
+    pagamentos = Column(get_json_type(), nullable=False)
+    sessoes = Column(get_json_type(), nullable=False)
+    comissoes = Column(get_json_type(), nullable=False)
 
     # Pre-calculated totals to speed reads and avoid recomputation
-    totais = Column(JSONB, nullable=False)
+    totais = Column(get_json_type(), nullable=False)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 

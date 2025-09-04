@@ -9,10 +9,10 @@ This controller:
 
 from flask import Blueprint, render_template, jsonify, flash, redirect, url_for
 from flask_login import login_required, current_user
-from ..db.session import SessionLocal
-from ..repositories.client_repo import ClientRepository
-from ..services.client_service import ClientService
-from ..services.jotform_service import JotFormService
+from app.db.session import SessionLocal
+from app.repositories.client_repo import ClientRepository
+from app.services.client_service import ClientService
+from app.services.jotform_service import JotFormService
 import os
 
 client_bp = Blueprint("client", __name__, url_prefix="/clients")

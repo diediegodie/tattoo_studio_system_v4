@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template
-from ..repositories.inventory_repository import InventoryRepository
-from ..services.inventory_service import InventoryService
-from ..db.session import SessionLocal
+from app.repositories.inventory_repository import InventoryRepository
+from app.services.inventory_service import InventoryService
+from app.db.session import SessionLocal
 
 drag_drop_bp = Blueprint("drag_drop", __name__)
 

@@ -11,9 +11,9 @@ from flask import Blueprint, request, jsonify
 from typing import Dict, Any
 import logging
 
-from ..services.user_service import UserService
-from ..repositories.user_repo import UserRepository
-from ..db.session import SessionLocal
+from app.services.user_service import UserService
+from app.repositories.user_repo import UserRepository
+from app.db.session import SessionLocal
 
 # Configure logging
 logger = logging.getLogger(__name__)

@@ -7,11 +7,11 @@ import logging
 from typing import List, Optional
 from datetime import datetime, timedelta
 
-from ..domain.interfaces import ICalendarService, IGoogleCalendarRepository
-from ..domain.entities import CalendarEvent
-from ..repositories.google_calendar_repo import GoogleCalendarRepository
-from .oauth_token_service import OAuthTokenService
-from ..core.exceptions import ExpiredAccessTokenError
+from app.domain.interfaces import ICalendarService, IGoogleCalendarRepository
+from app.domain.entities import CalendarEvent
+from app.repositories.google_calendar_repo import GoogleCalendarRepository
+from app.services.oauth_token_service import OAuthTokenService
+from app.core.exceptions import ExpiredAccessTokenError
 
 logger = logging.getLogger(__name__)
 

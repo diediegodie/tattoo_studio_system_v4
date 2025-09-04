@@ -9,9 +9,9 @@ This implementation:
 """
 
 from typing import Optional, List
-from ..domain.interfaces import IClientRepository
-from ..domain.entities import Client as DomainClient
-from ..db.base import Client as DbClient
+from app.domain.interfaces import IClientRepository
+from app.domain.entities import Client as DomainClient
+from app.db.base import Client as DbClient
 
 
 class ClientRepository(IClientRepository):

@@ -79,15 +79,16 @@ def query_data(db, mes, ano):
         .all()
     )
 
-    # Query Comissoes with joins
+    # Query Comissoes with joins - filter by pagamento date, not created_at
     comissoes = (
         db.query(Comissao)
+        .join(Pagamento, Comissao.pagamento_id == Pagamento.id)
         .options(
             joinedload(Comissao.artista),
             joinedload(Comissao.pagamento).joinedload(Pagamento.cliente),
             joinedload(Comissao.pagamento).joinedload(Pagamento.sessao),
         )
-        .filter(Comissao.created_at >= start_date, Comissao.created_at < end_date)
+        .filter(Pagamento.data >= start_date, Pagamento.data < end_date)
         .all()
     )
 
@@ -101,7 +102,6 @@ def serialize_data(pagamentos, sessoes, comissoes):
         pagamentos_data.append(
             {
                 "data": p.data.isoformat() if p.data else None,
-                "hora": p.hora.isoformat() if p.hora else None,
                 "cliente_name": p.cliente.name if p.cliente else None,
                 "artista_name": p.artista.name if p.artista else None,
                 "valor": float(p.valor),

@@ -7,12 +7,12 @@ from datetime import datetime
 from decimal import Decimal
 
 from sqlalchemy.orm import joinedload
-from ..db.session import SessionLocal
-from ..db.base import Client, Pagamento  # Import existing models from db.base
-from ..repositories.user_repo import UserRepository
-from ..services.user_service import UserService
-from ..repositories.pagamento_repository import PagamentoRepository
-from ..db.base import Pagamento as PagamentoModel
+from app.db.session import SessionLocal
+from app.db.base import Client, Pagamento  # Import existing models from db.base
+from app.repositories.user_repo import UserRepository
+from app.services.user_service import UserService
+from app.repositories.pagamento_repository import PagamentoRepository
+from app.db.base import Pagamento as PagamentoModel
 import inspect
 import asyncio
 
@@ -282,7 +282,7 @@ def registrar_pagamento() -> Union[str, Response, Tuple[str, int]]:
 
             # Do the create payment + update session + create commission
             try:
-                from ..db.base import Comissao, Sessao
+                from app.db.base import Comissao, Sessao
 
                 # Commission percent handling (optional):
                 # - empty or zero -> no commission created
