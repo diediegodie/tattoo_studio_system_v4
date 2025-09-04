@@ -27,12 +27,12 @@ services:
       dockerfile: ./backend/Dockerfile
       target: ${DOCKER_TARGET:-development}  # Use development by default, production for prod
     container_name: tattoo_studio_app
-    restart: always
+    # restart: always  # Temporarily disabled for debugging
     env_file:
       - .env
     environment:
       - [REDACTED_DATABASE_URL]
-      - FLASK_APP=${FLASK_APP:-app.py}
+      - FLASK_APP=${FLASK_APP:-app:app}
       - FLASK_ENV=${FLASK_ENV:-development}
       - FLASK_DEBUG=${FLASK_DEBUG:-1}
       - FLASK_SECRET_KEY=${FLASK_SECRET_KEY:-dev-secret-change-me}
@@ -46,7 +46,7 @@ services:
       - "5000:5000"
     volumes:
       # For development: mount source code for hot reloading
-      - ./backend/app:/app/app
+      - ./backend:/app/backend
       - ./frontend:/app/frontend
     depends_on:
       db:

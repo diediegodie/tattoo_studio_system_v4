@@ -10,8 +10,8 @@ from typing import Optional, Dict, Any
 from datetime import datetime, timezone, timedelta
 from flask import current_app
 
-from db.session import SessionLocal
-from db.base import OAuth
+from ..db.session import SessionLocal
+from ..db.base import OAuth
 
 logger = logging.getLogger(__name__)
 

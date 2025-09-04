@@ -5,9 +5,11 @@ Appointment repository implementation following SOLID principles.
 from typing import Optional, List
 from datetime import datetime
 
-from domain.interfaces import IAppointmentRepository
-from domain.entities import Appointment as DomainAppointment
-from db.base import TestModel as DbAppointment  # Using TestModel as placeholder for now
+from ..domain.interfaces import IAppointmentRepository
+from ..domain.entities import Appointment as DomainAppointment
+from ..db.base import (
+    TestModel as DbAppointment,
+)  # Using TestModel as placeholder for now
 
 
 class AppointmentRepository(IAppointmentRepository):

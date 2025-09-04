@@ -1,7 +1,7 @@
-from controllers.drag_drop_controller import drag_drop_bp
-from db.base import User, OAuth, TestModel, Client, Sessao, Inventory, Pagamento
-from db.session import create_tables
-from main import create_app
+from .controllers.drag_drop_controller import drag_drop_bp
+from .db.base import User, OAuth, TestModel, Client, Sessao, Inventory, Pagamento
+from .db.session import create_tables
+from .main import create_app
 
 # Create Flask app
 app = create_app()

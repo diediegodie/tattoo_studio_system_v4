@@ -18,10 +18,10 @@ def api_response(
 
 
 from flask_login import login_required, current_user
-from db.session import SessionLocal
-from repositories.inventory_repository import InventoryRepository
-from services.inventory_service import InventoryService
-from domain.entities import InventoryItem
+from ..db.session import SessionLocal
+from ..repositories.inventory_repository import InventoryRepository
+from ..services.inventory_service import InventoryService
+from ..domain.entities import InventoryItem
 
 inventory_bp = Blueprint("inventory", __name__, url_prefix="/inventory")
 

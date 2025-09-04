@@ -11,7 +11,7 @@ This service:
 import requests
 import json
 from typing import List, Dict, Optional
-from domain.interfaces import IJotFormService
+from ..domain.interfaces import IJotFormService
 
 
 class JotFormService(IJotFormService):

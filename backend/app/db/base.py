@@ -9,8 +9,10 @@ from sqlalchemy import (
     Date,
     Time,
     Numeric,
+    UniqueConstraint,
 )
 from sqlalchemy.sql import func
+from sqlalchemy.dialects.postgresql import JSONB
 from flask_login import UserMixin
 from flask_dance.consumer.storage.sqla import OAuthConsumerMixin
 from .session import Base
@@ -214,3 +216,31 @@ class Comissao(Base):
             f"<Comissao(id={self.id}, pagamento_id={self.pagamento_id}, artista_id={self.artista_id}, "
             f"percentual={self.percentual}, valor={self.valor})>"
         )
+
+
+class Extrato(Base):
+    """Snapshot mensal imutável dos dados de pagamentos, sessões e comissões.
+
+    Stored as JSONB so reports are fast to read. Do not reference original
+    records by foreign key: data is copied into the JSON payloads.
+    """
+
+    __tablename__ = "extratos"
+    __table_args__ = (UniqueConstraint("mes", "ano", name="uq_extratos_mes_ano"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    mes = Column(Integer, nullable=False)  # 1..12
+    ano = Column(Integer, nullable=False)  # ex.: 2025
+
+    # Snapshots (lists) of objects: pagamentos, sessoes, comissoes
+    pagamentos = Column(JSONB, nullable=False)
+    sessoes = Column(JSONB, nullable=False)
+    comissoes = Column(JSONB, nullable=False)
+
+    # Pre-calculated totals to speed reads and avoid recomputation
+    totais = Column(JSONB, nullable=False)
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    def __repr__(self):
+        return f"<Extrato(id={self.id}, mes={self.mes}, ano={self.ano})>"

@@ -9,8 +9,8 @@ This service:
 """
 
 from typing import List, Dict
-from domain.interfaces import IClientRepository, IJotFormService
-from domain.entities import Client as DomainClient
+from ..domain.interfaces import IClientRepository, IJotFormService
+from ..domain.entities import Client as DomainClient
 
 
 class ClientService:
