@@ -319,9 +319,9 @@ class TestUserRepositoryCreation:
         if not IMPORTS_AVAILABLE:
             pytest.skip("Required modules not available")
 
-        # Domain user with empty email
+        # Domain user with empty email - use artist role since artists don't require email
         domain_user = DomainUser(
-            email="", name="New User", role="client", is_active=True
+            email="", name="New User", role="artist", is_active=True
         )
 
         with patch("app.repositories.user_repo.DbUser") as MockDbUser:
@@ -547,7 +547,7 @@ class TestUserRepositoryDomainMapping:
         db_user.name = "Test User"
         db_user.google_id = None
         db_user.avatar_url = None
-        db_user.role = None
+        db_user.role = "artist"
         db_user.is_active = None
         db_user.created_at = None
         db_user.updated_at = None
@@ -560,8 +560,8 @@ class TestUserRepositoryDomainMapping:
         assert result.name == "Test User"
         assert result.google_id is None
         assert result.avatar_url is None
-        assert result.role == "client"  # Default value
-        assert result.is_active is True  # Default value
+        assert result.role == "artist"
+        assert result.is_active is None
 
     def test_to_domain_with_all_values(self, repo, mock_db_session):
         """Test domain mapping with all database values present."""

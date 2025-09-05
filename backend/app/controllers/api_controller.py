@@ -3,8 +3,9 @@ Example protected routes demonstrating JWT authentication decorators.
 These routes show different authentication patterns.
 """
 
-from flask import Blueprint, jsonify, request, make_response
+from flask import Blueprint, jsonify, request, make_response, g
 from flask_login import logout_user, current_user, login_required
+from app.core.auth_decorators import jwt_required, get_current_user
 
 # Create a blueprint for API routes
 api_bp = Blueprint("api", __name__, url_prefix="/api")
@@ -25,14 +26,14 @@ def api_logout():
 
 
 @api_bp.route("/profile", methods=["GET"])
-@login_required
+@jwt_required
 def get_user_profile():
     """Get current user profile (JWT required).
 
     Example usage:
     curl -H "Authorization: Bearer <token>" http://localhost:5000/api/profile
     """
-    user = current_user
+    user = get_current_user()
 
     return jsonify(
         {

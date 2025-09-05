@@ -213,7 +213,7 @@ class TestSessionListingFilter:
         mock_db_session.query.return_value = mock_query
 
         with app.test_request_context(), patch(
-            "controllers.sessoes_controller.SessionLocal", return_value=mock_db_session
+            "app.db.session.SessionLocal", return_value=mock_db_session
         ), patch(
             "controllers.sessoes_controller.render_template"
         ) as mock_render, patch(

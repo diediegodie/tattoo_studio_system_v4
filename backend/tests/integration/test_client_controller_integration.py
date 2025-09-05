@@ -9,6 +9,7 @@ authentication fixtures following SOLID principles.
 import pytest
 import json
 from unittest.mock import patch, Mock
+from datetime import datetime
 
 # Import integration fixtures
 from tests.fixtures.integration_fixtures import (
@@ -19,7 +20,6 @@ from tests.fixtures.integration_fixtures import (
     sample_client_data,
     mock_jotform_response,
     database_transaction_isolator,
-    response_helper,
 )
 from tests.fixtures.auth_fixtures import (
     auth_headers_valid,
@@ -102,34 +102,32 @@ class TestClientControllerIntegrationComplete:
 
         try:
             with patch(
-                "app.services.jotform_service.JotFormService.fetch_submissions"
-            ) as mock_jotform:
-                with patch(
-                    "app.services.client_service.ClientService.sync_clients_from_jotform"
-                ) as mock_sync:
-                    mock_jotform.return_value = mock_jotform_response["content"]
-                    mock_sync.return_value = {"synced": 1, "total": 1}
+                "app.services.client_service.ClientService.sync_clients_from_jotform"
+            ) as mock_sync:
+                mock_sync.return_value = {"synced": 1, "total": 1}
 
-                    # The application exposes sync as GET in this project
-                    response = authenticated_client.authenticated_get("/clients/sync")
+                # The application exposes sync as GET in this project
+                response = authenticated_client.authenticated_get("/clients/sync")
 
-                    # Should redirect with success (or to login with next param)
-                    location = response_helper.assert_redirect_response(response)
-                    assert (
-                        ("/clients/" in location)
-                        or ("/login" in location)
-                        or ("?next=" in location)
+                # Should redirect with success (or to login with next param)
+                location = response_helper.assert_redirect_response(response)
+                assert (
+                    ("/clients/" in location)
+                    or ("/login" in location)
+                    or ("?next=" in location)
+                )
+
+                # Verify services were called if we weren't redirected to login
+                if "/login" in (response.location or "") or "?next=" in (
+                    response.location or ""
+                ):
+                    # Redirected to login; ensure redirect target looks correct
+                    assert ("/login" in (response.location or "")) or (
+                        "?next=" in (response.location or "")
                     )
-
-                    # Verify services were called if we weren't redirected
-                    if response.status_code == 302:
-                        # Redirected to login; ensure redirect target looks correct
-                        assert ("/login" in (response.location or "")) or (
-                            "?next=" in (response.location or "")
-                        )
-                    else:
-                        mock_jotform.assert_called_once()
-                        mock_sync.assert_called_once()
+                else:
+                    # Successfully authenticated and processed
+                    mock_sync.assert_called_once()
 
             # Commit the transaction for this test
             database_transaction_isolator["commit_savepoint"](savepoint)
@@ -151,10 +149,19 @@ class TestClientControllerIntegrationComplete:
         self, authenticated_client, sample_client_data, response_helper
     ):
         """Test API client list endpoint returns JSON data."""
+        # Create a mock client object that matches what the controller expects
+        mock_client = Mock()
+        mock_client.id = 1
+        mock_client.full_name = sample_client_data["name"]
+        mock_client.jotform_submission_id = sample_client_data["submission_id"]
+        mock_client.created_at = datetime.fromisoformat(
+            sample_client_data["created_at"].replace("Z", "+00:00")
+        )
+
         with patch(
             "app.services.client_service.ClientService.get_all_clients"
         ) as mock_service:
-            mock_service.return_value = [sample_client_data]
+            mock_service.return_value = [mock_client]
 
             response = authenticated_client.authenticated_get("/clients/api/list")
 
@@ -165,8 +172,10 @@ class TestClientControllerIntegrationComplete:
                 )
             else:
                 json_data = response_helper.assert_json_response(response, 200)
-                assert isinstance(json_data, list)
-                assert len(json_data) >= 0  # Could be empty or have data
+                assert isinstance(json_data, dict)
+                assert "clients" in json_data
+                assert isinstance(json_data["clients"], list)
+                assert len(json_data["clients"]) == 1
                 mock_service.assert_called_once()
 
     def test_api_client_list_requires_authentication(self, client):

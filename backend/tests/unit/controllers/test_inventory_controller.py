@@ -10,7 +10,7 @@ from importlib import import_module, reload
 
 try:
     # Import domain entity (may raise in restricted environments)
-    from domain.entities import InventoryItem
+    from app.domain.entities import InventoryItem
 
     DOMAIN_AVAILABLE = True
 except Exception:
@@ -69,71 +69,204 @@ def local_client():
 @pytest.mark.controllers
 class TestInventoryControllerEndpoints:
     def test_list_inventory_returns_200_and_json_array(
-        self, client, mock_inventory_service
+        self, login_client, mock_inventory_service
     ):
         if not IMPORTS_AVAILABLE:
             pytest.skip("Inventory controller not importable")
 
-        # Prepare mock return
-        item = InventoryItem(id=1, nome="Ink", quantidade=10, observacoes="")
-        mock_inventory_service.list_items.return_value = [item]
+        # Mock the _get_user function to avoid database authentication
+        from unittest.mock import patch, MagicMock
+        from app.db.base import User
 
-        resp = client.get("/inventory/")
-        assert resp.status_code == 200
-        data = resp.get_json()
-        assert isinstance(data, list)
-        assert data[0]["id"] == 1
-        assert "nome" in data[0]
+        mock_user = User(
+            id=1, email="test@example.com", name="Test User", is_active=True
+        )
 
-    def test_add_inventory_success_returns_201(self, client, mock_inventory_service):
+        with patch("flask_login.utils._get_user", return_value=mock_user), patch(
+            "app.controllers.inventory_controller.InventoryService"
+        ) as MockService:
+            mock_service = Mock()
+            MockService.return_value = mock_service
+
+            # Prepare mock return
+            item = InventoryItem(id=1, nome="Ink", quantidade=10, observacoes="")
+            mock_service.list_items.return_value = [item]
+
+            resp = login_client.get("/inventory/")
+            assert resp.status_code == 200
+            data = resp.get_json()
+            assert isinstance(data, list)
+            assert data[0]["id"] == 1
+            assert "nome" in data[0]
+
+    def test_add_inventory_success_returns_201(
+        self, login_client, mock_inventory_service
+    ):
         if not IMPORTS_AVAILABLE:
             pytest.skip("Inventory controller not importable")
+
+        # Mock the _get_user function to avoid database authentication
+        from unittest.mock import patch, MagicMock
+        from db.base import User
+
+        mock_user = User(
+            id=1, email="test@example.com", name="Test User", is_active=True
+        )
 
         created = InventoryItem(id=2, nome="New Item", quantidade=5, observacoes="")
         mock_inventory_service.add_item.return_value = created
 
-        resp = client.post("/inventory/", json={"nome": "New Item", "quantidade": 5})
-        assert resp.status_code == 201
-        data = resp.get_json()
-        assert data["id"] == 2
-        assert data["nome"] == "New Item"
+        with patch("flask_login.utils._get_user", return_value=mock_user), patch(
+            "app.controllers.inventory_controller.SessionLocal"
+        ) as mock_session, patch(
+            "app.controllers.inventory_controller.InventoryRepository"
+        ) as mock_repo_class, patch(
+            "app.controllers.inventory_controller.InventoryService"
+        ) as mock_service_class:
 
-    def test_delete_inventory_returns_200(self, client, mock_inventory_service):
+            # Setup mocks
+            mock_db = MagicMock()
+            mock_session.return_value = mock_db
+            mock_repo = MagicMock()
+            mock_repo_class.return_value = mock_repo
+            mock_service = MagicMock()
+            mock_service_class.return_value = mock_service
+            mock_service.add_item.return_value = created
+
+            resp = login_client.post(
+                "/inventory/", json={"nome": "New Item", "quantidade": 5}
+            )
+            assert resp.status_code == 201
+            data = resp.get_json()
+            assert data["id"] == 2
+            assert data["nome"] == "New Item"
+
+    def test_delete_inventory_returns_200(self, login_client, mock_inventory_service):
         if not IMPORTS_AVAILABLE:
             pytest.skip("Inventory controller not importable")
+
+        # Mock the load_user function to avoid database authentication
+        from unittest.mock import patch, MagicMock
+
+        mock_user = MagicMock()
+        mock_user.id = 1
+        mock_user.email = "test@example.com"
+        mock_user.name = "Test User"
+        mock_user.is_active = True
+        mock_user.is_authenticated = True
+        mock_user.is_anonymous = False
 
         # Ensure the service reports the item exists
-        mock_inventory_service.get_item.return_value = InventoryItem(
-            id=1, nome="Ink", quantidade=10, observacoes=""
-        )
+        mock_item = Mock()
+        mock_item.id = 1
+        mock_item.nome = "Ink"
+        mock_item.quantidade = 10
+        mock_item.observacoes = ""
+        mock_inventory_service.get_item.return_value = mock_item
 
-        resp = client.delete("/inventory/1")
-        assert resp.status_code == 200
-        data = resp.get_json()
-        assert data["success"] is True
+        with patch("flask_login.utils._get_user", return_value=mock_user), patch(
+            "app.controllers.inventory_controller.SessionLocal"
+        ) as mock_session, patch(
+            "app.controllers.inventory_controller.InventoryRepository"
+        ) as mock_repo_class, patch(
+            "app.controllers.inventory_controller.InventoryService"
+        ) as mock_service_class:
 
-    def test_change_quantity_returns_200(self, client, mock_inventory_service):
+            # Setup mocks
+            mock_db = MagicMock()
+            mock_session.return_value = mock_db
+            mock_repo = MagicMock()
+            mock_repo_class.return_value = mock_repo
+            mock_service = MagicMock()
+            mock_service_class.return_value = mock_service
+            mock_service.get_item.return_value = mock_item
+
+            resp = login_client.delete("/inventory/1")
+            assert resp.status_code == 200
+            data = resp.get_json()
+            assert data["success"] is True
+
+    def test_change_quantity_returns_200(self, login_client, mock_inventory_service):
         if not IMPORTS_AVAILABLE:
             pytest.skip("Inventory controller not importable")
 
-        updated = InventoryItem(id=1, nome="Ink", quantidade=15, observacoes="")
+        # Mock the load_user function to avoid database authentication
+        from unittest.mock import patch, MagicMock
+
+        mock_user = MagicMock()
+        mock_user.id = 1
+        mock_user.email = "test@example.com"
+        mock_user.name = "Test User"
+        mock_user.is_active = True
+        mock_user.is_authenticated = True
+        mock_user.is_anonymous = False
+
+        updated = Mock()
+        updated.id = 1
+        updated.nome = "Ink"
+        updated.quantidade = 15
+        updated.observacoes = ""
+        updated.created_at = None
+        updated.updated_at = None
         mock_inventory_service.change_quantity.return_value = updated
 
-        resp = client.patch("/inventory/1/quantity", json={"delta": 5})
-        assert resp.status_code == 200
-        data = resp.get_json()
-        assert data["quantidade"] == 15
+        with patch("flask_login.utils._get_user", return_value=mock_user), patch(
+            "app.controllers.inventory_controller.SessionLocal"
+        ) as mock_session, patch(
+            "app.controllers.inventory_controller.InventoryRepository"
+        ) as mock_repo_class, patch(
+            "app.controllers.inventory_controller.InventoryService"
+        ) as mock_service_class:
+            mock_service = MagicMock()
+            mock_service_class.return_value = mock_service
+            mock_service.change_quantity.return_value = updated
 
-    def test_update_inventory_item_returns_200(self, client, mock_inventory_service):
+            resp = login_client.patch("/inventory/1/quantity", json={"delta": 5})
+            assert resp.status_code == 200
+            data = resp.get_json()
+            assert data["quantidade"] == 15
+
+    def test_update_inventory_item_returns_200(
+        self, login_client, mock_inventory_service
+    ):
         if not IMPORTS_AVAILABLE:
             pytest.skip("Inventory controller not importable")
 
-        updated = InventoryItem(id=1, nome="Updated Name", quantidade=5, observacoes="")
+        # Mock the load_user function to avoid database authentication
+        from unittest.mock import patch, MagicMock
+
+        mock_user = MagicMock()
+        mock_user.id = 1
+        mock_user.email = "test@example.com"
+        mock_user.name = "Test User"
+        mock_user.is_active = True
+        mock_user.is_authenticated = True
+        mock_user.is_anonymous = False
+
+        updated = Mock()
+        updated.id = 1
+        updated.nome = "Updated Name"
+        updated.quantidade = 5
+        updated.observacoes = ""
+        updated.created_at = None
+        updated.updated_at = None
         mock_inventory_service.get_item.return_value = updated
         mock_inventory_service.update_item.return_value = updated
 
-        resp = client.put("/inventory/1", json={"nome": "Updated Name"})
-        assert resp.status_code == 200
-        data = resp.get_json()
-        assert data["success"] is True
-        assert data["data"]["nome"] == "Updated Name"
+        with patch("flask_login.utils._get_user", return_value=mock_user), patch(
+            "app.controllers.inventory_controller.SessionLocal"
+        ) as mock_session, patch(
+            "app.controllers.inventory_controller.InventoryRepository"
+        ) as mock_repo_class, patch(
+            "app.controllers.inventory_controller.InventoryService"
+        ) as mock_service_class:
+            mock_service = MagicMock()
+            mock_service_class.return_value = mock_service
+            mock_service.get_item.return_value = updated
+            mock_service.update_item.return_value = updated
+
+            resp = login_client.put("/inventory/1", json={"nome": "Updated Name"})
+            assert resp.status_code == 200
+            data = resp.get_json()
+            assert data["success"] is True
+            assert data["data"]["nome"] == "Updated Name"

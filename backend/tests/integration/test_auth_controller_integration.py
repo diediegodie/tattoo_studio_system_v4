@@ -9,7 +9,7 @@ authentication scenarios following SOLID principles.
 import pytest
 import json
 from unittest.mock import patch, Mock
-from types import SimpleNamespace
+from dataclasses import dataclass
 
 # Import integration fixtures
 from tests.fixtures.integration_fixtures import (
@@ -18,7 +18,6 @@ from tests.fixtures.integration_fixtures import (
     db_session,
     authenticated_client,
     database_transaction_isolator,
-    response_helper,
 )
 from tests.fixtures.auth_fixtures import (
     valid_jwt_token,
@@ -34,18 +33,26 @@ from tests.fixtures.auth_fixtures import (
 )
 
 
+@dataclass
+class MockUser:
+    id: int
+    email: str
+    name: str
+
+
 @pytest.mark.integration
 @pytest.mark.auth
 @pytest.mark.controllers
 class TestAuthControllerIntegrationComplete:
     """Complete integration tests for authentication controller endpoints."""
 
-    def test_login_page_renders_successfully(self, client, response_helper):
+    def test_login_page_renders_successfully(self, client):
         """Test that login page renders without authentication."""
         response = client.get("/")
 
         # Should render login page successfully
-        html_content = response_helper.assert_html_response(response, 200)
+        assert response.status_code == 200
+        html_content = response.get_data(as_text=True)
         assert "login" in html_content.lower()
 
     def test_google_oauth_callback_success(
@@ -57,13 +64,15 @@ class TestAuthControllerIntegrationComplete:
 
         try:
             # Patch the UserService class used by the controller so it does not access the DB
-            with patch("controllers.auth_controller.UserService") as MockUserService:
+            with patch(
+                "app.controllers.auth_controller.UserService"
+            ) as MockUserService:
                 with patch(
-                    "controllers.auth_controller.create_user_token"
+                    "app.controllers.auth_controller.create_user_token"
                 ) as mock_token:
                     # Mock successful OAuth and user creation
                     mock_user_data = oauth_mock["success"]()
-                    mock_user = SimpleNamespace(
+                    mock_user = MockUser(
                         id=123,
                         email=mock_user_data["email"],
                         name=mock_user_data.get("name"),
@@ -136,7 +145,7 @@ class TestAuthControllerIntegrationComplete:
         self, client, auth_headers_valid, response_helper
     ):
         """Test API endpoint authentication using JWT headers."""
-        response = client.get("/api/clients", headers=auth_headers_valid)
+        response = client.get("/api/profile", headers=auth_headers_valid)
 
         # Should allow API access with valid JWT
         if response.status_code == 302:
@@ -148,12 +157,10 @@ class TestAuthControllerIntegrationComplete:
         self, client, auth_headers_expired, auth_test_helper
     ):
         """Test that API endpoints reject expired JWT tokens."""
-        response = client.get("/api/clients", headers=auth_headers_expired)
+        response = client.get("/api/profile", headers=auth_headers_expired)
 
         # Should reject expired tokens
-
-        assert response.status_code == 302
-        assert "/login" in response.location or "?next=" in response.location
+        assert response.status_code == 401
 
     def test_api_authentication_rejects_invalid_tokens(
         self, client, auth_headers_invalid, auth_test_helper
@@ -176,14 +183,14 @@ class TestAuthenticationSecurityIntegration:
     def test_session_hijacking_protection(self, client, auth_headers_valid):
         """Test protection against session hijacking."""
         # Create a session
-        response1 = client.get("/api/clients", headers=auth_headers_valid)
+        response1 = client.get("/api/profile", headers=auth_headers_valid)
 
         # Try to use the same token from different "client"
         # This would be detected by IP checking, user agent checking, etc.
         modified_headers = auth_headers_valid.copy()
         modified_headers["User-Agent"] = "Different-Client/1.0"
 
-        response2 = client.get("/api/clients", headers=modified_headers)
+        response2 = client.get("/api/profile", headers=modified_headers)
 
         # Should either work (if no IP/UA checking) or fail securely
         if response2.status_code == 302:

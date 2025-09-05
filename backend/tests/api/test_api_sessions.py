@@ -29,11 +29,9 @@ class TestSessionsAPI:
         mock_db = Mock()
 
         # Patch the controller's SessionLocal directly (adapted to controllers package)
-        with patch(
-            "app.controllers.sessoes_controller.SessionLocal", return_value=mock_db
-        ), patch("flask_login.login_required", lambda f: f), patch(
-            "flask_login.current_user", mock_user
-        ):
+        with patch("app.db.session.SessionLocal", return_value=mock_db), patch(
+            "flask_login.login_required", lambda f: f
+        ), patch("flask_login.current_user", mock_user):
             print(f"DEBUG: mock_db: {mock_db}")
 
             # prepare two sessions
@@ -80,8 +78,11 @@ class TestSessionsAPI:
                 pytest.skip(f"API endpoint not available: {resp.status_code}")
 
             data = resp.get_json()
-            assert isinstance(data, list)
-            if not data:
+            assert isinstance(data, dict)
+            assert data["success"] is True
+            sessions = data["data"]
+            assert isinstance(sessions, list)
+            if not sessions:
                 print("DEBUG: Empty data returned, checking if patch worked")
                 print(f"DEBUG: mock_db.query called: {mock_db.query.called}")
                 print(
@@ -89,8 +90,8 @@ class TestSessionsAPI:
                 )
                 print(f"DEBUG: q.all called: {q.all.called}")
                 print(f"DEBUG: q.all.return_value: {q.all.return_value}")
-            assert data[0]["google_event_id"] == "GOOGLE123"
-            assert data[1]["google_event_id"] is None
+            assert sessions[0]["google_event_id"] == "GOOGLE123"
+            assert sessions[1]["google_event_id"] is None
 
     def test_api_detail_includes_google_event_id(self, app, client):
         """GET /sessoes/api/<id> should return an api_response containing google_event_id."""
@@ -118,9 +119,7 @@ class TestSessionsAPI:
 
         with patch(
             "app.controllers.sessoes_controller.login_required", mock_login_required
-        ), patch(
-            "app.controllers.sessoes_controller.SessionLocal"
-        ) as mock_session_local:
+        ), patch("app.db.session.SessionLocal") as mock_session_local:
             mock_db = Mock()
             mock_session_local.return_value = mock_db
             # mock.get should return the session object
@@ -160,9 +159,7 @@ class TestSessionsAPI:
 
         with patch(
             "app.controllers.sessoes_controller.login_required", mock_login_required
-        ), patch(
-            "app.controllers.sessoes_controller.SessionLocal"
-        ) as mock_session_local:
+        ), patch("app.db.session.SessionLocal") as mock_session_local:
             mock_db = Mock()
             mock_session_local.return_value = mock_db
             mock_db.query.return_value.get.return_value = s

@@ -176,8 +176,36 @@ class AppointmentService:
 
         Business rule: No overlapping appointments.
         """
-        # This would typically check for overlapping time slots
-        # For now, we'll return False as the repository is not fully implemented
+        if not scheduled_date:
+            return False
+
+        # Calculate the end time of the proposed appointment
+        end_date = scheduled_date + timedelta(minutes=duration_minutes)
+
+        # Get all appointments in the date range
+        existing_appointments = self.appointment_repo.get_by_date_range(
+            scheduled_date, end_date
+        )
+
+        # Check for any overlapping appointments
+        for appointment in existing_appointments or []:
+            if not appointment or not appointment.scheduled_date:
+                continue
+
+            if appointment.status == "cancelled":
+                continue  # Skip cancelled appointments
+
+            appointment_end = appointment.scheduled_date + timedelta(
+                minutes=appointment.duration_minutes or 0
+            )
+
+            # Check for overlap
+            if (
+                scheduled_date < appointment_end
+                and end_date > appointment.scheduled_date
+            ):
+                return True
+
         return False
 
     def get_daily_schedule(self, date: datetime) -> List[AppointmentResponse]:

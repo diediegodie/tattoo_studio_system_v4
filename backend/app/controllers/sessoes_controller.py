@@ -20,12 +20,15 @@ from flask_login import login_required, current_user
 from typing import Union
 import logging
 
-from app.services.user_service import UserService
-from app.repositories.user_repo import UserRepository
-from app.db.session import SessionLocal
 from app.db.base import Client, Sessao
 from decimal import Decimal
 from datetime import datetime, date, time
+from app.services.user_service import UserService
+from app.repositories.user_repo import UserRepository
+from app.db.base import Client, Sessao
+from decimal import Decimal
+from datetime import datetime, date, time
+from sqlalchemy.exc import IntegrityError
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -35,7 +38,7 @@ sessoes_bp = Blueprint("sessoes", __name__, url_prefix="/sessoes")
 
 
 def api_response(
-    success: bool, message: str, data: dict | None = None, status_code: int = 200
+    success: bool, message: str, data: dict | list | None = None, status_code: int = 200
 ):
     """Consistent JSON API response used across controllers."""
     return jsonify({"success": success, "message": message, "data": data}), status_code
@@ -43,6 +46,9 @@ def api_response(
 
 def _get_user_service() -> UserService:
     """Dependency injection factory for UserService."""
+    # Import SessionLocal lazily so tests can set DATABASE_URL before session factory
+    from app.db.session import SessionLocal
+
     db_session = SessionLocal()
     user_repo = UserRepository(db_session)
     return UserService(user_repo)
@@ -54,6 +60,9 @@ def nova_sessao() -> Union[str, Response]:
     """Create a new session/appointment."""
     db = None
     try:
+        # Lazy import of SessionLocal ensures the sessionmaker/engine honors test DATABASE_URL
+        from app.db.session import SessionLocal
+
         db = SessionLocal()
 
         if request.method == "GET":
@@ -143,6 +152,83 @@ def nova_sessao() -> Union[str, Response]:
             # Check if this session is from a Google Calendar event
             google_event_id = request.form.get("google_event_id")
 
+            # Convert and validate form fields into proper Python types
+            try:
+                # date: expect YYYY-MM-DD
+                parsed_date = (
+                    date.fromisoformat(data) if isinstance(data, str) else data
+                )
+            except Exception:
+                try:
+                    parsed_date = datetime.strptime(data, "%Y-%m-%d").date()
+                except Exception:
+                    flash("Formato de data inválido.", "error")
+                    # Re-load clients/artists for rendering form with error
+                    clients = db.query(Client).order_by(Client.name).all()
+                    user_service = _get_user_service()
+                    artists = user_service.list_artists()
+                    return render_template(
+                        "nova_sessao.html",
+                        clients=clients,
+                        artists=artists,
+                        event=None,
+                        is_google_event=False,
+                        event_title_with_suffix="",
+                    )
+
+            try:
+                # hora: accept HH:MM or HH:MM:SS
+                try:
+                    parsed_time = time.fromisoformat(hora)
+                except Exception:
+                    parsed_time = datetime.strptime(hora, "%H:%M").time()
+            except Exception:
+                flash("Formato de hora inválido.", "error")
+                clients = db.query(Client).order_by(Client.name).all()
+                user_service = _get_user_service()
+                artists = user_service.list_artists()
+                return render_template(
+                    "nova_sessao.html",
+                    clients=clients,
+                    artists=artists,
+                    event=None,
+                    is_google_event=False,
+                    event_title_with_suffix="",
+                )
+
+            try:
+                cliente_id_int = int(cliente_id)
+                artista_id_int = int(artista_id)
+            except Exception:
+                flash("Cliente ou artista inválido.", "error")
+                clients = db.query(Client).order_by(Client.name).all()
+                user_service = _get_user_service()
+                artists = user_service.list_artists()
+                return render_template(
+                    "nova_sessao.html",
+                    clients=clients,
+                    artists=artists,
+                    event=None,
+                    is_google_event=False,
+                    event_title_with_suffix="",
+                )
+
+            try:
+                valor_decimal = Decimal(str(valor))
+            except Exception:
+                flash("Valor inválido.", "error")
+                clients = db.query(Client).order_by(Client.name).all()
+                user_service = _get_user_service()
+                artists = user_service.list_artists()
+                return render_template(
+                    "nova_sessao.html",
+                    clients=clients,
+                    artists=artists,
+                    event=None,
+                    is_google_event=False,
+                    event_title_with_suffix="",
+                )
+
             # If there's a Google event ID, check if a session with this ID already exists
             if google_event_id:
                 existing_session = (
@@ -154,20 +240,37 @@ def nova_sessao() -> Union[str, Response]:
                     flash("Uma sessão para este evento do Google já existe.", "info")
                     return redirect(url_for("sessoes.list_sessoes"))
 
-            # Create session
+            # Create session with proper types
             sessao = Sessao(
-                data=data,
-                hora=hora,
-                valor=valor,
+                data=parsed_date,
+                hora=parsed_time,
+                valor=valor_decimal,
                 observacoes=observacoes,
-                cliente_id=cliente_id,
-                artista_id=artista_id,
+                cliente_id=cliente_id_int,
+                artista_id=artista_id_int,
                 google_event_id=google_event_id,  # This will be None if not from Google Calendar
-                status="active",  # Explicitly set status for new sessions
+                status="active",
             )
 
-            db.add(sessao)
-            db.commit()
+            try:
+                db.add(sessao)
+                db.commit()
+            except IntegrityError as ie:
+                db.rollback()
+                # Handle duplicate submissions gracefully: re-render form with message
+                logger.info(f"IntegrityError creating sessao: {str(ie)}")
+                flash("Sessão já existe (submissão duplicada).", "info")
+                clients = db.query(Client).order_by(Client.name).all()
+                user_service = _get_user_service()
+                artists = user_service.list_artists()
+                return render_template(
+                    "nova_sessao.html",
+                    clients=clients,
+                    artists=artists,
+                    event=None,
+                    is_google_event=False,
+                    event_title_with_suffix="",
+                )
 
             flash("Sessão criada com sucesso!", "success")
             return redirect(url_for("sessoes.list_sessoes"))
@@ -175,7 +278,21 @@ def nova_sessao() -> Union[str, Response]:
     except Exception as e:
         logger.error(f"Error in nova_sessao: {str(e)}")
         flash("Erro interno do servidor.", "error")
-        return redirect(url_for("sessoes.nova_sessao"))
+        # Attempt to render the form instead of redirecting to avoid redirect loops in tests
+        try:
+            clients = db.query(Client).order_by(Client.name).all() if db else []
+            user_service = _get_user_service() if db else None
+            artists = user_service.list_artists() if user_service else []
+            return render_template(
+                "nova_sessao.html",
+                clients=clients,
+                artists=artists,
+                event=None,
+                is_google_event=False,
+                event_title_with_suffix="",
+            )
+        except Exception:
+            return "", 500
     finally:
         if db:
             db.close()
@@ -190,6 +307,8 @@ def finalizar_sessao(sessao_id: int) -> Response:
     """Mark session as completed and redirect to payment registration."""
     db = None
     try:
+        from app.db.session import SessionLocal
+
         db = SessionLocal()
 
         # Get session
@@ -245,6 +364,8 @@ def list_sessoes() -> str:
     """List all active sessions."""
     db = None
     try:
+        from app.db.session import SessionLocal
+
         db = SessionLocal()
         # Load active sessions only (not completed or archived)
         from sqlalchemy.orm import joinedload
@@ -291,6 +412,8 @@ def api_list_sessoes():
     """Return JSON array of sessions."""
     db = None
     try:
+        from app.db.session import SessionLocal
+
         db = SessionLocal()
         from sqlalchemy.orm import joinedload
 
@@ -319,7 +442,9 @@ def api_list_sessoes():
                 "updated_at": s.updated_at.isoformat() if s.updated_at else None,
             }
 
-        return jsonify([to_dict(s) for s in sessoes]), 200
+        return api_response(
+            True, "Sessions retrieved successfully", [to_dict(s) for s in sessoes]
+        )
     except Exception as e:
         logger.error(f"Error in api_list_sessoes: {str(e)}")
         return jsonify([]), 500
@@ -333,8 +458,10 @@ def api_list_sessoes():
 def api_get_sessao(sessao_id: int):
     db = None
     try:
+        from app.db.session import SessionLocal
+
         db = SessionLocal()
-        s = db.query(Sessao).get(sessao_id)
+        s = db.get(Sessao, sessao_id)
         if not s:
             return api_response(False, "Sessão não encontrada", None, 404)
 
@@ -368,6 +495,8 @@ def api_get_sessao(sessao_id: int):
 def api_update_sessao(sessao_id: int):
     db = None
     try:
+        from app.db.session import SessionLocal
+
         db = SessionLocal()
         if not request.is_json:
             return api_response(False, "Expected JSON payload", None, 400)
@@ -445,7 +574,10 @@ def api_update_sessao(sessao_id: int):
 def api_delete_sessao(sessao_id: int):
     db = None
     try:
+        from app.db.session import SessionLocal
+
         db = SessionLocal()
+
         s = db.query(Sessao).get(sessao_id)
         if not s:
             return api_response(False, "Sessão não encontrada", None, 404)

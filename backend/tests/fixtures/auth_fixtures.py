@@ -8,15 +8,15 @@ authentication state mocking for different test scenarios.
 
 import pytest
 import jwt
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import Mock, patch
 from tests.config.test_paths import setup_test_environment
 
 setup_test_environment()
 
 try:
-    from core.security import create_access_token, verify_token
-    from domain.entities import User
+    from app.core.security import create_access_token, verify_token
+    from app.domain.entities import User
 
     AUTH_IMPORTS_AVAILABLE = True
 except ImportError as e:
@@ -24,10 +24,12 @@ except ImportError as e:
     AUTH_IMPORTS_AVAILABLE = False
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def jwt_secret():
     """Provide JWT secret key for testing."""
-    return "test-jwt-secret-key-for-testing"
+    import os
+
+    return os.getenv("JWT_SECRET_KEY", "test-jwt-secret")
 
 
 @pytest.fixture
@@ -37,11 +39,11 @@ def valid_jwt_token(jwt_secret):
         pytest.skip("Authentication dependencies not available")
 
     payload = {
-        "user_id": 123,
+        "sub": "123",
         "email": "test@example.com",
         "name": "Test User",
-        "exp": datetime.utcnow() + timedelta(hours=1),
-        "iat": datetime.utcnow(),
+        "exp": datetime.now(timezone.utc) + timedelta(hours=1),
+        "iat": datetime.now(timezone.utc),
         "type": "access",
     }
 
@@ -55,11 +57,11 @@ def expired_jwt_token(jwt_secret):
         pytest.skip("Authentication dependencies not available")
 
     payload = {
-        "user_id": 123,
+        "sub": "123",
         "email": "test@example.com",
         "name": "Test User",
-        "exp": datetime.utcnow() - timedelta(hours=1),  # Expired
-        "iat": datetime.utcnow() - timedelta(hours=2),
+        "exp": datetime.now(timezone.utc) - timedelta(hours=1),  # Expired
+        "iat": datetime.now(timezone.utc) - timedelta(hours=2),
         "type": "access",
     }
 
@@ -79,12 +81,12 @@ def admin_jwt_token(jwt_secret):
         pytest.skip("Authentication dependencies not available")
 
     payload = {
-        "user_id": 1,
+        "sub": "1",
         "email": "admin@example.com",
         "name": "Admin User",
         "role": "admin",
-        "exp": datetime.utcnow() + timedelta(hours=1),
-        "iat": datetime.utcnow(),
+        "exp": datetime.now(timezone.utc) + timedelta(hours=1),
+        "iat": datetime.now(timezone.utc),
         "type": "access",
     }
 
@@ -98,12 +100,12 @@ def regular_user_jwt_token(jwt_secret):
         pytest.skip("Authentication dependencies not available")
 
     payload = {
-        "user_id": 456,
+        "sub": "456",
         "email": "user@example.com",
         "name": "Regular User",
         "role": "user",
-        "exp": datetime.utcnow() + timedelta(hours=1),
-        "iat": datetime.utcnow(),
+        "exp": datetime.now(timezone.utc) + timedelta(hours=1),
+        "iat": datetime.now(timezone.utc),
         "type": "access",
     }
 
@@ -154,8 +156,8 @@ def mock_authenticated_user():
     user.avatar_url = "https://example.com/avatar.jpg"
     user.is_active = True
     user.role = "user"
-    user.created_at = datetime.utcnow()
-    user.updated_at = datetime.utcnow()
+    user.created_at = datetime.now(timezone.utc)
+    user.updated_at = datetime.now(timezone.utc)
     return user
 
 
@@ -170,8 +172,8 @@ def mock_admin_user():
     user.avatar_url = "https://example.com/admin-avatar.jpg"
     user.is_active = True
     user.role = "admin"
-    user.created_at = datetime.utcnow()
-    user.updated_at = datetime.utcnow()
+    user.created_at = datetime.now(timezone.utc)
+    user.updated_at = datetime.now(timezone.utc)
     return user
 
 
@@ -186,8 +188,8 @@ def mock_inactive_user():
     user.avatar_url = None
     user.is_active = False
     user.role = "user"
-    user.created_at = datetime.utcnow()
-    user.updated_at = datetime.utcnow()
+    user.created_at = datetime.now(timezone.utc)
+    user.updated_at = datetime.now(timezone.utc)
     return user
 
 
@@ -235,7 +237,7 @@ def mock_session_with_auth():
         "email": "test@example.com",
         "name": "Test User",
         "authenticated": True,
-        "login_time": datetime.utcnow().isoformat(),
+        "login_time": datetime.now(timezone.utc).isoformat(),
     }
     return session
 
@@ -356,8 +358,8 @@ def database_auth_setup(db_session):
             "google_id": f'google_{email.split("@")[0]}',
             "is_active": is_active,
             "role": role,
-            "created_at": datetime.utcnow(),
-            "updated_at": datetime.utcnow(),
+            "created_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(timezone.utc),
         }
         return user_data
 
