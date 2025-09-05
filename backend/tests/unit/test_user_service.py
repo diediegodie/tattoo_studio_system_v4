@@ -211,7 +211,7 @@ class TestUserServiceGoogleOAuth:
 class TestUserServicePasswordManagement:
     """Test password-related functionality."""
 
-    @patch("services.user_service.hash_password")
+    @patch("app.services.user_service.hash_password")
     def test_set_password_success(self, mock_hash, service, mock_repo):
         """Test successful password setting."""
         if not IMPORTS_AVAILABLE:
@@ -228,19 +228,17 @@ class TestUserServicePasswordManagement:
         mock_repo.get_by_id.return_value = existing_user
         mock_hash.return_value = hashed_password
 
-        # Mock the concrete repository method
-        with patch("repositories.user_repo.UserRepository") as MockRepo:
-            mock_concrete_repo = Mock()
-            mock_concrete_repo.set_password.return_value = True
-            MockRepo.return_value = mock_concrete_repo
+        # Mock the repository to be a UserRepository instance
+        mock_repo.set_[REDACTED_PASSWORD]
 
-            # Mock isinstance check
-            with patch("services.user_service.UserRepository", MockRepo):
-                result = service.set_password(user_id, password)
+        # Mock isinstance to return True
+        with patch("app.services.user_service.isinstance", return_value=True):
+            result = service.set_password(user_id, password)
 
         assert result is True
         mock_repo.get_by_id.assert_called_once_with(user_id)
         mock_hash.assert_called_once_with(password)
+        mock_repo.set_password.assert_called_once_with(user_id, hashed_password)
 
     def test_set_password_user_not_found(self, service, mock_repo):
         """Test password setting when user doesn't exist."""

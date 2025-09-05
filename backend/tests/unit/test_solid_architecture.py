@@ -13,8 +13,8 @@ from datetime import datetime
 from typing import cast, Any
 
 # Import the new architecture components
-from domain.entities import User as DomainUser
-from domain.interfaces import IUserRepository
+from app.domain.entities import User as DomainUser
+from app.domain.interfaces import IUserRepository
 from app.services.user_service import UserService
 from app.schemas.dtos import UserCreateRequest, UserResponse
 from app.repositories.user_repo import UserRepository
@@ -172,6 +172,7 @@ class TestUserRepositoryMapping:
         # Mock database session
         mock_db = Mock()
         repo = UserRepository(mock_db)
+
         # Create a simple mock that doesn't cause recursion
         class MockDbUser:
             def __init__(self):
@@ -275,7 +276,7 @@ class TestSOLIDPrinciples:
     def test_interface_segregation_principle(self):
         """Test that interfaces are properly segregated."""
         # We have separate reader and writer interfaces
-        from domain.interfaces import IUserReader, IUserWriter
+        from app.domain.interfaces import IUserReader, IUserWriter
 
         # A client that only reads doesn't need write methods
         mock_reader = Mock(spec=IUserReader)

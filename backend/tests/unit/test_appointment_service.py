@@ -25,7 +25,7 @@ try:
         UserRepositoryFactory,
     )
     from domain.entities import Appointment as DomainAppointment, User
-    from schemas.dtos import (
+    from app.schemas.dtos import (
         AppointmentCreateRequest,
         AppointmentUpdateRequest,
         AppointmentResponse,

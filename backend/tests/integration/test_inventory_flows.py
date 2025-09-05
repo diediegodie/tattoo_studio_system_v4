@@ -1,82 +1,108 @@
 import pytest
+from unittest.mock import patch
 
-# Ensure imports/path setup for tests
+# Ensure test imports are configured
 from tests.config import setup_test_imports
 
 setup_test_imports()
 
 
 @pytest.mark.integration
-def test_full_inventory_crud_flow(authenticated_client):
+def test_full_inventory_crud_flow(app, db_session, mock_authenticated_user):
     """End-to-end create/read/list/update/delete using the real app and DB."""
-    client = authenticated_client
+    # Create a test user in the database
+    from app.db.base import User
 
-    # Create
-    resp = client.authenticated_post(
-        "/inventory/", json={"nome": "Integration Test Item", "quantidade": 10}
+    test_user = User(
+        name="Test User",
+        email="test@example.com",
+        google_id="test123",
     )
-    assert resp.status_code == 201
-    created = resp.get_json()
-    item_id = created.get("id")
-    assert item_id is not None
+    db_session.add(test_user)
+    db_session.commit()
+    db_session.refresh(test_user)
 
-    # Read (the controller does not expose GET /inventory/<id> in this codebase),
-    # so verify presence via list endpoint
-    resp = client.authenticated_get("/inventory/")
-    assert resp.status_code == 200
-    items = resp.get_json()
-    assert any(item.get("id") == item_id for item in items)
+    with app.test_client() as client:
+        with patch("flask_login.current_user", mock_authenticated_user):
+            mock_authenticated_user.is_authenticated = True
+            mock_authenticated_user.id = test_user.id
 
-    # Update
-    resp = client.authenticated_put(
-        f"/inventory/{item_id}", json={"nome": "Updated Name"}
-    )
-    assert resp.status_code == 200
-    payload = resp.get_json()
-    # update endpoint uses api_response(success, message, data)
-    assert payload.get("success") is True
-    assert payload.get("data", {}).get("nome") == "Updated Name"
+            with client.session_transaction() as sess:
+                sess["user_id"] = test_user.id
+                sess["_user_id"] = str(test_user.id)
+                sess["logged_in"] = True
 
-    # Verify update via list
-    resp = client.authenticated_get("/inventory/")
-    items = resp.get_json()
-    assert any(
-        item.get("id") == item_id and item.get("nome") == "Updated Name"
-        for item in items
-    )
+            # Create
+            resp = client.post(
+                "/inventory/", json={"nome": "Integration Test Item", "quantidade": 10}
+            )
+            assert resp.status_code == 201
+            created = resp.get_json()
+            item_id = created.get("id")
+            assert item_id is not None
 
-    # Delete
-    resp = client.authenticated_delete(f"/inventory/{item_id}")
-    assert resp.status_code == 200
+            # Read (the controller does not expose GET /inventory/<id> in this codebase),
+            # so verify presence via list endpoint
+            resp = client.get("/inventory/")
+            assert resp.status_code == 200
+            items = resp.get_json()
+            assert any(item.get("id") == item_id for item in items)
+
+            # Update
+            resp = client.put(f"/inventory/{item_id}", json={"nome": "Updated Name"})
+            assert resp.status_code == 200
+            payload = resp.get_json()
+            # update endpoint uses api_response(success, message, data)
+            assert payload.get("success") is True
+            assert payload.get("data", {}).get("nome") == "Updated Name"
+
+            # Verify update via list
+            resp = client.get("/inventory/")
+            items = resp.get_json()
+            assert any(
+                item.get("id") == item_id and item.get("nome") == "Updated Name"
+                for item in items
+            )
+
+            # Delete
+            resp = client.delete(f"/inventory/{item_id}")
+            assert resp.status_code == 200
     payload = resp.get_json()
     assert payload.get("success") is True
 
     # Verify deletion via list
-    resp = client.authenticated_get("/inventory/")
+    resp = client.get("/inventory/")
     items = resp.get_json()
     assert not any(item.get("id") == item_id for item in items)
 
 
 @pytest.mark.integration
-def test_change_quantity_flow(authenticated_client):
-    client = authenticated_client
+def test_change_quantity_flow(app, db_session, mock_authenticated_user):
+    client = app.test_client()
 
-    # Create item with known quantity
-    resp = client.authenticated_post(
-        "/inventory/", json={"nome": "Qty Item", "quantidade": 10}
-    )
-    assert resp.status_code == 201
-    created = resp.get_json()
-    item_id = created.get("id")
+    with patch("flask_login.current_user", mock_authenticated_user):
+        mock_authenticated_user.is_authenticated = True
+        mock_authenticated_user.id = 1
 
-    # Increase quantity
-    resp = client.patch(f"/inventory/{item_id}/quantity", json={"delta": 5})
-    assert resp.status_code == 200
-    updated = resp.get_json()
-    assert updated.get("quantidade") == 15
+        with client.session_transaction() as sess:
+            sess["user_id"] = 1
+            sess["_user_id"] = "1"
+            sess["logged_in"] = True
 
-    # Decrease quantity
-    resp = client.patch(f"/inventory/{item_id}/quantity", json={"delta": -3})
-    assert resp.status_code == 200
-    updated = resp.get_json()
-    assert updated.get("quantidade") == 12
+        # Create item with known quantity
+        resp = client.post("/inventory/", json={"nome": "Qty Item", "quantidade": 10})
+        assert resp.status_code == 201
+        created = resp.get_json()
+        item_id = created.get("id")
+
+        # Increase quantity
+        resp = client.patch(f"/inventory/{item_id}/quantity", json={"delta": 5})
+        assert resp.status_code == 200
+        updated = resp.get_json()
+        assert updated.get("quantidade") == 15
+
+        # Decrease quantity
+        resp = client.patch(f"/inventory/{item_id}/quantity", json={"delta": -3})
+        assert resp.status_code == 200
+        updated = resp.get_json()
+        assert updated.get("quantidade") == 12

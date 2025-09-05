@@ -6,13 +6,13 @@ so tests run inside request/app context and avoid 'Working outside of request co
 
 import pytest
 import json
-from types import SimpleNamespace
+from dataclasses import dataclass
 from unittest.mock import Mock, patch
+from typing import Any
 
 from tests.config.test_paths import ensure_domain_imports
 
 ensure_domain_imports()
-
 try:
     from app.controllers import artist_controller
     from app.domain.entities import User as DomainUser
@@ -21,9 +21,18 @@ try:
 except ImportError as e:
     print(f"Warning: Could not import required modules: {e}")
     # Provide safe fallbacks so static analyzers and later guards work
-    artist_controller = None
-    DomainUser = None
+    artist_controller: Any = None
+    DomainUser: Any = None
     IMPORTS_AVAILABLE = False
+    IMPORTS_AVAILABLE = False
+
+
+@dataclass
+class MockArtist:
+    id: int
+    name: str
+    email: str
+    role: str = "artist"
 
 
 @pytest.mark.unit
@@ -40,7 +49,7 @@ class TestArtistControllerEndpoints:
             mock_service = Mock()
             mock_get_service.return_value = mock_service
 
-            mock_artist = SimpleNamespace(
+            mock_artist = MockArtist(
                 id=1, name="John Artist", email="john.artist@example.com", role="artist"
             )
             mock_service.register_artist.return_value = mock_artist
@@ -85,8 +94,8 @@ class TestArtistControllerEndpoints:
             mock_get_service.return_value = mock_service
 
             mock_artists = [
-                SimpleNamespace(id=1, name="Artist One", email="one@example.com"),
-                SimpleNamespace(id=2, name="Artist Two", email="two@example.com"),
+                MockArtist(id=1, name="Artist One", email="one@example.com"),
+                MockArtist(id=2, name="Artist Two", email="two@example.com"),
             ]
             mock_service.list_artists.return_value = mock_artists
 
@@ -108,9 +117,7 @@ class TestArtistControllerEndpoints:
             mock_service = Mock()
             mock_get_service.return_value = mock_service
 
-            mock_artist = SimpleNamespace(
-                id=3, name="Form Artist", email="form@example.com"
-            )
+            mock_artist = MockArtist(id=3, name="Form Artist", email="form@example.com")
             mock_service.register_artist.return_value = mock_artist
 
             response = client.post(

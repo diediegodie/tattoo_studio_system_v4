@@ -29,13 +29,15 @@ class UserService:
         - Prefer existing user by google_id, then by email
         - Create new user if none exists
         """
-        google_id = str(google_info.get("id"))
+        google_id = google_info.get("id")
         email = google_info.get("email")
         name = google_info.get("name")
         avatar = google_info.get("picture")
 
         if not (google_id and email and name):
             raise ValueError("Incomplete Google profile data")
+
+        google_id = str(google_id)
 
         # Try to find existing user by google_id
         user = self.repo.get_by_google_id(google_id)

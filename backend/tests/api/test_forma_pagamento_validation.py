@@ -96,9 +96,7 @@ class TestFormaPagamentoValidation:
 
         payload = {}
         with app.test_request_context(json=payload):
-            with patch(
-                "app.controllers.sessoes_controller.SessionLocal"
-            ) as mock_session_local:
+            with patch("app.db.session.SessionLocal") as mock_session_local:
                 mock_db = Mock()
                 mock_session_local.return_value = mock_db
                 mock_sessao = Mock()
@@ -128,9 +126,7 @@ class TestFormaPagamentoValidation:
 
         payload = {"forma_pagamento": ""}
         with app.test_request_context(json=payload):
-            with patch(
-                "app.controllers.sessoes_controller.SessionLocal"
-            ) as mock_session_local:
+            with patch("app.db.session.SessionLocal") as mock_session_local:
                 mock_db = Mock()
                 mock_session_local.return_value = mock_db
                 mock_sessao = Mock()
@@ -165,9 +161,7 @@ class TestFormaPagamentoValidation:
             "valor": "100.00",
         }
         with app.test_request_context(json=payload):
-            with patch(
-                "app.controllers.sessoes_controller.SessionLocal"
-            ) as mock_session_local:
+            with patch("app.db.session.SessionLocal") as mock_session_local:
                 mock_db = Mock()
                 mock_session_local.return_value = mock_db
                 mock_sessao = Mock()
