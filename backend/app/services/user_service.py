@@ -189,3 +189,73 @@ class UserService:
             List of artist domain entities
         """
         return self.repo.get_all_artists()
+
+    def update_artist(
+        self, artist_id: int, name: str, email: Optional[str] = None
+    ) -> DomainUser:
+        """Update an existing artist.
+
+        Args:
+            artist_id: The ID of the artist to update
+            name: New name for the artist
+            email: New email for the artist (optional)
+
+        Returns:
+            Updated artist domain entity
+
+        Raises:
+            ValueError: If artist not found, name is empty, or email already exists
+        """
+        if not name or not name.strip():
+            raise ValueError("Artist name is required")
+
+        # Get existing artist
+        existing_artist = self.repo.get_by_id(artist_id)
+        if not existing_artist:
+            raise ValueError(f"Artist with ID {artist_id} not found")
+
+        if existing_artist.role != "artist":
+            raise ValueError(f"User with ID {artist_id} is not an artist")
+
+        # Check if email already exists (if provided and different from current)
+        if email and email != existing_artist.email and self.repo.get_by_email(email):
+            raise ValueError(f"Email {email} is already registered")
+
+        # Update artist
+        existing_artist.name = name.strip()
+        existing_artist.email = email or ""
+
+        return self.repo.update(existing_artist)
+
+    def delete_artist(self, artist_id: int) -> bool:
+        """Delete an artist by ID.
+
+        Args:
+            artist_id: The ID of the artist to delete
+
+        Returns:
+            True if artist was deleted, False if not found
+
+        Raises:
+            ValueError: If user is not an artist or has related records
+        """
+        # Get existing artist to verify it's actually an artist
+        existing_artist = self.repo.get_by_id(artist_id)
+        if not existing_artist:
+            return False
+
+        if existing_artist.role != "artist":
+            raise ValueError(f"User with ID {artist_id} is not an artist")
+
+        # Check for related records that would prevent deletion
+        related_sessions = self.repo.get_related_sessions_count(artist_id)
+        related_payments = self.repo.get_related_payments_count(artist_id)
+
+        if related_sessions > 0 or related_payments > 0:
+            raise ValueError(
+                f"Cannot delete artist '{existing_artist.name}' because they have "
+                f"{related_sessions} related session(s) and {related_payments} related payment(s). "
+                "Please reassign or delete these records first."
+            )
+
+        return self.repo.delete(artist_id)

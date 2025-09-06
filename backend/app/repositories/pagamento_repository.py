@@ -88,7 +88,7 @@ class PagamentoRepository:
 
     def delete(self, pagamento_id: int) -> bool:
         """
-        Delete a pagamento.
+        Delete a pagamento and its associated records (comissoes, sessoes).
 
         Args:
             pagamento_id: ID of pagamento to delete
@@ -101,6 +101,21 @@ class PagamentoRepository:
             if not pagamento:
                 return False
 
+            # Delete associated comissoes first to avoid foreign key constraint violations
+            from app.db.base import Comissao
+
+            self.db.query(Comissao).filter(
+                Comissao.pagamento_id == pagamento_id
+            ).delete()
+
+            # Handle Sessao relationships - set payment_id to NULL for related sessoes
+            from app.db.base import Sessao
+
+            self.db.query(Sessao).filter(Sessao.payment_id == pagamento_id).update(
+                {"payment_id": None}
+            )
+
+            # Now delete the pagamento
             self.db.delete(pagamento)
             self.db.commit()
             return True

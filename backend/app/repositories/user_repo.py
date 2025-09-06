@@ -111,6 +111,18 @@ class UserRepository(IUserRepository):
         self.db.commit()
         return True
 
+    def get_related_sessions_count(self, user_id: int) -> int:
+        """Get count of sessions related to a user."""
+        from app.db.base import Sessao
+
+        return self.db.query(Sessao).filter_by(artista_id=user_id).count()
+
+    def get_related_payments_count(self, user_id: int) -> int:
+        """Get count of payments related to a user."""
+        from app.db.base import Pagamento
+
+        return self.db.query(Pagamento).filter_by(artista_id=user_id).count()
+
     def _to_domain(self, db_user: DbUser) -> DomainUser:
         """Convert database model to domain entity."""
         return DomainUser(

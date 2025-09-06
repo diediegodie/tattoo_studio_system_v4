@@ -5,6 +5,7 @@
     <title>Cadastro Interno</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+    <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/x-icon">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}" />
 </head>
 
@@ -78,8 +79,10 @@
                                             <button class="button small options-btn"
                                                 onclick="toggleOptions(this)">Opções</button>
                                             <span class="options-actions" style="display:none;">
-                                                <button class="button small" style="margin-right:0.5em;">Editar</button>
-                                                <button class="button small">Excluir</button>
+                                                <button class="button small edit-artist-btn" data-id="{{ artist.id }}"
+                                                    style="margin-right:0.5em;">Editar</button>
+                                                <button class="button small delete-artist-btn"
+                                                    data-id="{{ artist.id }}">Excluir</button>
                                             </span>
                                         </td>
                                     </tr>
@@ -92,6 +95,31 @@
                             </table>
                         </div>
                     </section>
+
+                    <!-- Edit Artist Modal -->
+                    <div id="edit-artist-modal"
+                        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000;">
+                        <div
+                            style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 2em; border-radius: 8px; max-width: 500px; width: 90%;">
+                            <h3>Editar Artista</h3>
+                            <form id="edit-artist-form">
+                                <input type="hidden" id="edit-artist-id" name="id">
+                                <label for="edit-artist-name">Nome do artista</label>
+                                <input type="text" id="edit-artist-name" name="name" required
+                                    style="width:100%;margin-bottom:1em;">
+
+                                <label for="edit-artist-email">Email (opcional)</label>
+                                <input type="email" id="edit-artist-email" name="email"
+                                    style="width:100%;margin-bottom:1em;">
+
+                                <div style="text-align: right; margin-top: 1em;">
+                                    <button type="button" id="cancel-edit-artist" class="button"
+                                        style="margin-right: 0.5em;">Cancelar</button>
+                                    <button type="submit" class="button primary">Salvar</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
 
                     <script>
                         document.getElementById('cadastro-artista-form').addEventListener('submit', function (e) {
@@ -151,6 +179,147 @@
                                     submitButton.textContent = originalText;
                                     submitButton.disabled = false;
                                 });
+                        });
+
+                        // Edit Artist Functionality
+                        function editArtist(artistId) {
+                            showMessage('Carregando dados do artista...', 'success');
+
+                            fetch(`/artist/${artistId}`, {
+                                method: 'GET',
+                                headers: {
+                                    'Accept': 'application/json'
+                                }
+                            })
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.success) {
+                                        const artist = data.artist;
+
+                                        // Populate modal
+                                        document.getElementById('edit-artist-id').value = artist.id;
+                                        document.getElementById('edit-artist-name').value = artist.name || '';
+                                        document.getElementById('edit-artist-email').value = artist.email || '';
+
+                                        // Show modal
+                                        document.getElementById('edit-artist-modal').style.display = 'block';
+                                    } else {
+                                        showMessage(data.error || 'Erro ao carregar artista.', 'error');
+                                    }
+                                })
+                                .catch(error => {
+                                    console.error('Error:', error);
+                                    showMessage('Erro interno. Tente novamente.', 'error');
+                                });
+                        }
+
+                        // Delete Artist Functionality
+                        function deleteArtist(artistId) {
+                            if (!confirm('Tem certeza que deseja excluir este artista?')) {
+                                return;
+                            }
+
+                            showMessage('Excluindo artista...', 'success');
+
+                            fetch(`/artist/${artistId}`, {
+                                method: 'DELETE',
+                                headers: {
+                                    'Accept': 'application/json'
+                                }
+                            })
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.success) {
+                                        showMessage('Artista excluído com sucesso!', 'success');
+                                        // Reload page after 2 seconds to show updated table
+                                        setTimeout(() => {
+                                            window.location.reload();
+                                        }, 2000);
+                                    } else {
+                                        showMessage(data.error || 'Erro ao excluir artista.', 'error');
+                                    }
+                                })
+                                .catch(error => {
+                                    console.error('Error:', error);
+                                    showMessage('Erro interno. Tente novamente.', 'error');
+                                });
+                        }
+
+                        // Event delegation for edit and delete buttons
+                        document.addEventListener('click', function (e) {
+                            const editBtn = e.target.closest('.edit-artist-btn');
+                            if (editBtn) {
+                                e.preventDefault();
+                                const artistId = editBtn.getAttribute('data-id');
+                                if (artistId) {
+                                    editArtist(artistId);
+                                }
+                                return;
+                            }
+
+                            const deleteBtn = e.target.closest('.delete-artist-btn');
+                            if (deleteBtn) {
+                                e.preventDefault();
+                                const artistId = deleteBtn.getAttribute('data-id');
+                                if (artistId) {
+                                    deleteArtist(artistId);
+                                }
+                                return;
+                            }
+                        });
+
+                        // Handle edit form submission
+                        document.getElementById('edit-artist-form').addEventListener('submit', function (e) {
+                            e.preventDefault();
+
+                            const formData = new FormData(this);
+                            const artistId = formData.get('id');
+                            const name = formData.get('name').trim();
+                            const email = formData.get('email').trim();
+
+                            if (!name) {
+                                showMessage('Nome do artista é obrigatório.', 'error');
+                                return;
+                            }
+
+                            const data = { name: name };
+                            if (email) {
+                                data.email = email;
+                            }
+
+                            showMessage('Salvando alterações...', 'success');
+
+                            fetch(`/artist/${artistId}`, {
+                                method: 'PUT',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Accept': 'application/json'
+                                },
+                                body: JSON.stringify(data)
+                            })
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.success) {
+                                        showMessage('Artista atualizado com sucesso!', 'success');
+                                        document.getElementById('edit-artist-modal').style.display = 'none';
+
+                                        // Reload page after 2 seconds to show updated table
+                                        setTimeout(() => {
+                                            window.location.reload();
+                                        }, 2000);
+                                    } else {
+                                        showMessage(data.error || 'Erro ao atualizar artista.', 'error');
+                                    }
+                                })
+                                .catch(error => {
+                                    console.error('Error:', error);
+                                    showMessage('Erro interno. Tente novamente.', 'error');
+                                });
+                        });
+
+                        // Handle modal cancel
+                        document.getElementById('cancel-edit-artist').addEventListener('click', function () {
+                            document.getElementById('edit-artist-modal').style.display = 'none';
                         });
 
                         function showMessage(text, type) {
@@ -213,18 +382,18 @@
                         <h2>Menu</h2>
                     </header>
                     <ul>
-						<li><a href="{{ url_for('index') }}">Homepage</a></li>
-						<li><a href="{{ url_for('client.client_list') }}">Clientes</a></li>
-						<li><a href="{{ url_for('calendar.calendar_page') }}">Agenda Google</a></li>
-						<li><a href="{{ url_for('estoque') }}">Estoque</a></li>
-						<li><a href="{{ url_for('sessoes') }}">Sessões</a></li>
-						<li><a href="{{ url_for('financeiro') }}">Financeiro</a></li>
-						<li><a href="{{ url_for('registrar_pagamento') }}">Registrar Pagamento</a></li>
-						<li><a href="{{ url_for('extrato') }}">Extrato</a></li>
-						<li><a href="{{ url_for('cadastro_interno') }}">Cadastro Interno</a></li>
-						<li><a href="{{ url_for('calculadora') }}">Calculadora</a></li>
-						<li><a href="{{ url_for('historico') }}">Historico</a></li>
-					</ul>
+                        <li><a href="{{ url_for('index') }}">Homepage</a></li>
+                        <li><a href="{{ url_for('client.client_list') }}">Clientes</a></li>
+                        <li><a href="{{ url_for('calendar.calendar_page') }}">Agenda Google</a></li>
+                        <li><a href="{{ url_for('estoque') }}">Estoque</a></li>
+                        <li><a href="{{ url_for('sessoes') }}">Sessões</a></li>
+                        <li><a href="{{ url_for('financeiro') }}">Financeiro</a></li>
+                        <li><a href="{{ url_for('registrar_pagamento') }}">Registrar Pagamento</a></li>
+                        <li><a href="{{ url_for('extrato') }}">Extrato</a></li>
+                        <li><a href="{{ url_for('cadastro_interno') }}">Cadastro Interno</a></li>
+                        <li><a href="{{ url_for('calculadora') }}">Calculadora</a></li>
+                        <li><a href="{{ url_for('historico') }}">Historico</a></li>
+                    </ul>
                 </nav>
             </div>
         </div>

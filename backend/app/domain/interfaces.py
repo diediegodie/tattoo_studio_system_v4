@@ -53,6 +53,16 @@ class IUserWriter(ABC):
         """Delete a user."""
         pass
 
+    @abstractmethod
+    def get_related_sessions_count(self, user_id: int) -> int:
+        """Get count of sessions related to a user."""
+        pass
+
+    @abstractmethod
+    def get_related_payments_count(self, user_id: int) -> int:
+        """Get count of payments related to a user."""
+        pass
+
 
 class IUserRepository(IUserReader, IUserWriter):
     """Complete user repository interface combining read/write operations."""

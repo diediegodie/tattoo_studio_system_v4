@@ -109,7 +109,7 @@ def google_logged_in(blueprint, token):
         response.set_cookie(
             "access_token",
             jwt_token,
-            max_age=24 * 60 * 60,  # 24 hours
+            max_age=604800,  # 7 days (increased from 24 hours)
             httponly=True,
             secure=False,  # Set to True in production with HTTPS
             samesite="Lax",
@@ -378,5 +378,76 @@ def create_app():
 
     # Register OAuth blueprint - name already set at creation
     app.register_blueprint(google_oauth_bp, url_prefix="/auth")
+
+    # Initialize background token refresh scheduler
+    try:
+        from apscheduler.schedulers.background import BackgroundScheduler
+        from apscheduler.triggers.interval import IntervalTrigger
+        from app.services.oauth_token_service import OAuthTokenService
+        from app.db.session import SessionLocal
+        from app.db.base import OAuth
+        import logging
+
+        logger = logging.getLogger(__name__)
+
+        def refresh_all_tokens():
+            """Background job to refresh all Google OAuth tokens"""
+            logger.info("Starting background token refresh for all users")
+            db = SessionLocal()
+            try:
+                # Get all users with Google OAuth tokens
+                oauth_records = db.query(OAuth).filter(OAuth.provider == "google").all()
+                refreshed_count = 0
+                failed_count = 0
+
+                for oauth_record in oauth_records:
+                    try:
+                        user_id = str(oauth_record.user_id)
+                        oauth_service = OAuthTokenService()
+                        new_token = oauth_service.refresh_access_token(user_id)
+                        if new_token:
+                            refreshed_count += 1
+                            logger.info(
+                                f"Successfully refreshed token for user {user_id}"
+                            )
+                        else:
+                            failed_count += 1
+                            logger.warning(
+                                f"Failed to refresh token for user {user_id}"
+                            )
+                    except Exception as e:
+                        failed_count += 1
+                        logger.error(
+                            f"Error refreshing token for user {oauth_record.user_id}: {str(e)}"
+                        )
+
+                logger.info(
+                    f"Background token refresh completed: {refreshed_count} successful, {failed_count} failed"
+                )
+
+            except Exception as e:
+                logger.error(f"Error in background token refresh: {str(e)}")
+            finally:
+                db.close()
+
+        # Start background scheduler for token refresh
+        scheduler = BackgroundScheduler()
+        scheduler.add_job(
+            refresh_all_tokens,
+            trigger=IntervalTrigger(hours=1),  # Run every hour
+            id="token_refresh",
+            name="Refresh Google OAuth tokens",
+            replace_existing=True,
+        )
+        scheduler.start()
+        logger.info("Background token refresh scheduler started")
+
+        # Store scheduler reference to prevent garbage collection
+        app.config["SCHEDULER"] = scheduler
+
+    except ImportError as e:
+        print(f"Warning: APScheduler not available for background token refresh: {e}")
+    except Exception as e:
+        print(f"Warning: Failed to initialize background token refresh: {e}")
 
     return app

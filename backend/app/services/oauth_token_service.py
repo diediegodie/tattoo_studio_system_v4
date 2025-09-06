@@ -151,15 +151,15 @@ class OAuthTokenService:
                                         expires_at, tz=timezone.utc
                                     )
 
-                                # Add safety buffer
+                                # Add safety buffer (increased to 10 minutes for better proactive refresh)
                                 expires_at_with_buffer = expires_at - timedelta(
-                                    minutes=5
+                                    minutes=10
                                 )
 
                                 if now >= expires_at_with_buffer and refresh_token:
-                                    # Token expired, try to refresh
+                                    # Token expired or will expire soon, try to refresh
                                     logger.info(
-                                        f"Access token expired for user {user_id}, attempting refresh"
+                                        f"Access token expired or expiring soon for user {user_id}, attempting proactive refresh"
                                     )
                                     new_token = self.refresh_access_token(user_id)
                                     return new_token
@@ -254,6 +254,12 @@ class OAuthTokenService:
                         seconds=expires_in
                     )
 
+                    logger.info(
+                        f"Token refresh successful for user {user_id}. "
+                        f"New token expires at: {expires_at.isoformat()}, "
+                        f"Expires in: {expires_in} seconds"
+                    )
+
                     # Update token data
                     updated_token_data = token_data.copy()
                     updated_token_data["access_token"] = new_access_token
@@ -263,13 +269,14 @@ class OAuthTokenService:
                         updated_token_data["refresh_token"] = new_token_data[
                             "refresh_token"
                         ]
+                        logger.info(f"New refresh token received for user {user_id}")
 
                     # Update database
                     setattr(oauth_record, "token", updated_token_data)
                     self.db.commit()
 
                     logger.info(
-                        f"Successfully refreshed access token for user {user_id}"
+                        f"Successfully refreshed and stored access token for user {user_id}"
                     )
                     return new_access_token
                 else:
@@ -279,7 +286,8 @@ class OAuthTokenService:
                     return None
             else:
                 logger.error(
-                    f"Failed to refresh token for user {user_id}: {response.status_code} - {response.text}"
+                    f"Failed to refresh token for user {user_id}: "
+                    f"HTTP {response.status_code} - {response.text}"
                 )
                 return None
 
