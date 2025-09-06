@@ -53,7 +53,7 @@ def historico_home():
             db.query(Sessao)
             .options(joinedload(Sessao.cliente), joinedload(Sessao.artista))
             .filter(Sessao.status.in_(["completed", "paid"]))
-            .order_by(Sessao.data.desc())
+            .order_by(Sessao.data.desc(), Sessao.hora.desc())
             .all()
         )
 

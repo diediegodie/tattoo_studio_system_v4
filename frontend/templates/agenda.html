@@ -5,6 +5,7 @@
     <title>Agenda - Alma Negra System</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+    <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/x-icon">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}" />
 
 </head>
@@ -66,17 +67,15 @@
                                 </td>
                                 <td>
                                     {% if event.google_event_id in events_with_sessions %}
-                                    <a href="{{ url_for('sessoes.list_sessoes') }}"
-                                    class="button small options-btn"
-                                    style="float: right; margin-right: 10px;
+                                    <a href="{{ url_for('sessoes.list_sessoes') }}" class="button small options-btn"
+                                        style="float: right; margin-right: 10px;
                                             background: none !important;
                                             background-color: transparent !important;
                                             background-image: none !important;
                                             border: 1px solid #28a745 !important;
                                             color: #28a745 !important;
-                                            box-shadow: none !important;"
-                                    onclick="event.stopPropagation();">
-                                    Sessão criada
+                                            box-shadow: none !important;" onclick="event.stopPropagation();">
+                                        Sessão criada
                                     </a>
 
 
