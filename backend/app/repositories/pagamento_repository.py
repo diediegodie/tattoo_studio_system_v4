@@ -88,7 +88,8 @@ class PagamentoRepository:
 
     def delete(self, pagamento_id: int) -> bool:
         """
-        Delete a pagamento and its associated records (comissoes, sessoes).
+        Delete a pagamento by ID. Note: Associated commissions are NOT deleted automatically
+        to maintain data independence. Commissions should be managed separately.
 
         Args:
             pagamento_id: ID of pagamento to delete
@@ -101,12 +102,13 @@ class PagamentoRepository:
             if not pagamento:
                 return False
 
-            # Delete associated comissoes first to avoid foreign key constraint violations
+            # Handle Comissao relationships - set pagamento_id to NULL for related comissoes
+            # This maintains data independence between payments and commissions
             from app.db.base import Comissao
 
             self.db.query(Comissao).filter(
                 Comissao.pagamento_id == pagamento_id
-            ).delete()
+            ).update({"pagamento_id": None})
 
             # Handle Sessao relationships - set payment_id to NULL for related sessoes
             from app.db.base import Sessao

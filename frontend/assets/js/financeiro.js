@@ -88,10 +88,10 @@
     window.location.href = redirectUrl;
   }
 
-  async function deletePagamento(id) {
+  async function deletePagamento(id, skipConfirmation = false) {
   console.log('financeiro.deletePagamento invoked with id:', id);
   if (!id) return console.warn('deletePagamento called without id');
-  if (!(await confirmAction('Tem certeza que deseja excluir este pagamento?'))) return;
+  if (!skipConfirmation && !(await confirmAction('Tem certeza que deseja excluir este pagamento?'))) return;
     getStatusHelper()('Excluindo...', true);
 
     try {
@@ -101,6 +101,15 @@
       } else {
         const headers = { 'Accept': 'application/json' };
         const r = await fetch(`${apiBase}/${id}`, { method: 'DELETE', headers: headers, credentials: 'same-origin' });
+
+        // Handle authentication redirects
+        if (r.status === 302 || r.status === 401) {
+          console.log('financeiro.deletePagamento: Authentication required, redirecting to login');
+          getStatusHelper()('Sessão expirada. Redirecionando para login...', false);
+          window.location.href = '/auth/login';
+          return;
+        }
+
         const ct = r.headers.get('Content-Type') || '';
         if (ct.includes('application/json')) {
           payload = await r.json();
@@ -173,10 +182,16 @@
                 <h2>Editar Pagamento</h2>
                 <form id="financeiro-edit-form">
                   <label>Data:<br><input type="date" name="data" required></label><br><br>
-                  <label>Hora:<br><input type="time" name="hora"></label><br><br>
                   <label>Valor:<br><input type="number" step="0.01" name="valor" required></label><br><br>
                   <label>Forma de pagamento:<br>
-                    <select name="forma_pagamento" id="financeiro-edit-forma_pagamento"></select>
+                    <select name="forma_pagamento" id="financeiro-edit-forma_pagamento" required>
+                      <option value="">Selecione...</option>
+                      <option value="Dinheiro">Dinheiro</option>
+                      <option value="Pix">Pix</option>
+                      <option value="Cartão de Crédito">Crédito</option>
+                      <option value="Cartão de Débito">Débito</option>
+                      <option value="Transferência">Outros</option>
+                    </select>
                   </label><br><br>
                   <label>Cliente:<br>
                     <select name="cliente_id" id="financeiro-edit-cliente"></select>
@@ -207,15 +222,14 @@
 
   if (tmplCliente && clienteSelect) clienteSelect.innerHTML = tmplCliente.innerHTML;
   if (tmplArtista && artistaSelect) artistaSelect.innerHTML = tmplArtista.innerHTML;
+  // Use template select if available, otherwise keep the hardcoded options
   if (tmplForma && formaSelect) formaSelect.innerHTML = tmplForma.innerHTML;
 
       // Prefill values
       const form = modal.querySelector('#financeiro-edit-form');
       form.elements['data'].value = p.data || '';
-      // hora might not be present; keep empty otherwise
-      form.elements['hora'].value = p.hora || '';
       form.elements['valor'].value = (p.valor !== null && typeof p.valor !== 'undefined') ? p.valor : '';
-      // Prefill forma_pagamento select after cloning options
+      // Prefill forma_pagamento select
       try {
         if (form.elements['forma_pagamento']) form.elements['forma_pagamento'].value = p.forma_pagamento || '';
       } catch (e) {
@@ -252,7 +266,6 @@
         }
         const payload = {
           data: formData.get('data') || null,
-          hora: formData.get('hora') || null,
           valor: formData.get('valor') || null,
           forma_pagamento: formData.get('forma_pagamento') || null,
           cliente_id: formData.get('cliente_id') || null,
@@ -283,17 +296,16 @@
               // Update DOM row if present
               const row = document.querySelector(`tr[data-id='${id}']`);
               if (row) {
-                // update relevant columns (data, hora, cliente, artista, valor, forma_pagamento, observacoes)
+                // update relevant columns (data, cliente, artista, valor, forma_pagamento, observacoes)
                 const cols = row.querySelectorAll('td');
-                // Expect columns: Data, Hora, Cliente, Artista, Valor, Forma de pagamento, Observações, Opções
+                // Expect columns: Data, Cliente, Artista, Valor, Forma de pagamento, Observações, Opções
                 if (cols && cols.length >= 7) {
                   cols[0].textContent = updated.data.data ? new Date(updated.data.data).toLocaleDateString() : '';
-                  cols[1].textContent = updated.data.hora || '';
-                  cols[2].textContent = (updated.data.cliente && updated.data.cliente.name) ? updated.data.cliente.name : 'Cliente não encontrado';
-                  cols[3].textContent = (updated.data.artista && updated.data.artista.name) ? updated.data.artista.name : 'Artista não encontrado';
-                  cols[4].textContent = (typeof updated.data.valor !== 'undefined' && updated.data.valor !== null) ? ('R$ ' + Number(updated.data.valor).toFixed(2)) : '';
-                  cols[5].textContent = updated.data.forma_pagamento || '';
-                  cols[6].textContent = updated.data.observacoes || '';
+                  cols[1].textContent = (updated.data.cliente && updated.data.cliente.name) ? updated.data.cliente.name : 'Cliente não encontrado';
+                  cols[2].textContent = (updated.data.artista && updated.data.artista.name) ? updated.data.artista.name : 'Artista não encontrado';
+                  cols[3].textContent = (typeof updated.data.valor !== 'undefined' && updated.data.valor !== null) ? ('R$ ' + Number(updated.data.valor).toFixed(2)) : '';
+                  cols[4].textContent = updated.data.forma_pagamento || '';
+                  cols[5].textContent = updated.data.observacoes || '';
                 }
               }
 
@@ -387,6 +399,13 @@
       // Handle payment delete buttons
       const delBtn = e.target.closest('.delete-pagamento-btn');
       if (delBtn) {
+        // Check if we're on the historico page - if so, let historico.js handle it
+        const isHistoricoPage = document.getElementById('historico-page') !== null;
+        if (isHistoricoPage) {
+          console.log('[financeiro] Skipping delete button on historico page - let historico.js handle it');
+          return;
+        }
+
         e.preventDefault();
         e.stopPropagation();
         const id = delBtn.dataset.id || delBtn.getAttribute('data-id');

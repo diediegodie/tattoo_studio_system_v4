@@ -218,7 +218,7 @@ class Comissao(Base):
     __tablename__ = "comissoes"
 
     id = Column(Integer, primary_key=True, index=True)
-    pagamento_id = Column(Integer, ForeignKey("pagamentos.id"), nullable=False)
+    pagamento_id = Column(Integer, ForeignKey("pagamentos.id"), nullable=True)
     artista_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     percentual = Column(Numeric(5, 2), nullable=False)
     valor = Column(Numeric(10, 2), nullable=False)

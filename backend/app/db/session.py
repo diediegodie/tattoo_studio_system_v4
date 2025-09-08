@@ -18,7 +18,7 @@ def get_engine():
     global _engine
     global _database_url
     database_url = os.getenv(
-        "DATABASE_URL", "postgresql://admin:secret123@db:5432/tattoo_studio"
+        "DATABASE_URL", "postgresql://admin:secret123@localhost:5432/tattoo_studio"
     )
     # If engine not created yet or DATABASE_URL changed, (re)create engine
     if _engine is None or _database_url != database_url:
