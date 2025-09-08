@@ -30,9 +30,10 @@ class ClientService:
         """Sync clients from JotForm and store in local database.
 
         Business Rules:
-        - Only sync active submissions
-        - Don't duplicate existing clients
-        - Extract only client name for database storage
+        - Sync all active submissions
+        - Update existing clients with normalized names
+        - Create new clients if they don't exist
+        - Extract and normalize client name for database storage
         """
         submissions = self.jotform_service.fetch_submissions()
         synced_clients = []
@@ -40,28 +41,37 @@ class ClientService:
         for submission in submissions:
             jotform_id = str(submission.get("id"))
 
+            # Extract and normalize client name
+            client_name = self.jotform_service.parse_client_name(submission)
+
             # Check if client already exists
             existing_client = self.client_repo.get_by_jotform_id(jotform_id)
             if existing_client:
-                continue  # Skip if already exists
+                # Update existing client with normalized name
+                name_parts = client_name.split(" ", 1) if client_name else ["", ""]
+                primeiro_nome = name_parts[0] if len(name_parts) > 0 else ""
+                sobrenome = name_parts[1] if len(name_parts) > 1 else ""
 
-            # Extract client name
-            client_name = self.jotform_service.parse_client_name(submission)
+                existing_client.nome = primeiro_nome
+                existing_client.sobrenome = sobrenome
 
-            # Create new client - split name into nome and sobrenome
-            name_parts = client_name.split(" ", 1) if client_name else ["", ""]
-            primeiro_nome = name_parts[0] if len(name_parts) > 0 else ""
-            sobrenome = name_parts[1] if len(name_parts) > 1 else ""
+                updated_client = self.client_repo.update(existing_client)
+                synced_clients.append(updated_client)
+            else:
+                # Create new client - split name into nome and sobrenome
+                name_parts = client_name.split(" ", 1) if client_name else ["", ""]
+                primeiro_nome = name_parts[0] if len(name_parts) > 0 else ""
+                sobrenome = name_parts[1] if len(name_parts) > 1 else ""
 
-            # Create new client
-            new_client = DomainClient(
-                nome=primeiro_nome,
-                sobrenome=sobrenome,
-                jotform_submission_id=jotform_id,
-            )
+                # Create new client
+                new_client = DomainClient(
+                    nome=primeiro_nome,
+                    sobrenome=sobrenome,
+                    jotform_submission_id=jotform_id,
+                )
 
-            created_client = self.client_repo.create(new_client)
-            synced_clients.append(created_client)
+                created_client = self.client_repo.create(new_client)
+                synced_clients.append(created_client)
 
         return synced_clients
 

@@ -1290,3 +1290,47 @@ button.primary:active,
   width: 100%;
 }
 .calc-actions { text-align: center; }
+
+/* Search Results Page Styles */
+.search-result {
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    padding: 15px;
+    margin-bottom: 10px;
+    background: #f9f9f9;
+}
+
+.search-result h4 {
+    margin: 0 0 10px 0;
+    color: #333;
+}
+
+.search-result p {
+    margin: 5px 0;
+    font-size: 0.9em;
+}
+
+.result-group {
+    margin-bottom: 30px;
+}
+
+.result-group h3 {
+    border-bottom: 2px solid #007bff;
+    padding-bottom: 5px;
+    margin-bottom: 15px;
+}
+
+.edit-link {
+    color: #007bff;
+    text-decoration: none;
+}
+
+.edit-link:hover {
+    text-decoration: underline;
+}
+
+.no-results {
+    text-align: center;
+    padding: 50px;
+    color: #666;
+}

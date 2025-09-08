@@ -27,10 +27,10 @@ def _safe_redirect(path_or_endpoint: str):
 @historico_bp.route("/", methods=["GET"])
 @login_required
 def historico_home():
-    # Generate extrato for previous month if not exists
-    from app.services.extrato_service import check_and_generate_extrato
+    # Generate extrato for previous month
+    from app.services.extrato_service import run_extrato_in_background
 
-    check_and_generate_extrato()
+    run_extrato_in_background()
 
     db = None
     try:

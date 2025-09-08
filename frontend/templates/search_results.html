@@ -1,0 +1,195 @@
+<!DOCTYPE HTML>
+<html>
+
+<head>
+    <title>Alma Negra - Search Results</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+    <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/x-icon">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}" />
+</head>
+
+<body class="is-preload">
+
+    <!-- Wrapper -->
+    <div id="wrapper">
+
+        <!-- Main -->
+        <div id="main">
+            <div class="inner">
+
+                <!-- Flash Messages -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                    <div class="flash-message {{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                {% endwith %}
+
+                <!-- Header -->
+                <header id="header">
+                    <a href="#" class="logo"><strong>Sistema</strong> de Gerenciamento</a>
+                    {% if current_user.is_authenticated %}
+                    <div class="user-info"
+                        style="position: absolute; top: 0; right: 0; display: flex; align-items: center; gap: 10px; padding: 10px;">
+                        {% if current_user.avatar_url %}
+                        <img src="{{ current_user.avatar_url }}" alt="Avatar" class="user-avatar">
+                        {% endif %}
+                        <span>Olá, {{ current_user.name }}!</span>
+                        <a href="{{ url_for('logout') }}" class="button">Sair</a>
+                    </div>
+                    {% endif %}
+                </header>
+
+                <!-- Search Results Header -->
+                <section>
+                    <h2>Resultados da Busca</h2>
+                    <p><strong>Consulta:</strong> "{{ query }}"</p>
+                    <p><strong>Total de resultados:</strong> {{ total_results }}</p>
+
+                    {% if error %}
+                    <div class="flash-message error">{{ error }}</div>
+                    {% endif %}
+                </section>
+
+                <!-- Results -->
+                {% if total_results > 0 %}
+                <!-- Pagamentos -->
+                {% if results.pagamentos %}
+                <section class="result-group">
+                    <h3>Pagamentos ({{ results.pagamentos|length }})</h3>
+                    {% for pagamento in results.pagamentos %}
+                    <div class="search-result">
+                        <h4>Pagamento #{{ pagamento.id }}</h4>
+                        <p><strong>Data:</strong> {{ pagamento.data }}</p>
+                        <p><strong>Cliente:</strong> {{ pagamento.cliente_name }}</p>
+                        <p><strong>Artista:</strong> {{ pagamento.artista_name }}</p>
+                        <p><strong>Valor:</strong> R$ {{ "%.2f"|format(pagamento.valor) }}</p>
+                        <p><strong>Forma de Pagamento:</strong> {{ pagamento.forma_pagamento }}</p>
+                        {% if pagamento.observacoes %}
+                        <p><strong>Observações:</strong> {{ pagamento.observacoes }}</p>
+                        {% endif %}
+                        <p><a href="{{ url_for('financeiro.financeiro_home') }}" class="edit-link">Ver no Financeiro</a>
+                        </p>
+                    </div>
+                    {% endfor %}
+                </section>
+                {% endif %}
+
+                <!-- Sessões -->
+                {% if results.sessoes %}
+                <section class="result-group">
+                    <h3>Sessões ({{ results.sessoes|length }})</h3>
+                    {% for sessao in results.sessoes %}
+                    <div class="search-result">
+                        <h4>Sessão #{{ sessao.id }}</h4>
+                        <p><strong>Data:</strong> {{ sessao.data }} às {{ sessao.hora }}</p>
+                        <p><strong>Cliente:</strong> {{ sessao.cliente_name }}</p>
+                        <p><strong>Artista:</strong> {{ sessao.artista_name }}</p>
+                        <p><strong>Valor:</strong> R$ {{ "%.2f"|format(sessao.valor) }}</p>
+                        <p><strong>Status:</strong> {{ sessao.status }}</p>
+                        {% if sessao.observacoes %}
+                        <p><strong>Observações:</strong> {{ sessao.observacoes }}</p>
+                        {% endif %}
+                        <p><a href="{{ url_for('sessoes.list_sessoes') }}" class="edit-link">Ver nas Sessões</a></p>
+                    </div>
+                    {% endfor %}
+                </section>
+                {% endif %}
+
+                <!-- Comissões -->
+                {% if results.comissoes %}
+                <section class="result-group">
+                    <h3>Comissões ({{ results.comissoes|length }})</h3>
+                    {% for comissao in results.comissoes %}
+                    <div class="search-result">
+                        <h4>Comissão #{{ comissao.id }}</h4>
+                        <p><strong>Artista:</strong> {{ comissao.artista_name }}</p>
+                        <p><strong>Percentual:</strong> {{ "%.2f"|format(comissao.percentual) }}%</p>
+                        <p><strong>Valor:</strong> R$ {{ "%.2f"|format(comissao.valor) }}</p>
+                        {% if comissao.observacoes %}
+                        <p><strong>Observações:</strong> {{ comissao.observacoes }}</p>
+                        {% endif %}
+                        <p><a href="{{ url_for('financeiro.financeiro_home') }}" class="edit-link">Ver no Financeiro</a>
+                        </p>
+                    </div>
+                    {% endfor %}
+                </section>
+                {% endif %}
+
+                <!-- Extratos -->
+                {% if results.extratos %}
+                <section class="result-group">
+                    <h3>Extratos ({{ results.extratos|length }})</h3>
+                    {% for extrato in results.extratos %}
+                    <div class="search-result">
+                        <h4>Extrato {{ extrato.mes }}/{{ extrato.ano }}</h4>
+                        <p><strong>Encontrados:</strong> {{ extrato.matches|length }} matches</p>
+                        <p><a href="{{ url_for('extrato') }}" class="edit-link">Ver Extrato</a></p>
+                    </div>
+                    {% endfor %}
+                </section>
+                {% endif %}
+
+                {% else %}
+                <section class="no-results">
+                    <h3>Nenhum resultado encontrado</h3>
+                    <p>Tente uma busca diferente ou verifique a ortografia.</p>
+                    <p><a href="{{ url_for('index') }}" class="edit-link">Voltar ao início</a></p>
+                </section>
+                {% endif %}
+
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div id="sidebar" class="inactive">
+            <div class="toggle"></div>
+            <div class="inner">
+
+                <!-- Search -->
+                <section id="search" class="alt">
+                    <form method="get" action="{{ url_for('search.search_results_page') }}">
+                        <input type="text" name="q" id="query" placeholder="Buscar cliente ou artista..."
+                            value="{{ query }}" required />
+                        <button type="submit" style="display: none;"></button>
+                    </form>
+                </section>
+
+                <!-- Menu -->
+                <nav id="menu">
+                    <header class="major">
+                        <h2>Menu</h2>
+                    </header>
+                    <ul>
+                        <li><a href="{{ url_for('index') }}">Início</a></li>
+						<li><a href="{{ url_for('estoque') }}">Estoque</a></li>
+						<li><a href="{{ url_for('client.client_list') }}">Clientes</a></li>
+						<li><a href="{{ url_for('calendar.calendar_page') }}">Google Agenda</a></li>
+						<li><a href="{{ url_for('sessoes') }}">Próximas Sessões</a></li>
+						<li><a href="{{ url_for('financeiro') }}">Pagamentos</a></li>
+						<li><a href="{{ url_for('registrar_pagamento') }}">Registrar Pagamento</a></li>
+						<li><a href="{{ url_for('cadastro_interno') }}">Artistas</a></li>
+						<li><a href="{{ url_for('calculadora') }}">Calculadora de Porcentagem</a></li>
+						<li><a href="{{ url_for('historico') }}">Histórico</a></li>
+						<li><a href="{{ url_for('extrato') }}">Extrato</a></li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Scripts -->
+    <script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/browser.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/breakpoints.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/util.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+
+</body>
+
+</html>

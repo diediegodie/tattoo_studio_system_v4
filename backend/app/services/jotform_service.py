@@ -12,6 +12,7 @@ import requests
 import json
 from typing import List, Dict, Optional
 from app.domain.interfaces import IJotFormService
+from app.utils.client_utils import normalize_display_name
 
 
 class JotFormService(IJotFormService):
@@ -53,13 +54,15 @@ class JotFormService(IJotFormService):
                 if isinstance(name_data, dict):
                     first = name_data.get("first", "")
                     last = name_data.get("last", "")
-                    return f"{first} {last}".strip()
+                    # Normalize display name consistently
+                    return normalize_display_name(f"{first} {last}".strip())
 
         # Fallback: try to find any field with "name" in the label
         for key, answer in answers.items():
             label = answer.get("text", "").lower()
             if "name" in label and "answer" in answer:
-                return str(answer["answer"])
+                # Normalize fallback name too
+                return normalize_display_name(str(answer["answer"]))
 
         return "Nome não encontrado"
 

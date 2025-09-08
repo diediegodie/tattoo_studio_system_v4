@@ -32,7 +32,7 @@
 
                 <!-- Header -->
                 <header id="header">
-                    <a href="{{ url_for('index') }}" class="logo"><strong>Google</strong> Agenda</a>
+                    <a href="#" class="logo"><strong>Google</strong> Agenda</a>
                 </header>
 
                 <!-- Content -->
@@ -162,8 +162,9 @@
 
                 <!-- Search -->
                 <section id="search" class="alt">
-                    <form method="post" action="#">
-                        <input type="text" name="query" id="query" placeholder="Search" />
+                    <form method="get" action="{{ url_for('search.search_results_page') }}">
+                        <input type="text" name="q" id="query" placeholder="Buscar cliente ou artista..." required />
+                        <button type="submit" style="display: none;"></button>
                     </form>
                 </section>
 
@@ -173,17 +174,17 @@
                         <h2>Menu</h2>
                     </header>
                     <ul>
-                        <li><a href="{{ url_for('index') }}">Homepage</a></li>
-                        <li><a href="{{ url_for('client.client_list') }}">Clientes</a></li>
-                        <li><a href="{{ url_for('calendar.calendar_page') }}">Agenda Google</a></li>
-                        <li><a href="{{ url_for('estoque') }}">Estoque</a></li>
-                        <li><a href="{{ url_for('sessoes') }}">Sessões</a></li>
-                        <li><a href="{{ url_for('financeiro') }}">Financeiro</a></li>
-                        <li><a href="{{ url_for('registrar_pagamento') }}">Registrar Pagamento</a></li>
-                        <li><a href="{{ url_for('extrato') }}">Extrato</a></li>
-                        <li><a href="{{ url_for('cadastro_interno') }}">Cadastro Interno</a></li>
-                        <li><a href="{{ url_for('calculadora') }}">Calculadora</a></li>
-                        <li><a href="{{ url_for('historico') }}">Historico</a></li>
+                        <li><a href="{{ url_for('index') }}">Início</a></li>
+						<li><a href="{{ url_for('estoque') }}">Estoque</a></li>
+						<li><a href="{{ url_for('client.client_list') }}">Clientes</a></li>
+						<li><a href="{{ url_for('calendar.calendar_page') }}">Google Agenda</a></li>
+						<li><a href="{{ url_for('sessoes') }}">Próximas Sessões</a></li>
+						<li><a href="{{ url_for('financeiro') }}">Pagamentos</a></li>
+						<li><a href="{{ url_for('registrar_pagamento') }}">Registrar Pagamento</a></li>
+						<li><a href="{{ url_for('cadastro_interno') }}">Artistas</a></li>
+						<li><a href="{{ url_for('calculadora') }}">Calculadora de Porcentagem</a></li>
+						<li><a href="{{ url_for('historico') }}">Histórico</a></li>
+						<li><a href="{{ url_for('extrato') }}">Extrato</a></li>
                     </ul>
                 </nav>
             </div>
