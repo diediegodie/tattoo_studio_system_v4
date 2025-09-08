@@ -288,10 +288,10 @@ def create_app():
     @app.route("/extrato")
     @login_required
     def extrato():
-        # Generate extrato for previous month if not exists
-        from app.services.extrato_service import check_and_generate_extrato
+        # Generate extrato for previous month in background thread
+        from app.services.extrato_service import run_extrato_in_background
 
-        check_and_generate_extrato()
+        run_extrato_in_background()
         return render_template("extrato.html")
 
     @app.route("/financeiro")
@@ -363,6 +363,7 @@ def create_app():
     from app.controllers.financeiro_controller import financeiro_bp
     from app.controllers.historico_controller import historico_bp
     from app.controllers.extrato_controller import extrato_bp
+    from app.controllers.search_controller import search_bp
 
     app.register_blueprint(api_bp)
     app.register_blueprint(auth_bp)
@@ -375,6 +376,7 @@ def create_app():
     app.register_blueprint(financeiro_bp)
     app.register_blueprint(historico_bp)
     app.register_blueprint(extrato_bp)
+    app.register_blueprint(search_bp)
 
     # Register OAuth blueprint - name already set at creation
     app.register_blueprint(google_oauth_bp, url_prefix="/auth")

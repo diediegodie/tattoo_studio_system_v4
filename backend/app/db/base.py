@@ -264,3 +264,23 @@ class Extrato(Base):
 
     def __repr__(self):
         return f"<Extrato(id={self.id}, mes={self.mes}, ano={self.ano})>"
+
+
+class ExtratoRunLog(Base):
+    """Log table to track when extrato generation runs to prevent duplicates."""
+
+    __tablename__ = "extrato_run_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    mes = Column(Integer, nullable=False)  # Month that was processed
+    ano = Column(Integer, nullable=False)  # Year that was processed
+    run_at = Column(DateTime(timezone=True), server_default=func.now())  # When it ran
+    status = Column(String(50), nullable=False)  # 'success', 'error', 'skipped'
+    message = Column(String(500), nullable=True)  # Optional message/details
+
+    __table_args__ = (
+        UniqueConstraint("mes", "ano", "status", name="unique_extrato_run_per_month"),
+    )
+
+    def __repr__(self):
+        return f"<ExtratoRunLog(id={self.id}, mes={self.mes}, ano={self.ano}, status={self.status})>"

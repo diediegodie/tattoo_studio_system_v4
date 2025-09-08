@@ -33,9 +33,6 @@ COPY ./backend/app ./app
 COPY ../frontend/templates ./frontend/templates
 COPY ../frontend/assets ./frontend/assets
 
-# Copy database setup script
-COPY ./backend/force_create_tables.py .
-
 # Create non-root user for security
 RUN adduser --disabled-password --gecos '' appuser \
     && chown -R appuser:appuser /app
@@ -53,7 +50,10 @@ FROM base AS development
 # Install additional development dependencies
 USER root
 COPY ../requirements.txt /tmp/requirements.txt
-RUN pip install --no-cache-dir flask[dev] pytest pytest-cov
+# Reinstall full requirements to ensure all packages are available in development
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir -r /tmp/requirements.txt \
+    && pip install --no-cache-dir flask[dev] pytest pytest-cov
 USER appuser
 
 # Set Flask environment for development
