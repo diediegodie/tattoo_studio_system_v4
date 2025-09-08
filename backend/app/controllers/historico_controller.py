@@ -6,6 +6,7 @@ from sqlalchemy.orm import joinedload
 import logging
 from app.repositories.user_repo import UserRepository
 from app.services.user_service import UserService
+from app.core.api_utils import api_response
 
 logger = logging.getLogger(__name__)
 
@@ -128,15 +129,6 @@ def delete_comissao(comissao_id: int):
     finally:
         if db:
             db.close()
-
-
-def api_response(
-    success: bool, message: str, data: object | None = None, status_code: int = 200
-):
-    payload = {"success": success, "message": message}
-    if data is not None:
-        payload["data"] = data
-    return jsonify(payload), status_code
 
 
 @historico_bp.route("/api/comissao/<int:comissao_id>", methods=["GET"])

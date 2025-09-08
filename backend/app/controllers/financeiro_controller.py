@@ -13,6 +13,7 @@ from app.repositories.user_repo import UserRepository
 from app.services.user_service import UserService
 from app.repositories.pagamento_repository import PagamentoRepository
 from app.db.base import Pagamento as PagamentoModel
+from app.core.api_utils import api_response
 import inspect
 import asyncio
 
@@ -602,16 +603,6 @@ def api_get_pagamento(pagamento_id: int):
     finally:
         if db:
             db.close()
-
-
-def api_response(
-    success: bool, message: str, data: Any = None, status_code: int = 200
-) -> Tuple[Response, int]:
-    """Helper function to return consistent API responses."""
-    response = {"success": success, "message": message}
-    if data is not None:
-        response["data"] = data
-    return jsonify(response), status_code
 
 
 @financeiro_bp.route("/api/<int:pagamento_id>", methods=["PUT"])
