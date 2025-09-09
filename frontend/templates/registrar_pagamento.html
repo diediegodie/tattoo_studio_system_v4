@@ -100,8 +100,8 @@
                                             %}selected{% endif %}>Crédito</option>
                                         <option value="Cartão de Débito" {% if sel_forma=='Cartão de Débito'
                                             %}selected{% endif %}>Débito</option>
-                                        <option value="Transferência" {% if sel_forma=='Transferência' %}selected{%
-                                            endif %}>Outros</option>
+                                        <option value="Outros" {% if sel_forma=='Outros' %}selected{% endif %}>Outros
+                                        </option>
                                     </select>
                                 </div>
                                 <div style="flex:1 1 200px;min-width:180px;">
@@ -162,16 +162,15 @@
                     </header>
                     <ul>
                         <li><a href="{{ url_for('index') }}">Início</a></li>
-						<li><a href="{{ url_for('estoque') }}">Estoque</a></li>
-						<li><a href="{{ url_for('client.client_list') }}">Clientes</a></li>
-						<li><a href="{{ url_for('calendar.calendar_page') }}">Google Agenda</a></li>
-						<li><a href="{{ url_for('sessoes') }}">Próximas Sessões</a></li>
-						<li><a href="{{ url_for('financeiro') }}">Pagamentos</a></li>
-						<li><a href="{{ url_for('registrar_pagamento') }}">Registrar Pagamento</a></li>
-						<li><a href="{{ url_for('cadastro_interno') }}">Artistas</a></li>
-						<li><a href="{{ url_for('calculadora') }}">Calculadora de Porcentagem</a></li>
-						<li><a href="{{ url_for('historico') }}">Histórico</a></li>
-						<li><a href="{{ url_for('extrato') }}">Extrato</a></li>
+                        <li><a href="{{ url_for('estoque') }}">Estoque</a></li>
+                        <li><a href="{{ url_for('client.client_list') }}">Clientes</a></li>
+                        <li><a href="{{ url_for('calendar.calendar_page') }}">Google Agenda</a></li>
+                        <li><a href="{{ url_for('sessoes') }}">Próximas Sessões</a></li>
+                        <li><a href="{{ url_for('financeiro') }}">Pagamentos</a></li>
+                        <li><a href="{{ url_for('cadastro_interno') }}">Artistas</a></li>
+                        <li><a href="{{ url_for('calculadora') }}">Calculadora de Porcentagem</a></li>
+                        <li><a href="{{ url_for('historico') }}">Histórico</a></li>
+                        <li><a href="{{ url_for('extrato') }}">Extrato</a></li>
                     </ul>
                 </nav>
             </div>

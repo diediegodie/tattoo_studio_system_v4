@@ -36,6 +36,36 @@ def historico_home():
     try:
         db = SessionLocal()
 
+        # Get current month totals
+        from app.services.extrato_service import get_current_month_totals
+
+        current_totals = get_current_month_totals(db)
+
+        # Check if there are any current month entries
+        from datetime import datetime
+
+        today = datetime.now()
+        start_date = datetime(today.year, today.month, 1)
+        if today.month == 12:
+            end_date = datetime(today.year + 1, 1, 1)
+        else:
+            end_date = datetime(today.year, today.month + 1, 1)
+
+        has_current_entries = (
+            db.query(Pagamento)
+            .filter(Pagamento.data >= start_date, Pagamento.data < end_date)
+            .count()
+            > 0
+            or db.query(Comissao)
+            .filter(Comissao.created_at >= start_date, Comissao.created_at < end_date)
+            .count()
+            > 0
+            or db.query(Sessao)
+            .filter(Sessao.data >= start_date, Sessao.data < end_date)
+            .count()
+            > 0
+        )
+
         pagamentos = (
             db.query(Pagamento)
             .options(joinedload(Pagamento.cliente), joinedload(Pagamento.artista))
@@ -90,12 +120,19 @@ def historico_home():
             sessoes=sessoes,
             clients=clients,
             artists=artists,
+            current_totals=current_totals,
+            has_current_entries=has_current_entries,
         )
     except Exception as e:
         logger.exception("Error loading historico: %s", e)
         flash("Erro ao carregar histórico.", "error")
         return render_template(
-            "historico.html", pagamentos=[], comissoes=[], sessoes=[]
+            "historico.html",
+            pagamentos=[],
+            comissoes=[],
+            sessoes=[],
+            current_totals={},
+            has_current_entries=False,
         )
     finally:
         if db:
@@ -112,7 +149,12 @@ def delete_comissao(comissao_id: int):
         if not c:
             flash("Comissão não encontrada.", "error")
             return render_template(
-                "historico.html", pagamentos=[], comissoes=[], sessoes=[]
+                "historico.html",
+                pagamentos=[],
+                comissoes=[],
+                sessoes=[],
+                current_totals={},
+                has_current_entries=False,
             )
 
         try:
