@@ -185,6 +185,90 @@
                         </div>
                     </section>
 
+                    <!-- Monthly Totals Section -->
+                    {% if has_current_entries and current_totals %}
+                    <section>
+                        <header class="major">
+                            <h2>Totais do Mês Atual</h2>
+                        </header>
+                        <div class="table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Métrica</th>
+                                        <th>Valor</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Receita Total (Bruta)</td>
+                                        <td>R$ {{ '%.2f' % current_totals['receita_total'] }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Comissões Totais</td>
+                                        <td>R$ {{ '%.2f' % current_totals['comissoes_total'] }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Receita Líquida (Bruta - Comissões)</td>
+                                        <td>R$ {{ '%.2f' % (current_totals['receita_total'] -
+                                            current_totals['comissoes_total']) }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {% if current_totals['por_artista'] %}
+                        <header class="major">
+                            <h3>Comissões por Artista</h3>
+                        </header>
+                        <div class="table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Artista</th>
+                                        <th>Receita Gerada</th>
+                                        <th>Comissão</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for artista in current_totals['por_artista'] %}
+                                    <tr>
+                                        <td>{{ artista['artista'] }}</td>
+                                        <td>R$ {{ '%.2f' % artista['receita'] }}</td>
+                                        <td>R$ {{ '%.2f' % artista['comissao'] }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% endif %}
+
+                        {% if current_totals['por_forma_pagamento'] %}
+                        <header class="major">
+                            <h3>Receita por Forma de Pagamento</h3>
+                        </header>
+                        <div class="table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Forma de Pagamento</th>
+                                        <th>Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for forma in current_totals['por_forma_pagamento'] %}
+                                    <tr>
+                                        <td>{{ forma['forma'] }}</td>
+                                        <td>R$ {{ '%.2f' % forma['total'] }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% endif %}
+                    </section>
+                    {% endif %}
+
                 </section>
 
             </div>
@@ -210,16 +294,15 @@
                     </header>
                     <ul>
                         <li><a href="{{ url_for('index') }}">Início</a></li>
-						<li><a href="{{ url_for('estoque') }}">Estoque</a></li>
-						<li><a href="{{ url_for('client.client_list') }}">Clientes</a></li>
-						<li><a href="{{ url_for('calendar.calendar_page') }}">Google Agenda</a></li>
-						<li><a href="{{ url_for('sessoes') }}">Próximas Sessões</a></li>
-						<li><a href="{{ url_for('financeiro') }}">Pagamentos</a></li>
-						<li><a href="{{ url_for('registrar_pagamento') }}">Registrar Pagamento</a></li>
-						<li><a href="{{ url_for('cadastro_interno') }}">Artistas</a></li>
-						<li><a href="{{ url_for('calculadora') }}">Calculadora de Porcentagem</a></li>
-						<li><a href="{{ url_for('historico') }}">Histórico</a></li>
-						<li><a href="{{ url_for('extrato') }}">Extrato</a></li>
+                        <li><a href="{{ url_for('estoque') }}">Estoque</a></li>
+                        <li><a href="{{ url_for('client.client_list') }}">Clientes</a></li>
+                        <li><a href="{{ url_for('calendar.calendar_page') }}">Google Agenda</a></li>
+                        <li><a href="{{ url_for('sessoes') }}">Próximas Sessões</a></li>
+                        <li><a href="{{ url_for('financeiro') }}">Pagamentos</a></li>
+                        <li><a href="{{ url_for('cadastro_interno') }}">Artistas</a></li>
+                        <li><a href="{{ url_for('calculadora') }}">Calculadora de Porcentagem</a></li>
+                        <li><a href="{{ url_for('historico') }}">Histórico</a></li>
+                        <li><a href="{{ url_for('extrato') }}">Extrato</a></li>
                     </ul>
                 </nav>
             </div>

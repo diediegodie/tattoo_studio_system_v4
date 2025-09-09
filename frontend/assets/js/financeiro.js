@@ -190,7 +190,7 @@
                       <option value="Pix">Pix</option>
                       <option value="Cartão de Crédito">Crédito</option>
                       <option value="Cartão de Débito">Débito</option>
-                      <option value="Transferência">Outros</option>
+                      <option value="Outros">Outros</option>
                     </select>
                   </label><br><br>
                   <label>Cliente:<br>

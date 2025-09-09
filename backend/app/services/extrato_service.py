@@ -217,7 +217,6 @@ def generate_extrato(mes, ano, force=False):
             totais=json.dumps(totais),
         )
         db.add(extrato)
-        db.commit()
 
         logger.info("Extrato created successfully.")
 
@@ -252,8 +251,8 @@ def should_run_monthly_extrato():
     current_month = today.month
     current_year = today.year
 
-    # Only run if today is after the 1st of the month
-    if today.day < 2:  # Give a 1-day buffer
+    # Only run if today is on or after the 1st of the month
+    if today.day < 1:  # Should not happen, but safety check
         return False
 
     # Check database for existing successful run this month
@@ -366,3 +365,53 @@ def check_and_generate_extrato(mes=None, ano=None, force=False):
             _log_extrato_run(mes, ano, "error", str(e))
         logger.error(f"Error in check_and_generate_extrato: {str(e)}")
         raise
+
+
+def get_current_month_totals(db):
+    """Calculate totals for the current month from the database."""
+    from datetime import datetime
+    from sqlalchemy import func
+
+    today = datetime.now()
+    start_date = datetime(today.year, today.month, 1)
+    if today.month == 12:
+        end_date = datetime(today.year + 1, 1, 1)
+    else:
+        end_date = datetime(today.year, today.month + 1, 1)
+
+    # Get pagamentos
+    pagamentos = (
+        db.query(Pagamento)
+        .options(joinedload(Pagamento.artista))
+        .filter(Pagamento.data >= start_date, Pagamento.data < end_date)
+        .all()
+    )
+
+    # Get comissoes
+    comissoes = (
+        db.query(Comissao)
+        .options(joinedload(Comissao.artista))
+        .filter(Comissao.created_at >= start_date, Comissao.created_at < end_date)
+        .all()
+    )
+
+    # Serialize for calculation
+    pagamentos_data = [
+        {
+            "valor": float(p.valor),
+            "artista_name": p.artista.name if p.artista else None,
+            "forma_pagamento": p.forma_pagamento,
+        }
+        for p in pagamentos
+    ]
+
+    comissoes_data = [
+        {
+            "valor": float(c.valor),
+            "artista_name": c.artista.name if c.artista else None,
+        }
+        for c in comissoes
+    ]
+
+    # Use existing calculate_totals function
+    return calculate_totals(pagamentos_data, [], comissoes_data)
