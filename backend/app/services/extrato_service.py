@@ -16,6 +16,7 @@ from app.db.base import (
     Client,
     User,
     ExtratoRunLog,
+    Gasto,
 )
 
 
@@ -44,7 +45,7 @@ def check_existing_extrato(db, mes, ano, force=False):
 
 
 def query_data(db, mes, ano):
-    """Query Pagamento, Sessao, Comissao for the month/year."""
+    """Query Pagamento, Sessao, Comissao, Gasto for the month/year."""
     start_date = datetime(ano, mes, 1)
     if mes == 12:
         end_date = datetime(ano + 1, 1, 1)
@@ -83,10 +84,18 @@ def query_data(db, mes, ano):
         .all()
     )
 
-    return pagamentos, sessoes, comissoes
+    # Query Gastos
+    gastos = (
+        db.query(Gasto)
+        .options(joinedload(Gasto.creator))
+        .filter(Gasto.data >= start_date, Gasto.data < end_date)
+        .all()
+    )
+
+    return pagamentos, sessoes, comissoes, gastos
 
 
-def serialize_data(pagamentos, sessoes, comissoes):
+def serialize_data(pagamentos, sessoes, comissoes, gastos):
     """Serialize data into JSON-compatible dicts."""
     pagamentos_data = []
     for p in pagamentos:
@@ -138,13 +147,29 @@ def serialize_data(pagamentos, sessoes, comissoes):
             }
         )
 
-    return pagamentos_data, sessoes_data, comissoes_data
+    gastos_data = []
+    for g in gastos:
+        categoria = getattr(g, "categoria", None)  # Optional, forward-compatible
+        gastos_data.append(
+            {
+                "data": g.data.isoformat() if g.data else None,
+                "valor": float(g.valor),
+                "descricao": g.descricao,
+                "forma_pagamento": g.forma_pagamento,
+                "categoria": categoria,
+                "created_by": g.created_by,
+            }
+        )
+
+    return pagamentos_data, sessoes_data, comissoes_data, gastos_data
 
 
-def calculate_totals(pagamentos_data, sessoes_data, comissoes_data):
-    """Calculate totals."""
+def calculate_totals(pagamentos_data, sessoes_data, comissoes_data, gastos_data=None):
+    """Calculate totals including despesas if provided."""
     receita_total = sum(p["valor"] for p in pagamentos_data)
     comissoes_total = sum(c["valor"] for c in comissoes_data)
+    gastos_data = gastos_data or []
+    despesas_total = sum(g["valor"] for g in gastos_data)
 
     # Por artista
     artistas = {}
@@ -165,7 +190,7 @@ def calculate_totals(pagamentos_data, sessoes_data, comissoes_data):
         for k, v in artistas.items()
     ]
 
-    # Por forma de pagamento
+    # Por forma de pagamento (receitas)
     formas = {}
     for p in pagamentos_data:
         forma = p["forma_pagamento"]
@@ -174,11 +199,38 @@ def calculate_totals(pagamentos_data, sessoes_data, comissoes_data):
 
     por_forma_pagamento = [{"forma": k, "total": v} for k, v in formas.items()]
 
+    # Gastos por forma de pagamento
+    gastos_por_forma = {}
+    for g in gastos_data:
+        forma = g.get("forma_pagamento")
+        if forma:
+            gastos_por_forma[forma] = gastos_por_forma.get(forma, 0) + g["valor"]
+    gastos_por_forma_pagamento = [
+        {"forma": k, "total": v} for k, v in gastos_por_forma.items()
+    ]
+
+    # Gastos por categoria (optional field)
+    gastos_por_categoria_map = {}
+    for g in gastos_data:
+        categoria = g.get("categoria") or "Outros"
+        gastos_por_categoria_map[categoria] = (
+            gastos_por_categoria_map.get(categoria, 0) + g["valor"]
+        )
+    gastos_por_categoria = [
+        {"categoria": k, "total": v} for k, v in gastos_por_categoria_map.items()
+    ]
+
+    saldo = receita_total - despesas_total  # commissions shown separately
+
     return {
         "receita_total": receita_total,
         "comissoes_total": comissoes_total,
+        "despesas_total": despesas_total,
+        "saldo": saldo,
         "por_artista": por_artista,
         "por_forma_pagamento": por_forma_pagamento,
+        "gastos_por_forma_pagamento": gastos_por_forma_pagamento,
+        "gastos_por_categoria": gastos_por_categoria,
     }
 
 
@@ -194,18 +246,20 @@ def generate_extrato(mes, ano, force=False):
             return
 
         # Query data
-        pagamentos, sessoes, comissoes = query_data(db, mes, ano)
+        pagamentos, sessoes, comissoes, gastos = query_data(db, mes, ano)
         logger.info(
-            f"Generating extrato for {mes}/{ano}: {len(pagamentos)} pagamentos, {len(sessoes)} sessoes, {len(comissoes)} comissoes."
+            f"Generating extrato for {mes}/{ano}: {len(pagamentos)} pagamentos, {len(sessoes)} sessoes, {len(comissoes)} comissoes, {len(gastos)} gastos."
         )
 
         # Serialize
-        pagamentos_data, sessoes_data, comissoes_data = serialize_data(
-            pagamentos, sessoes, comissoes
+        pagamentos_data, sessoes_data, comissoes_data, gastos_data = serialize_data(
+            pagamentos, sessoes, comissoes, gastos
         )
 
         # Calculate totals
-        totais = calculate_totals(pagamentos_data, sessoes_data, comissoes_data)
+        totais = calculate_totals(
+            pagamentos_data, sessoes_data, comissoes_data, gastos_data
+        )
 
         # Create extrato
         extrato = Extrato(
@@ -214,23 +268,30 @@ def generate_extrato(mes, ano, force=False):
             pagamentos=json.dumps(pagamentos_data),
             sessoes=json.dumps(sessoes_data),
             comissoes=json.dumps(comissoes_data),
+            gastos=json.dumps(gastos_data),
             totais=json.dumps(totais),
         )
         db.add(extrato)
 
         logger.info("Extrato created successfully.")
 
-        # Delete original records
+        # Delete original records in dependency order, breaking circular references
+        for c in comissoes:
+            db.delete(c)
+        # Break circular reference between Sessao and Pagamento
+        for s in sessoes:
+            s.payment_id = None
+        db.commit()
         for p in pagamentos:
             db.delete(p)
         for s in sessoes:
             db.delete(s)
-        for c in comissoes:
-            db.delete(c)
+        for g in gastos:
+            db.delete(g)
         db.commit()
 
         logger.info(
-            f"Deleted {len(pagamentos)} pagamentos, {len(sessoes)} sessoes, {len(comissoes)} comissoes."
+            f"Deleted {len(pagamentos)} pagamentos, {len(sessoes)} sessoes, {len(comissoes)} comissoes, {len(gastos)} gastos."
         )
 
     except Exception as e:
@@ -368,7 +429,7 @@ def check_and_generate_extrato(mes=None, ano=None, force=False):
 
 
 def get_current_month_totals(db):
-    """Calculate totals for the current month from the database."""
+    """Calculate totals for the current month from the database, including gastos."""
     from datetime import datetime
     from sqlalchemy import func
 
@@ -395,6 +456,11 @@ def get_current_month_totals(db):
         .all()
     )
 
+    # Get gastos
+    gastos = (
+        db.query(Gasto).filter(Gasto.data >= start_date, Gasto.data < end_date).all()
+    )
+
     # Serialize for calculation
     pagamentos_data = [
         {
@@ -413,5 +479,14 @@ def get_current_month_totals(db):
         for c in comissoes
     ]
 
+    gastos_data = [
+        {
+            "valor": float(g.valor),
+            "forma_pagamento": g.forma_pagamento,
+            "categoria": getattr(g, "categoria", None),
+        }
+        for g in gastos
+    ]
+
     # Use existing calculate_totals function
-    return calculate_totals(pagamentos_data, [], comissoes_data)
+    return calculate_totals(pagamentos_data, [], comissoes_data, gastos_data)

@@ -1,12 +1,13 @@
 from flask import Blueprint, render_template, flash, jsonify, request
 from flask_login import login_required, current_user
 from app.db.session import SessionLocal
-from app.db.base import Pagamento, Comissao, Sessao
+from app.db.base import Pagamento, Comissao, Sessao, Gasto
 from sqlalchemy.orm import joinedload
 import logging
 from app.repositories.user_repo import UserRepository
 from app.services.user_service import UserService
 from app.core.api_utils import api_response
+from app.services.gastos_service import get_gastos_for_month, serialize_gastos
 
 logger = logging.getLogger(__name__)
 
@@ -35,11 +36,29 @@ def historico_home():
     db = None
     try:
         db = SessionLocal()
-
         # Get current month totals
         from app.services.extrato_service import get_current_month_totals
 
         current_totals = get_current_month_totals(db)
+        # Debug: validate expected keys in totals
+        expected_keys = {
+            "receita_total",
+            "comissoes_total",
+            "despesas_total",
+            "saldo",
+            "por_artista",
+            "por_forma_pagamento",
+            "gastos_por_forma_pagamento",
+            "gastos_por_categoria",
+        }
+        if not isinstance(current_totals, dict):
+            logger.error("current_totals is not a dict: %r", type(current_totals))
+        else:
+            missing = expected_keys - set(current_totals.keys())
+            if missing:
+                logger.error(
+                    "current_totals missing keys: %s", ", ".join(sorted(missing))
+                )
 
         # Check if there are any current month entries
         from datetime import datetime
@@ -64,7 +83,15 @@ def historico_home():
             .filter(Sessao.data >= start_date, Sessao.data < end_date)
             .count()
             > 0
+            or db.query(Gasto)
+            .filter(Gasto.data >= start_date, Gasto.data < end_date)
+            .count()
+            > 0
         )
+
+        # Fetch and serialize current-month gastos
+        gastos = get_gastos_for_month(db, start_date, end_date)
+        gastos_json = serialize_gastos(gastos)
 
         pagamentos = (
             db.query(Pagamento)
@@ -113,6 +140,18 @@ def historico_home():
         except Exception:
             artists = []
 
+        # Debug counts for visibility in logs
+        try:
+            logger.info(
+                "historico counts -> pagamentos:%d comissoes:%d sessoes:%d gastos:%d",
+                len(pagamentos),
+                len(comissoes),
+                len(sessoes),
+                len(gastos_json),
+            )
+        except Exception:
+            pass
+
         return render_template(
             "historico.html",
             pagamentos=pagamentos,
@@ -122,18 +161,14 @@ def historico_home():
             artists=artists,
             current_totals=current_totals,
             has_current_entries=has_current_entries,
+            gastos_json=gastos_json,
         )
     except Exception as e:
+        # Log and re-raise to surface the real error in browser during debugging
         logger.exception("Error loading historico: %s", e)
-        flash("Erro ao carregar histórico.", "error")
-        return render_template(
-            "historico.html",
-            pagamentos=[],
-            comissoes=[],
-            sessoes=[],
-            current_totals={},
-            has_current_entries=False,
-        )
+        print(f"Historico error: {e}")
+        # TEMP: re-raise for debugging so we see the stacktrace in the browser
+        raise
     finally:
         if db:
             db.close()
