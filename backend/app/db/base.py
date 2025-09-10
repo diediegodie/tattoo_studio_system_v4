@@ -238,8 +238,36 @@ class Comissao(Base):
         )
 
 
+class Gasto(Base):
+    """Gasto (Expense) model to track studio outgoing funds.
+
+    Mirrors patterns from Pagamento (valor, data, forma_pagamento) and links
+    to the creating user via `created_by`.
+    """
+
+    __tablename__ = "gastos"
+
+    id = Column(Integer, primary_key=True, index=True)
+    data = Column(Date, nullable=False, index=True)
+    valor = Column(Numeric(10, 2), nullable=False)
+    descricao = Column(String(255), nullable=True)
+    forma_pagamento = Column(String(50), nullable=False)
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    # Relationships
+    creator = relationship("User", foreign_keys=[created_by], backref="gastos_criados")
+
+    def __repr__(self):
+        return (
+            f"<Gasto(id={self.id}, data={self.data}, valor={self.valor}, "
+            f"forma_pagamento={self.forma_pagamento}, created_by={self.created_by})>"
+        )
+
+
 class Extrato(Base):
-    """Snapshot mensal imutável dos dados de pagamentos, sessões e comissões.
+    """Immutable monthly snapshot of payment, session, and commission data.
 
     Stored as JSONB so reports are fast to read. Do not reference original
     records by foreign key: data is copied into the JSON payloads.
@@ -252,10 +280,11 @@ class Extrato(Base):
     mes = Column(Integer, nullable=False)  # 1..12
     ano = Column(Integer, nullable=False)  # ex.: 2025
 
-    # Snapshots (lists) of objects: pagamentos, sessoes, comissoes
+    # Snapshots (lists) of objects: pagamentos, sessoes, comissoes, gastos
     pagamentos = Column(get_json_type(), nullable=False)
     sessoes = Column(get_json_type(), nullable=False)
     comissoes = Column(get_json_type(), nullable=False)
+    gastos = Column(get_json_type(), nullable=True)
 
     # Pre-calculated totals to speed reads and avoid recomputation
     totais = Column(get_json_type(), nullable=False)

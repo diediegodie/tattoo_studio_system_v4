@@ -88,11 +88,13 @@ def api_get_extrato():
             pagamentos_raw = getattr(extrato, "pagamentos", None)
             sessoes_raw = getattr(extrato, "sessoes", None)
             comissoes_raw = getattr(extrato, "comissoes", None)
+            gastos_raw = getattr(extrato, "gastos", None)
             totais_raw = getattr(extrato, "totais", None)
 
             pagamentos = json.loads(pagamentos_raw) if pagamentos_raw else []
             sessoes = json.loads(sessoes_raw) if sessoes_raw else []
             comissoes = json.loads(comissoes_raw) if comissoes_raw else []
+            gastos = json.loads(gastos_raw) if gastos_raw else []
             totais = json.loads(totais_raw) if totais_raw else {}
 
         except (json.JSONDecodeError, AttributeError) as json_error:
@@ -115,6 +117,7 @@ def api_get_extrato():
                         "pagamentos": pagamentos,
                         "sessoes": sessoes,
                         "comissoes": comissoes,
+                        "gastos": gastos,
                         "totais": totais,
                     },
                 }

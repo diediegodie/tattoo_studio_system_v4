@@ -185,6 +185,16 @@ def create_app():
             exists = os.path.exists(alt_path)
             print(f"[DEBUG] Alternative path {alt_path} exists: {exists}")
 
+    # Configure logging
+    import logging
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    )
+    logger = logging.getLogger(__name__)
+    logger.info("Logging configured with INFO level")
+
     app = Flask(
         __name__,
         template_folder=template_folder,
@@ -364,6 +374,7 @@ def create_app():
     from app.controllers.historico_controller import historico_bp
     from app.controllers.extrato_controller import extrato_bp
     from app.controllers.search_controller import search_bp
+    from app.controllers.gastos_controller import gastos_bp
 
     app.register_blueprint(api_bp)
     app.register_blueprint(auth_bp)
@@ -377,6 +388,7 @@ def create_app():
     app.register_blueprint(historico_bp)
     app.register_blueprint(extrato_bp)
     app.register_blueprint(search_bp)
+    app.register_blueprint(gastos_bp)
 
     # Register OAuth blueprint - name already set at creation
     app.register_blueprint(google_oauth_bp, url_prefix="/auth")

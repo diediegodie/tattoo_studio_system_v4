@@ -1,0 +1,131 @@
+<!DOCTYPE HTML>
+<html>
+
+<head>
+    <title>Gastos</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+    <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/x-icon">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}" />
+</head>
+
+<body class="is-preload">
+    <div id="wrapper">
+        <div id="main">
+            <div class="inner">
+                <!-- Header -->
+                <header id="header">
+                    <a href="#" class="logo"><strong>Gastos</strong> do estúdio</a>
+                </header>
+
+                <!-- Content -->
+                <section>
+                    <header class="main">
+                        <h1>Gastos</h1>
+                    </header>
+
+                    <!-- Formulário de Registro de Gasto -->
+                    <div class="box">
+                        <form method="post" action="{{ url_for('gastos.create_gasto') }}" class="row gtr-uniform">
+                            <div class="col-3 col-12-xsmall">
+                                <label for="data">Data</label>
+                                <input type="date" id="data" name="data" required />
+                            </div>
+                            <div class="col-3 col-12-xsmall">
+                                <label for="valor">Valor (R$)</label>
+                                <input type="number" id="valor" name="valor" step="0.01" min="0.01" placeholder="0,00"
+                                    required />
+                            </div>
+                            <div class="col-6 col-12-xsmall">
+                                <label for="descricao">Descrição</label>
+                                <input type="text" id="descricao" name="descricao"
+                                    placeholder="Ex.: Compra de materiais" required />
+                            </div>
+                            <div class="col-6 col-12-xsmall">
+                                <label>Forma de Pagamento</label>
+                                {% include 'partials/_forma_pagamento_select.html' %}
+                            </div>
+                            <div class="col-12">
+                                <ul class="actions">
+                                    <li><button type="submit" class="button primary">Registrar Gasto</button></li>
+                                </ul>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Lista de Gastos do Mês Atual -->
+                    <div class="table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Valor (R$)</th>
+                                    <th>Descrição</th>
+                                    <th>Forma de Pagamento</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if gastos_json and gastos_json|length > 0 %}
+                                {% for gasto in gastos_json %}
+                                <tr data-id="{{ gasto.id }}">
+                                    <td>{{ gasto.data or '-' }}</td>
+                                    <td>R$ {{ '%.2f' % gasto.valor if gasto.valor is not none else '0.00' }}</td>
+                                    <td>{{ gasto.descricao }}</td>
+                                    <td>{{ gasto.forma_pagamento }}</td>
+                                    <td>—</td>
+                                </tr>
+                                {% endfor %}
+                                {% else %}
+                                <tr>
+                                    <td colspan="5">Nenhum gasto cadastrado neste mês.</td>
+                                </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div id="sidebar" class="inactive">
+            <div class="toggle"></div>
+            <div class="inner">
+                <section id="search" class="alt">
+                    <form method="get" action="{{ url_for('search.search_results_page') }}">
+                        <input type="text" name="q" id="query" placeholder="Buscar cliente ou artista..." required />
+                        <button type="submit" style="display: none;"></button>
+                    </form>
+                </section>
+                <nav id="menu">
+                    <header class="major">
+                        <h2>Menu</h2>
+                    </header>
+                    <ul>
+                        <li><a href="{{ url_for('index') }}">Início</a></li>
+                        <li><a href="{{ url_for('estoque') }}">Estoque</a></li>
+                        <li><a href="{{ url_for('client.client_list') }}">Clientes</a></li>
+                        <li><a href="{{ url_for('calendar.calendar_page') }}">Google Agenda</a></li>
+                        <li><a href="{{ url_for('sessoes') }}">Próximas Sessões</a></li>
+                        <li><a href="{{ url_for('financeiro') }}">Pagamentos</a></li>
+                        <li><a href="{{ url_for('cadastro_interno') }}">Artistas</a></li>
+                        <li><a href="{{ url_for('calculadora') }}">Calculadora de Porcentagem</a></li>
+                        <li><a href="{{ url_for('historico') }}">Histórico</a></li>
+                        <li><a href="{{ url_for('extrato') }}">Extrato</a></li>
+                        <li><a href="{{ url_for('gastos.gastos_home') }}">Gastos</a></li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/browser.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/breakpoints.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/util.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/gastos.js') }}"></script>
+</body>
+
+</html>

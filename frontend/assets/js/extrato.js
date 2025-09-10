@@ -142,36 +142,38 @@ document.addEventListener('DOMContentLoaded', function () {
     return html;
   }
 
-  function renderTotais(totais) {
-    if (!totais) return '<h3>Totais</h3><p>Dados não disponíveis.</p>';
-
-    let html = '<h3>Totais</h3>';
-    html += `<p><strong>Receita Total:</strong> ${nf.format(totais.receita_total || 0)}</p>`;
-    html += `<p><strong>Comissões Total:</strong> ${nf.format(totais.comissoes_total || 0)}</p>`;
-
-    if (totais.por_artista && totais.por_artista.length > 0) {
-      html += '<h4>Por Artista</h4><div class="table-wrapper"><table><thead><tr>';
-      html += '<th>Artista</th><th>Receita</th><th>Comissão</th></tr></thead><tbody>';
-      totais.por_artista.forEach(a => {
-        html += '<tr>';
-        html += `<td>${a.artista || 'N/A'}</td>`;
-        html += `<td>${nf.format(a.receita || 0)}</td>`;
-        html += `<td>${nf.format(a.comissao || 0)}</td>`;
-        html += '</tr>';
-      });
-      html += '</tbody></table></div>';
+  function renderGastosTable(gastos) {
+    if (!gastos || gastos.length === 0) {
+      return '<h3>Gastos</h3><p><strong>Nenhum gasto encontrado.</strong></p>';
     }
 
-    if (totais.por_forma_pagamento && totais.por_forma_pagamento.length > 0) {
-      html += '<h4>Por Forma de Pagamento</h4><div class="table-wrapper"><table><thead><tr>';
-      html += '<th>Forma</th><th>Total</th></tr></thead><tbody>';
-      totais.por_forma_pagamento.forEach(f => {
-        html += '<tr>';
-        html += `<td>${f.forma || 'N/A'}</td>`;
-        html += `<td>${nf.format(f.total || 0)}</td>`;
-        html += '</tr>';
-      });
-      html += '</tbody></table></div>';
+    let html = '<h3>Gastos</h3><div class="table-wrapper"><table><thead><tr>';
+    html += '<th>Data</th><th>Valor</th><th>Descrição</th><th>Forma Pagamento</th></tr></thead><tbody>';
+
+    gastos.forEach(g => {
+      html += '<tr>';
+      html += `<td>${formatDate(g.data)}</td>`;
+      html += `<td>${nf.format(g.valor || 0)}</td>`;
+      html += `<td>${g.descricao || ''}</td>`;
+      html += `<td>${g.forma_pagamento || 'N/A'}</td>`;
+      html += '</tr>';
+    });
+
+    html += '</tbody></table></div>';
+    return html;
+  }
+
+  function renderTotais(totais) {
+    if (!totais) return '<h3>Resumo Geral</h3><p>Dados não disponíveis.</p>';
+
+    let html = '<h3>Resumo Geral</h3>';
+    html += `<p><strong>Receita Total:</strong> ${nf.format(totais.receita_total || 0)}</p>`;
+    html += `<p><strong>Comissões Total:</strong> ${nf.format(totais.comissoes_total || 0)}</p>`;
+    if (typeof totais.despesas_total !== 'undefined') {
+      html += `<p><strong>Despesas (Gastos):</strong> ${nf.format(totais.despesas_total || 0)}</p>`;
+    }
+    if (typeof totais.saldo !== 'undefined') {
+      html += `<p><strong>Saldo (Receita - Despesas):</strong> ${nf.format(totais.saldo || 0)}</p>`;
     }
 
     return html;
@@ -220,6 +222,59 @@ document.addEventListener('DOMContentLoaded', function () {
       html += renderPagamentosTable(data.pagamentos);
       html += renderSessoesTable(data.sessoes);
       html += renderComissoesTable(data.comissoes);
+
+      // Render detailed breakdowns from totais first
+      if (data.totais && data.totais.por_artista && data.totais.por_artista.length > 0) {
+        html += '<h3>Comissões por Artista</h3><div class="table-wrapper"><table><thead><tr>';
+        html += '<th>Artista</th><th>Receita</th><th>Comissão</th></tr></thead><tbody>';
+        data.totais.por_artista.forEach(a => {
+          html += '<tr>';
+          html += `<td>${a.artista || 'N/A'}</td>`;
+          html += `<td>${nf.format(a.receita || 0)}</td>`;
+          html += `<td>${nf.format(a.comissao || 0)}</td>`;
+          html += '</tr>';
+        });
+        html += '</tbody></table></div>';
+      }
+
+      if (data.totais && data.totais.por_forma_pagamento && data.totais.por_forma_pagamento.length > 0) {
+        html += '<h3>Receita por Forma de Pagamento</h3><div class="table-wrapper"><table><thead><tr>';
+        html += '<th>Forma</th><th>Total</th></tr></thead><tbody>';
+        data.totais.por_forma_pagamento.forEach(f => {
+          html += '<tr>';
+          html += `<td>${f.forma || 'N/A'}</td>`;
+          html += `<td>${nf.format(f.total || 0)}</td>`;
+          html += '</tr>';
+        });
+        html += '</tbody></table></div>';
+      }
+
+      if (data.totais && data.totais.gastos_por_forma_pagamento && data.totais.gastos_por_forma_pagamento.length > 0) {
+        html += '<h3>Gastos por Forma de Pagamento</h3><div class="table-wrapper"><table><thead><tr>';
+        html += '<th>Forma</th><th>Total</th></tr></thead><tbody>';
+        data.totais.gastos_por_forma_pagamento.forEach(f => {
+          html += '<tr>';
+          html += `<td>${f.forma || 'N/A'}</td>`;
+          html += `<td>${nf.format(f.total || 0)}</td>`;
+          html += '</tr>';
+        });
+        html += '</tbody></table></div>';
+      }
+
+      if (data.totais && data.totais.gastos_por_categoria && data.totais.gastos_por_categoria.length > 0) {
+        html += '<h3>Gastos por Categoria</h3><div class="table-wrapper"><table><thead><tr>';
+        html += '<th>Categoria</th><th>Total</th></tr></thead><tbody>';
+        data.totais.gastos_por_categoria.forEach(c => {
+          html += '<tr>';
+          html += `<td>${c.categoria || 'Outros'}</td>`;
+          html += `<td>${nf.format(c.total || 0)}</td>`;
+          html += '</tr>';
+        });
+        html += '</tbody></table></div>';
+      }
+
+      // Now render Gastos and main totals summary together at the end
+      html += renderGastosTable(data.gastos);
       html += renderTotais(data.totais);
 
       content.innerHTML = html;

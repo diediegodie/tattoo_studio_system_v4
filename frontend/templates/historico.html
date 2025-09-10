@@ -188,34 +188,6 @@
                     <!-- Monthly Totals Section -->
                     {% if has_current_entries and current_totals %}
                     <section>
-                        <header class="major">
-                            <h2>Totais do Mês Atual</h2>
-                        </header>
-                        <div class="table-wrapper">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Métrica</th>
-                                        <th>Valor</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>Receita Total (Bruta)</td>
-                                        <td>R$ {{ '%.2f' % current_totals['receita_total'] }}</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Comissões Totais</td>
-                                        <td>R$ {{ '%.2f' % current_totals['comissoes_total'] }}</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Receita Líquida (Bruta - Comissões)</td>
-                                        <td>R$ {{ '%.2f' % (current_totals['receita_total'] -
-                                            current_totals['comissoes_total']) }}</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
 
                         {% if current_totals['por_artista'] %}
                         <header class="major">
@@ -266,6 +238,77 @@
                             </table>
                         </div>
                         {% endif %}
+
+                        {% if gastos_json and gastos_json|length > 0 %}
+                        <header class="major">
+                            <h3>Gastos do Mês</h3>
+                        </header>
+                        <div class="table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Data</th>
+                                        <th>Valor</th>
+                                        <th>Descrição</th>
+                                        <th>Forma de Pagamento</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for g in gastos_json %}
+                                    <tr>
+                                        <td>{{ g.data[:10] if g.data else '' }}</td>
+                                        <td>R$ {{ '%.2f' % (g.valor or 0) }}</td>
+                                        <td>{{ g.descricao or '' }}</td>
+                                        <td>{{ g.forma_pagamento or '' }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% endif %}
+                    </section>
+                    {% endif %}
+
+                    <!-- Moved Monthly Totals Section -->
+                    {% if has_current_entries and current_totals %}
+                    <section>
+                        <header class="major">
+                            <h2>Totais do Mês Atual</h2>
+                        </header>
+                        <div class="table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Métrica</th>
+                                        <th>Valor</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Receita Total (Bruta)</td>
+                                        <td>R$ {{ '%.2f' % current_totals['receita_total'] }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Comissões Totais</td>
+                                        <td>R$ {{ '%.2f' % current_totals['comissoes_total'] }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Despesas (Gastos)</td>
+                                        <td>R$ {{ '%.2f' % current_totals.get('despesas_total', 0) }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Saldo (Receita - Despesas)</td>
+                                        <td>R$ {{ '%.2f' % current_totals.get('saldo', (current_totals['receita_total']
+                                            - current_totals['comissoes_total'])) }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Receita Líquida (Bruta - Comissões)</td>
+                                        <td>R$ {{ '%.2f' % (current_totals['receita_total'] -
+                                            current_totals['comissoes_total']) }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </section>
                     {% endif %}
 
