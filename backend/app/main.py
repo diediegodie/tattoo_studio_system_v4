@@ -375,6 +375,8 @@ def create_app():
     from app.controllers.extrato_controller import extrato_bp
     from app.controllers.search_controller import search_bp
     from app.controllers.gastos_controller import gastos_bp
+    from app.controllers.admin_extrato_controller import admin_extrato_bp
+    from app.controllers.reports_controller import reports_bp
 
     app.register_blueprint(api_bp)
     app.register_blueprint(auth_bp)
@@ -389,6 +391,8 @@ def create_app():
     app.register_blueprint(extrato_bp)
     app.register_blueprint(search_bp)
     app.register_blueprint(gastos_bp)
+    app.register_blueprint(admin_extrato_bp)
+    app.register_blueprint(reports_bp)
 
     # Register OAuth blueprint - name already set at creation
     app.register_blueprint(google_oauth_bp, url_prefix="/auth")

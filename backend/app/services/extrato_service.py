@@ -5,7 +5,11 @@ Reuses logic from generate_monthly_extrato.py for modularity.
 
 import json
 import os
+import logging
+import uuid
 from datetime import datetime, timedelta
+from logging.handlers import RotatingFileHandler
+from typing import Optional
 from sqlalchemy.orm import joinedload
 from app.db.session import SessionLocal
 from app.db.base import (
@@ -18,6 +22,30 @@ from app.db.base import (
     ExtratoRunLog,
     Gasto,
 )
+from app.services.undo_service import UndoService
+from app.services.backup_service import BackupService
+from app.services.undo_service import UndoService
+
+# Configure logging
+logger = logging.getLogger(__name__)
+
+# Ensure logs directory exists
+os.makedirs("backend/logs", exist_ok=True)
+
+# Add rotating file handler for extrato operations
+extrato_handler = RotatingFileHandler(
+    "backend/logs/extrato_operations.log",
+    maxBytes=10 * 1024 * 1024,  # 10MB
+    backupCount=5,
+)
+extrato_handler.setFormatter(
+    logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(correlation_id)s - %(message)s",
+        defaults={"correlation_id": "N/A"},
+    )
+)
+logger.addHandler(extrato_handler)
+logger.setLevel(logging.INFO)
 
 
 def get_previous_month():
@@ -102,7 +130,6 @@ def serialize_data(pagamentos, sessoes, comissoes, gastos):
         pagamentos_data.append(
             {
                 "data": p.data.isoformat() if p.data else None,
-                "hora": p.hora.isoformat() if p.hora else None,
                 "cliente_name": p.cliente.name if p.cliente else None,
                 "artista_name": p.artista.name if p.artista else None,
                 "valor": float(p.valor),
@@ -504,7 +531,7 @@ def verify_backup_before_transfer(year: int, month: int) -> bool:
         True if backup exists and is valid, False otherwise
     """
     import logging
-    from app.services.backup_service import BackupService
+    from app.services.undo_service import UndoService
 
     logger = logging.getLogger(__name__)
 
@@ -538,6 +565,7 @@ def delete_historical_records_atomic(
     gastos: list,
     mes: int,
     ano: int,
+    correlation_id: Optional[str] = None,
 ) -> bool:
     """
     Safely delete historical records from the database within an atomic transaction.
@@ -564,17 +592,21 @@ def delete_historical_records_atomic(
     """
     import logging
 
-    logger = logging.getLogger(__name__)
+    extra = {"correlation_id": correlation_id} if correlation_id else {}
 
     try:
-        logger.info(f"Starting deletion of historical records for {mes:02d}/{ano}")
+        logger.info(
+            f"Starting deletion of historical records for {mes:02d}/{ano}", extra=extra
+        )
 
         total_records = len(pagamentos) + len(sessoes) + len(comissoes) + len(gastos)
         if total_records == 0:
-            logger.info("No records to delete")
+            logger.info("No records to delete", extra=extra)
             return True
 
-        logger.info(f"Deleting {total_records} total records in dependency order")
+        logger.info(
+            f"Deleting {total_records} total records in dependency order", extra=extra
+        )
 
         # Step 1: Delete commissions first (they depend on payments)
         # Commissions have foreign key to pagamentos, so delete them first
@@ -584,26 +616,35 @@ def delete_historical_records_atomic(
                 db_session.delete(comissao)
                 deleted_comissoes += 1
             except Exception as e:
-                logger.error(f"Failed to delete commission {comissao.id}: {str(e)}")
+                logger.error(
+                    f"Failed to delete commission {comissao.id}: {str(e)}", extra=extra
+                )
                 raise  # Re-raise to trigger transaction rollback
 
-        logger.info(f"✓ Deleted {deleted_comissoes} commissions")
+        logger.info(f"✓ Deleted {deleted_comissoes} commissions", extra=extra)
 
         # Step 2: Break circular references between Sessao and Pagamento
         # This prevents foreign key constraint violations when deleting payments/sessions
-        logger.info("Breaking circular references between sessions and payments")
+        logger.info(
+            "Breaking circular references between sessions and payments", extra=extra
+        )
         for sessao in sessoes:
             try:
                 # Set payment_id to None to break the circular reference
                 setattr(sessao, "payment_id", None)
-                logger.debug(f"Set payment_id to None for session {sessao.id}")
+                logger.debug(
+                    f"Set payment_id to None for session {sessao.id}", extra=extra
+                )
             except Exception as e:
                 logger.error(
-                    f"Failed to break reference for session {sessao.id}: {str(e)}"
+                    f"Failed to break reference for session {sessao.id}: {str(e)}",
+                    extra=extra,
                 )
                 raise  # Re-raise to trigger transaction rollback
 
-        logger.info("✓ Broke circular references between sessions and payments")
+        logger.info(
+            "✓ Broke circular references between sessions and payments", extra=extra
+        )
 
         # Step 3: Delete payments (now safe to delete since references are broken)
         deleted_pagamentos = 0
@@ -612,10 +653,12 @@ def delete_historical_records_atomic(
                 db_session.delete(pagamento)
                 deleted_pagamentos += 1
             except Exception as e:
-                logger.error(f"Failed to delete payment {pagamento.id}: {str(e)}")
+                logger.error(
+                    f"Failed to delete payment {pagamento.id}: {str(e)}", extra=extra
+                )
                 raise  # Re-raise to trigger transaction rollback
 
-        logger.info(f"✓ Deleted {deleted_pagamentos} payments")
+        logger.info(f"✓ Deleted {deleted_pagamentos} payments", extra=extra)
 
         # Step 4: Delete sessions (now safe to delete)
         deleted_sessoes = 0
@@ -624,10 +667,12 @@ def delete_historical_records_atomic(
                 db_session.delete(sessao)
                 deleted_sessoes += 1
             except Exception as e:
-                logger.error(f"Failed to delete session {sessao.id}: {str(e)}")
+                logger.error(
+                    f"Failed to delete session {sessao.id}: {str(e)}", extra=extra
+                )
                 raise  # Re-raise to trigger transaction rollback
 
-        logger.info(f"✓ Deleted {deleted_sessoes} sessions")
+        logger.info(f"✓ Deleted {deleted_sessoes} sessions", extra=extra)
 
         # Step 5: Delete expenses (independent table, no dependencies)
         deleted_gastos = 0
@@ -636,10 +681,12 @@ def delete_historical_records_atomic(
                 db_session.delete(gasto)
                 deleted_gastos += 1
             except Exception as e:
-                logger.error(f"Failed to delete expense {gasto.id}: {str(e)}")
+                logger.error(
+                    f"Failed to delete expense {gasto.id}: {str(e)}", extra=extra
+                )
                 raise  # Re-raise to trigger transaction rollback
 
-        logger.info(f"✓ Deleted {deleted_gastos} expenses")
+        logger.info(f"✓ Deleted {deleted_gastos} expenses", extra=extra)
 
         # Verify all records were deleted
         expected_deletions = (
@@ -651,16 +698,17 @@ def delete_historical_records_atomic(
 
         if actual_deletions != expected_deletions:
             error_msg = f"Deletion count mismatch: expected {expected_deletions}, got {actual_deletions}"
-            logger.error(error_msg)
+            logger.error(error_msg, extra=extra)
             raise ValueError(error_msg)
 
         logger.info(
-            f"✓ Successfully deleted all {actual_deletions} historical records for {mes:02d}/{ano}"
+            f"✓ Successfully deleted all {actual_deletions} historical records for {mes:02d}/{ano}",
+            extra=extra,
         )
         return True
 
     except Exception as e:
-        logger.error(f"Error during historical records deletion: {str(e)}")
+        logger.error(f"Error during historical records deletion: {str(e)}", extra=extra)
         raise  # Re-raise to ensure transaction rollback
 
 
@@ -699,13 +747,13 @@ def process_records_in_batches(records, batch_size, process_func, *args, **kwarg
     """
     import logging
 
-    logger = logging.getLogger(__name__)
-
     if not records:
         return
 
     total_records = len(records)
-    logger.info(f"Processing {total_records} records in batches of {batch_size}")
+    logger.info(
+        f"Processing {total_records} records in batches of {batch_size}", extra={}
+    )
 
     for i in range(0, total_records, batch_size):
         batch = records[i : i + batch_size]
@@ -713,16 +761,21 @@ def process_records_in_batches(records, batch_size, process_func, *args, **kwarg
         total_batches = (total_records + batch_size - 1) // batch_size
 
         logger.info(
-            f"Processing batch {batch_num}/{total_batches} ({len(batch)} records)"
+            f"Processing batch {batch_num}/{total_batches} ({len(batch)} records)",
+            extra={},
         )
 
         try:
             result = process_func(batch, *args, **kwargs)
-            logger.info(f"✓ Batch {batch_num}/{total_batches} completed successfully")
+            logger.info(
+                f"✓ Batch {batch_num}/{total_batches} completed successfully", extra={}
+            )
             yield result
 
         except Exception as e:
-            logger.error(f"✗ Batch {batch_num}/{total_batches} failed: {str(e)}")
+            logger.error(
+                f"✗ Batch {batch_num}/{total_batches} failed: {str(e)}", extra={}
+            )
             raise  # Re-raise to trigger transaction rollback
 
 
@@ -913,22 +966,36 @@ def generate_extrato_with_atomic_transaction(
     import logging
     from sqlalchemy.exc import SQLAlchemyError
 
+    # Generate correlation ID for this run
+    correlation_id = str(uuid.uuid4())[:8]
     logger = logging.getLogger(__name__)
 
+    # Add correlation ID to logger context
+    extra = {"correlation_id": correlation_id}
+
+    start_time = datetime.now()
+    logger.info(
+        f"Starting atomic extrato generation for {mes:02d}/{ano} - Run ID: {correlation_id}",
+        extra=extra,
+    )
+
     # Step 1: Verify backup exists before proceeding
-    logger.info(f"Starting atomic extrato generation for {mes:02d}/{ano}")
     backup_verified = verify_backup_before_transfer(ano, mes)
 
     if not backup_verified:
         logger.error(
-            "Cannot proceed with extrato generation - backup verification failed"
+            f"Cannot proceed with extrato generation - backup verification failed - Run ID: {correlation_id}",
+            extra=extra,
         )
         return False
 
     # Step 2: Start atomic transaction
     db = SessionLocal()
     try:
-        logger.info("Beginning atomic transaction for extrato generation")
+        logger.info(
+            f"Beginning atomic transaction for extrato generation - Run ID: {correlation_id}",
+            extra=extra,
+        )
 
         # Check if extrato already exists (within transaction)
         existing = (
@@ -936,85 +1003,96 @@ def generate_extrato_with_atomic_transaction(
         )
         if existing and not force:
             logger.error(
-                f"Extrato for {mes}/{ano} already exists. Use force=True to overwrite."
+                f"Extrato for {mes}/{ano} already exists. Use force=True to overwrite - Run ID: {correlation_id}",
+                extra=extra,
             )
             db.rollback()
             return False
         elif existing and force:
-            logger.warning(f"Overwriting existing extrato for {mes}/{ano}")
+            logger.warning(
+                f"Overwriting existing extrato for {mes}/{ano} - Run ID: {correlation_id}",
+                extra=extra,
+            )
+            # Create snapshot before deleting existing extrato
+            undo_service = UndoService()
+            snapshot_id = undo_service.create_snapshot(mes, ano, correlation_id)
+            if snapshot_id:
+                logger.info(
+                    f"Created snapshot {snapshot_id} for existing extrato before overwrite - Run ID: {correlation_id}",
+                    extra=extra,
+                )
+            else:
+                logger.warning(
+                    f"Failed to create snapshot for existing extrato - Run ID: {correlation_id}",
+                    extra=extra,
+                )
             db.delete(existing)
 
         # Step 3: Query all historical data (within transaction)
-        logger.info("Querying historical data within transaction")
+        logger.info(
+            f"Querying historical data within transaction - Run ID: {correlation_id}",
+            extra=extra,
+        )
         pagamentos, sessoes, comissoes, gastos = query_data(db, mes, ano)
 
         if not any([pagamentos, sessoes, comissoes, gastos]):
-            logger.info(f"No historical data found for {mes:02d}/{ano}")
+            logger.info(
+                f"No historical data found for {mes:02d}/{ano} - Run ID: {correlation_id}",
+                extra=extra,
+            )
             db.rollback()
             return True  # Not an error, just no data
 
         logger.info(
             f"Found {len(pagamentos)} payments, {len(sessoes)} sessions, "
-            f"{len(comissoes)} commissions, {len(gastos)} expenses"
+            f"{len(comissoes)} commissions, {len(gastos)} expenses - Run ID: {correlation_id}",
+            extra=extra,
         )
 
-        # Step 4: Process data in batches (within transaction)
-        logger.info("Processing data in batches within transaction")
-        batch_size = get_batch_size()
-        logger.info(f"Using batch size: {batch_size}")
+        # Step 4: Process data (within transaction)
+        logger.info(
+            f"Processing data within transaction - Run ID: {correlation_id}",
+            extra=extra,
+        )
 
-        # Initialize accumulators for batched data
-        all_pagamentos_data = []
-        all_sessoes_data = []
-        all_comissoes_data = []
-        all_gastos_data = []
-
-        # Process records in batches
-        total_batches = 0
-        for batch_result in process_records_in_batches(
-            zip(pagamentos, sessoes, comissoes, gastos),
-            batch_size,
-            lambda batch: (
-                serialize_data_batch(*zip(*batch)) if batch else ([], [], [], [])
-            ),
-        ):
-            batch_pagamentos, batch_sessoes, batch_comissoes, batch_gastos = (
-                batch_result
-            )
-            all_pagamentos_data.extend(batch_pagamentos)
-            all_sessoes_data.extend(batch_sessoes)
-            all_comissoes_data.extend(batch_comissoes)
-            all_gastos_data.extend(batch_gastos)
-            total_batches += 1
+        # Serialize data
+        pagamentos_data, sessoes_data, comissoes_data, gastos_data = serialize_data(
+            pagamentos, sessoes, comissoes, gastos
+        )
 
         logger.info(
-            f"✓ Processed {total_batches} batches, total records: "
-            f"{len(all_pagamentos_data)} payments, {len(all_sessoes_data)} sessions, "
-            f"{len(all_comissoes_data)} commissions, {len(all_gastos_data)} expenses"
+            f"✓ Serialized {len(pagamentos_data)} payments, {len(sessoes_data)} sessions, "
+            f"{len(comissoes_data)} commissions, {len(gastos_data)} expenses - Run ID: {correlation_id}",
+            extra=extra,
         )
 
-        # Step 5: Calculate totals from accumulated data (within transaction)
-        logger.info("Calculating totals from batched data")
-        totais = calculate_totals_batch(
-            all_pagamentos_data, all_sessoes_data, all_comissoes_data, all_gastos_data
+        # Step 5: Calculate totals from data (within transaction)
+        logger.info(
+            f"Calculating totals from data - Run ID: {correlation_id}", extra=extra
+        )
+        totais = calculate_totals(
+            pagamentos_data, sessoes_data, comissoes_data, gastos_data
         )
 
         # Step 6: Create extrato record (within transaction)
-        logger.info("Creating extrato record")
+        logger.info(f"Creating extrato record - Run ID: {correlation_id}", extra=extra)
         extrato = Extrato(
             mes=mes,
             ano=ano,
-            pagamentos=json.dumps(all_pagamentos_data),
-            sessoes=json.dumps(all_sessoes_data),
-            comissoes=json.dumps(all_comissoes_data),
-            gastos=json.dumps(all_gastos_data),
+            pagamentos=json.dumps(pagamentos_data),
+            sessoes=json.dumps(sessoes_data),
+            comissoes=json.dumps(comissoes_data),
+            gastos=json.dumps(gastos_data),
             totais=json.dumps(totais),
         )
         db.add(extrato)
 
         # Step 7: Delete original records in dependency order (within transaction)
         # This maintains referential integrity
-        logger.info("Deleting original records in dependency order")
+        logger.info(
+            f"Deleting original records in dependency order - Run ID: {correlation_id}",
+            extra=extra,
+        )
 
         deletion_success = delete_historical_records_atomic(
             db_session=db,
@@ -1024,37 +1102,53 @@ def generate_extrato_with_atomic_transaction(
             gastos=gastos,
             mes=mes,
             ano=ano,
+            correlation_id=correlation_id,
         )
 
         if not deletion_success:
-            logger.error("Historical records deletion failed")
+            logger.error(
+                f"Historical records deletion failed - Run ID: {correlation_id}",
+                extra=extra,
+            )
             raise ValueError("Failed to delete historical records")
 
         # Step 8: Commit the transaction
-        logger.info("Committing atomic transaction")
+        logger.info(
+            f"Committing atomic transaction - Run ID: {correlation_id}", extra=extra
+        )
         db.commit()
 
+        end_time = datetime.now()
+        duration = (end_time - start_time).total_seconds()
         logger.info(
-            f"✓ Atomic extrato generation completed successfully for {mes:02d}/{ano}"
+            f"✓ Atomic extrato generation completed successfully for {mes:02d}/{ano} "
+            f"in {duration:.2f}s - Run ID: {correlation_id}",
+            extra=extra,
         )
         return True
 
     except SQLAlchemyError as e:
         # Rollback on database errors
-        logger.error(f"Database error during atomic extrato generation: {str(e)}")
+        logger.error(
+            f"Database error during atomic extrato generation: {str(e)} - Run ID: {correlation_id}",
+            extra=extra,
+        )
         db.rollback()
         return False
 
     except Exception as e:
         # Rollback on any other errors
-        logger.error(f"Unexpected error during atomic extrato generation: {str(e)}")
+        logger.error(
+            f"Unexpected error during atomic extrato generation: {str(e)} - Run ID: {correlation_id}",
+            extra=extra,
+        )
         db.rollback()
         return False
 
     finally:
         # Always close the session
         db.close()
-        logger.info("Database session closed")
+        logger.info(f"Database session closed - Run ID: {correlation_id}", extra=extra)
 
 
 def check_and_generate_extrato_with_transaction(mes=None, ano=None, force=False):

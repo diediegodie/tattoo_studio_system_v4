@@ -39,3 +39,4 @@ URLObject==3.0.0
 Werkzeug==3.0.1
 WTForms==3.1.1
 APScheduler==3.10.4
+matplotlib>=3.7,<3.9

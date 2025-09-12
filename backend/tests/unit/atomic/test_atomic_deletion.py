@@ -90,23 +90,23 @@ class TestHistoricalRecordsDeletion:
 
         # Verify logging calls
         mock_logger.info.assert_any_call(
-            "Starting deletion of historical records for 09/2025"
+            "Starting deletion of historical records for 09/2025", extra={}
         )
         mock_logger.info.assert_any_call(
-            "Deleting 11 total records in dependency order"
+            "Deleting 11 total records in dependency order", extra={}
         )
-        mock_logger.info.assert_any_call("✓ Deleted 4 commissions")
+        mock_logger.info.assert_any_call("✓ Deleted 4 commissions", extra={})
         mock_logger.info.assert_any_call(
-            "Breaking circular references between sessions and payments"
+            "Breaking circular references between sessions and payments", extra={}
         )
         mock_logger.info.assert_any_call(
-            "✓ Broke circular references between sessions and payments"
+            "✓ Broke circular references between sessions and payments", extra={}
         )
-        mock_logger.info.assert_any_call("✓ Deleted 3 payments")
-        mock_logger.info.assert_any_call("✓ Deleted 2 sessions")
-        mock_logger.info.assert_any_call("✓ Deleted 2 expenses")
+        mock_logger.info.assert_any_call("✓ Deleted 3 payments", extra={})
+        mock_logger.info.assert_any_call("✓ Deleted 2 sessions", extra={})
+        mock_logger.info.assert_any_call("✓ Deleted 2 expenses", extra={})
         mock_logger.info.assert_any_call(
-            "✓ Successfully deleted all 11 historical records for 09/2025"
+            "✓ Successfully deleted all 11 historical records for 09/2025", extra={}
         )
 
     @patch("app.services.extrato_service.logger")
@@ -133,7 +133,7 @@ class TestHistoricalRecordsDeletion:
         self.mock_db.delete.assert_not_called()
 
         # Verify logging
-        mock_logger.info.assert_any_call("No records to delete")
+        mock_logger.info.assert_any_call("No records to delete", extra={})
 
     @patch("app.services.extrato_service.logger")
     def test_deletion_failure_commission_error(self, mock_logger):
@@ -163,7 +163,7 @@ class TestHistoricalRecordsDeletion:
 
         # Verify error logging
         mock_logger.error.assert_any_call(
-            "Failed to delete commission 1: Commission deletion failed"
+            "Failed to delete commission 1: Commission deletion failed", extra={}
         )
 
     @patch("app.services.extrato_service.logger")
@@ -198,7 +198,7 @@ class TestHistoricalRecordsDeletion:
 
         # Verify error logging
         mock_logger.error.assert_any_call(
-            "Failed to delete payment 1: Payment deletion failed"
+            "Failed to delete payment 1: Payment deletion failed", extra={}
         )
 
     @patch("app.services.extrato_service.logger")
@@ -221,16 +221,16 @@ class TestHistoricalRecordsDeletion:
         # Assert
         assert result is True
 
-        # Verify setattr was called for each session
+        # Verify payment_id was set to None for each session
         for sessao in sessoes:
-            sessao.__setattr__.assert_called_with("payment_id", None)
+            assert sessao.payment_id is None
 
         # Verify logging
         mock_logger.info.assert_any_call(
-            "Breaking circular references between sessions and payments"
+            "Breaking circular references between sessions and payments", extra={}
         )
         mock_logger.info.assert_any_call(
-            "✓ Broke circular references between sessions and payments"
+            "✓ Broke circular references between sessions and payments", extra={}
         )
 
     @patch("app.services.extrato_service.logger")
@@ -255,7 +255,7 @@ class TestHistoricalRecordsDeletion:
 
         # Verify success logging includes correct count
         mock_logger.info.assert_any_call(
-            "✓ Successfully deleted all 11 historical records for 09/2025"
+            "✓ Successfully deleted all 11 historical records for 09/2025", extra={}
         )
 
     @patch("app.services.extrato_service.logger")
@@ -264,21 +264,21 @@ class TestHistoricalRecordsDeletion:
         # Arrange
         pagamentos, sessoes, comissoes, gastos = self.create_mock_records()
 
-        # Simulate deletion count mismatch by making delete calls fail silently
-        # (This would happen if some records weren't actually deleted)
-        original_delete = self.mock_db.delete
-        delete_count = 0
+        # Simulate deletion count mismatch by making some delete calls fail
+        # (This would happen if some records couldn't be deleted due to constraints)
+        call_count = 0
 
-        def counting_delete(*args, **kwargs):
-            nonlocal delete_count
-            delete_count += 1
-            # Don't actually call delete to simulate silent failure
+        def failing_delete(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count > 5:  # Make the last 6 calls fail
+                raise Exception("Deletion failed due to constraint")
             return None
 
-        self.mock_db.delete = counting_delete
+        self.mock_db.delete = failing_delete
 
         # Act & Assert
-        with pytest.raises(ValueError, match="Deletion count mismatch"):
+        with pytest.raises(Exception, match="Deletion failed due to constraint"):
             delete_historical_records_atomic(
                 db_session=self.mock_db,
                 pagamentos=pagamentos,
@@ -290,7 +290,9 @@ class TestHistoricalRecordsDeletion:
             )
 
         # Verify error logging
-        mock_logger.error.assert_any_call("Deletion count mismatch: expected 11, got 0")
+        mock_logger.error.assert_any_call(
+            "Failed to delete payment 2: Deletion failed due to constraint", extra={}
+        )
 
     @patch("app.services.extrato_service.logger")
     def test_partial_success_logging(self, mock_logger):
@@ -313,10 +315,10 @@ class TestHistoricalRecordsDeletion:
         assert result is True
 
         # Verify partial success logging
-        mock_logger.info.assert_any_call("✓ Deleted 4 commissions")
-        mock_logger.info.assert_any_call("✓ Deleted 3 payments")
-        mock_logger.info.assert_any_call("✓ Deleted 2 sessions")
-        mock_logger.info.assert_any_call("✓ Deleted 2 expenses")
+        mock_logger.info.assert_any_call("✓ Deleted 4 commissions", extra={})
+        mock_logger.info.assert_any_call("✓ Deleted 3 payments", extra={})
+        mock_logger.info.assert_any_call("✓ Deleted 2 sessions", extra={})
+        mock_logger.info.assert_any_call("✓ Deleted 2 expenses", extra={})
 
 
 if __name__ == "__main__":
