@@ -153,3 +153,140 @@ def create_gasto():
     finally:
         if db:
             db.close()
+
+
+@gastos_bp.route("/api/<int:gasto_id>", methods=["GET"])
+@login_required
+def api_get_gasto(gasto_id):
+    """Get a single gasto by ID."""
+    db = None
+    try:
+        db = SessionLocal()
+        gasto = db.query(Gasto).get(gasto_id)
+
+        if not gasto:
+            return jsonify({"success": False, "message": "Gasto não encontrado"}), 404
+
+        # Check if user owns this gasto
+        if gasto.created_by != current_user.id:
+            return jsonify({"success": False, "message": "Acesso negado"}), 403
+
+        data = {
+            "id": gasto.id,
+            "data": gasto.data.isoformat() if gasto.data else None,
+            "valor": float(gasto.valor) if gasto.valor is not None else None,
+            "descricao": gasto.descricao,
+            "forma_pagamento": gasto.forma_pagamento,
+            "created_at": gasto.created_at.isoformat() if gasto.created_at else None,
+        }
+
+        return (
+            jsonify({"success": True, "message": "Gasto encontrado", "data": data}),
+            200,
+        )
+    except Exception as e:
+        logger.exception("Error in api_get_gasto: %s", e)
+        return jsonify({"success": False, "message": f"Erro: {str(e)}"}), 500
+    finally:
+        if db:
+            db.close()
+
+
+@gastos_bp.route("/api/<int:gasto_id>", methods=["PUT"])
+@login_required
+def api_update_gasto(gasto_id):
+    """Update a gasto by ID via JSON payload."""
+    db = None
+    try:
+        db = SessionLocal()
+        gasto = db.query(Gasto).get(gasto_id)
+        if not gasto:
+            return jsonify({"success": False, "message": "Gasto não encontrado"}), 404
+
+        # Check if user owns this gasto
+        if gasto.created_by != current_user.id:
+            return jsonify({"success": False, "message": "Acesso negado"}), 403
+
+        payload = request.get_json(force=True, silent=True) or {}
+
+        # Validate required fields
+        errors = []
+        if "data" in payload and payload.get("data"):
+            try:
+                gasto.data = datetime.fromisoformat(payload["data"]).date()
+            except Exception:
+                errors.append("Data inválida")
+
+        if "valor" in payload:
+            try:
+                gasto.valor = Decimal(str(payload["valor"]))
+                if gasto.valor <= 0:
+                    errors.append("Valor deve ser maior que zero")
+            except Exception:
+                errors.append("Valor inválido")
+
+        if "descricao" in payload:
+            gasto.descricao = str(payload["descricao"]).strip()
+            if not gasto.descricao:
+                errors.append("Descrição é obrigatória")
+
+        if "forma_pagamento" in payload:
+            gasto.forma_pagamento = str(payload["forma_pagamento"]).strip()
+            if not gasto.forma_pagamento:
+                errors.append("Forma de pagamento é obrigatória")
+
+        if errors:
+            return jsonify({"success": False, "message": "; ".join(errors)}), 400
+
+        db.commit()
+
+        data = {
+            "id": gasto.id,
+            "data": gasto.data.isoformat() if gasto.data else None,
+            "valor": float(gasto.valor) if gasto.valor is not None else None,
+            "descricao": gasto.descricao,
+            "forma_pagamento": gasto.forma_pagamento,
+            "created_at": gasto.created_at.isoformat() if gasto.created_at else None,
+        }
+
+        return (
+            jsonify({"success": True, "message": "Gasto atualizado", "data": data}),
+            200,
+        )
+    except Exception as e:
+        logger.exception("Error updating gasto: %s", e)
+        if db:
+            db.rollback()
+        return jsonify({"success": False, "message": f"Erro interno: {str(e)}"}), 500
+    finally:
+        if db:
+            db.close()
+
+
+@gastos_bp.route("/api/<int:gasto_id>", methods=["DELETE"])
+@login_required
+def api_delete_gasto(gasto_id):
+    """Delete a gasto by ID."""
+    db = None
+    try:
+        db = SessionLocal()
+        gasto = db.query(Gasto).get(gasto_id)
+        if not gasto:
+            return jsonify({"success": False, "message": "Gasto não encontrado"}), 404
+
+        # Check if user owns this gasto
+        if gasto.created_by != current_user.id:
+            return jsonify({"success": False, "message": "Acesso negado"}), 403
+
+        db.delete(gasto)
+        db.commit()
+
+        return jsonify({"success": True, "message": "Gasto excluído"}), 200
+    except Exception as e:
+        logger.exception("Error deleting gasto: %s", e)
+        if db:
+            db.rollback()
+        return jsonify({"success": False, "message": f"Erro interno: {str(e)}"}), 500
+    finally:
+        if db:
+            db.close()

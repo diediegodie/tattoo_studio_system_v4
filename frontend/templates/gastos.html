@@ -73,7 +73,16 @@
                                     <td>R$ {{ '%.2f' % gasto.valor if gasto.valor is not none else '0.00' }}</td>
                                     <td>{{ gasto.descricao }}</td>
                                     <td>{{ gasto.forma_pagamento }}</td>
-                                    <td>—</td>
+                                    <td>
+                                        <button type="button" class="button small options-btn"
+                                            onclick="toggleOptions(this)">Opções</button>
+                                        <span class="options-actions" style="display:none;">
+                                            <button class="button small edit-gasto-btn" data-id="{{ gasto.id }}"
+                                                style="margin-right:0.5em;">Editar</button>
+                                            <button class="button small delete-gasto-btn"
+                                                data-id="{{ gasto.id }}">Excluir</button>
+                                        </span>
+                                    </td>
                                 </tr>
                                 {% endfor %}
                                 {% else %}
@@ -109,11 +118,11 @@
                         <li><a href="{{ url_for('calendar.calendar_page') }}">Google Agenda</a></li>
                         <li><a href="{{ url_for('sessoes') }}">Próximas Sessões</a></li>
                         <li><a href="{{ url_for('financeiro') }}">Pagamentos</a></li>
+                        <li><a href="{{ url_for('gastos.gastos_home') }}">Gastos</a></li>
                         <li><a href="{{ url_for('cadastro_interno') }}">Artistas</a></li>
                         <li><a href="{{ url_for('calculadora') }}">Calculadora de Porcentagem</a></li>
                         <li><a href="{{ url_for('historico') }}">Histórico</a></li>
                         <li><a href="{{ url_for('extrato') }}">Extrato</a></li>
-                        <li><a href="{{ url_for('gastos.gastos_home') }}">Gastos</a></li>
                     </ul>
                 </nav>
             </div>
