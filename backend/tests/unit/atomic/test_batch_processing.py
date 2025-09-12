@@ -247,12 +247,14 @@ class TestBatchProcessing:
 
         # Should have 4 batches: 3, 3, 3, 1
         assert len(results) == 4
-        assert results == [3, 6, 9, 1]  # sums of [0,1,2], [3,4,5], [6,7,8], [9]
+        assert results == [3, 12, 21, 9]  # sums of [0,1,2], [3,4,5], [6,7,8], [9]
 
         # Verify logging
-        mock_logger.info.assert_any_call("Processing 10 records in batches of 3")
-        mock_logger.info.assert_any_call("Processing batch 1/4 (3 records)")
-        mock_logger.info.assert_any_call("✓ Batch 1/4 completed successfully")
+        mock_logger.info.assert_any_call(
+            "Processing 10 records in batches of 3", extra={}
+        )
+        mock_logger.info.assert_any_call("Processing batch 1/4 (3 records)", extra={})
+        mock_logger.info.assert_any_call("✓ Batch 1/4 completed successfully", extra={})
 
     @patch("app.services.extrato_service.logger")
     def test_process_records_in_batches_empty(self, mock_logger):
@@ -266,7 +268,8 @@ class TestBatchProcessing:
         results = list(process_records_in_batches(records, batch_size, process_func))
 
         assert len(results) == 0
-        mock_logger.info.assert_any_call("Processing 0 records in batches of 3")
+        # No logging should occur for empty records
+        mock_logger.info.assert_not_called()
 
     @patch("app.services.extrato_service.logger")
     def test_process_records_in_batches_failure(self, mock_logger):
@@ -283,7 +286,9 @@ class TestBatchProcessing:
             list(process_records_in_batches(records, batch_size, process_func))
 
         # Verify error logging
-        mock_logger.error.assert_any_call("✗ Batch 2/2 failed: Batch processing failed")
+        mock_logger.error.assert_any_call(
+            "✗ Batch 2/2 failed: Batch processing failed", extra={}
+        )
 
     @patch("app.services.extrato_service.logger")
     def test_process_records_in_batches_single_batch(self, mock_logger):
@@ -299,7 +304,7 @@ class TestBatchProcessing:
         assert len(results) == 1
         assert results[0] == 3  # 1 + 2
 
-        mock_logger.info.assert_any_call("Processing batch 1/1 (2 records)")
+        mock_logger.info.assert_any_call("Processing batch 1/1 (2 records)", extra={})
 
 
 if __name__ == "__main__":

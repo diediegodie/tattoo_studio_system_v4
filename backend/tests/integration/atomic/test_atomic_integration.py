@@ -12,6 +12,7 @@ Usage:
 import os
 import sys
 import logging
+import pytest
 from datetime import datetime
 from pathlib import Path
 
@@ -40,6 +41,12 @@ def setup_test_logging(verbose=False):
     )
 
     return logging.getLogger(__name__)
+
+
+@pytest.fixture
+def logger():
+    """Setup test logger fixture."""
+    return setup_test_logging(verbose=True)
 
 
 def test_backup_verification_integration(logger):

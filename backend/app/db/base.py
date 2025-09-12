@@ -315,3 +315,20 @@ class ExtratoRunLog(Base):
 
     def __repr__(self):
         return f"<ExtratoRunLog(id={self.id}, mes={self.mes}, ano={self.ano}, status={self.status})>"
+
+
+class ExtratoSnapshot(Base):
+    """Snapshot of extrato data for undo operations."""
+
+    __tablename__ = "extrato_snapshots"
+
+    id = Column(Integer, primary_key=True, index=True)
+    snapshot_id = Column(String(50), nullable=False, unique=True, index=True)
+    mes = Column(Integer, nullable=False, index=True)
+    ano = Column(Integer, nullable=False, index=True)
+    data = Column(get_json_type(), nullable=False)  # JSON snapshot of extrato data
+    correlation_id = Column(String(50), nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    def __repr__(self):
+        return f"<ExtratoSnapshot(id={self.id}, snapshot_id={self.snapshot_id}, mes={self.mes}, ano={self.ano})>"
