@@ -149,8 +149,8 @@ class Sessao(Base):
     hora = Column(Time, nullable=False)
     valor = Column(Numeric(10, 2), nullable=False)
     observacoes = Column(String(255))
-    cliente_id = Column(Integer, ForeignKey("clients.id"), nullable=False)
-    artista_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    cliente_id = Column(Integer, ForeignKey("clients.id"), nullable=False, index=True)
+    artista_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     google_event_id = Column(
         String(100), nullable=True, unique=True
     )  # Added for Google Calendar integration
@@ -158,7 +158,7 @@ class Sessao(Base):
         String(20), nullable=False, default="active"
     )  # active, completed, archived
     payment_id = Column(
-        Integer, ForeignKey("pagamentos.id"), nullable=True
+        Integer, ForeignKey("pagamentos.id"), nullable=True, index=True
     )  # Link to payment
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
@@ -183,15 +183,15 @@ class Pagamento(Base):
     __tablename__ = "pagamentos"
 
     id = Column(Integer, primary_key=True, index=True)
-    data = Column(Date, nullable=False)
+    data = Column(Date, nullable=False, index=True)
     valor = Column(Numeric(10, 2), nullable=False)
-    forma_pagamento = Column(String(50), nullable=False)
+    forma_pagamento = Column(String(50), nullable=False, index=True)
     observacoes = Column(String(255), nullable=True)
     comissao = Column(Numeric(10, 2), nullable=True)  # For future implementation
-    cliente_id = Column(Integer, ForeignKey("clients.id"), nullable=False)
-    artista_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    cliente_id = Column(Integer, ForeignKey("clients.id"), nullable=False, index=True)
+    artista_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     sessao_id = Column(
-        Integer, ForeignKey("sessoes.id"), nullable=True
+        Integer, ForeignKey("sessoes.id"), nullable=True, index=True
     )  # Link to session
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
@@ -218,8 +218,10 @@ class Comissao(Base):
     __tablename__ = "comissoes"
 
     id = Column(Integer, primary_key=True, index=True)
-    pagamento_id = Column(Integer, ForeignKey("pagamentos.id"), nullable=True)
-    artista_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    pagamento_id = Column(
+        Integer, ForeignKey("pagamentos.id"), nullable=True, index=True
+    )
+    artista_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     percentual = Column(Numeric(5, 2), nullable=False)
     valor = Column(Numeric(10, 2), nullable=False)
     observacoes = Column(String(255), nullable=True)
@@ -277,8 +279,8 @@ class Extrato(Base):
     __table_args__ = (UniqueConstraint("mes", "ano", name="uq_extratos_mes_ano"),)
 
     id = Column(Integer, primary_key=True, index=True)
-    mes = Column(Integer, nullable=False)  # 1..12
-    ano = Column(Integer, nullable=False)  # ex.: 2025
+    mes = Column(Integer, nullable=False, index=True)  # 1..12
+    ano = Column(Integer, nullable=False, index=True)  # ex.: 2025
 
     # Snapshots (lists) of objects: pagamentos, sessoes, comissoes, gastos
     pagamentos = Column(get_json_type(), nullable=False)
@@ -301,8 +303,8 @@ class ExtratoRunLog(Base):
     __tablename__ = "extrato_run_logs"
 
     id = Column(Integer, primary_key=True, index=True)
-    mes = Column(Integer, nullable=False)  # Month that was processed
-    ano = Column(Integer, nullable=False)  # Year that was processed
+    mes = Column(Integer, nullable=False, index=True)  # Month that was processed
+    ano = Column(Integer, nullable=False, index=True)  # Year that was processed
     run_at = Column(DateTime(timezone=True), server_default=func.now())  # When it ran
     status = Column(String(50), nullable=False)  # 'success', 'error', 'skipped'
     message = Column(String(500), nullable=True)  # Optional message/details

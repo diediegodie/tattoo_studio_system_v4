@@ -1,0 +1,27 @@
+# CRON Configuration for Atomic Extrato Generation
+# This file contains sample CRON entries for automated monthly execution
+
+# Monthly execution (1st of each month at 2:00 AM)
+# 0 2 1 * * /home/diego/documentos/github/projetos/tattoo_studio_system_v4/backend/scripts/cron_atomic_extrato.sh
+
+# Alternative schedules:
+# Every 1st of month at 6:00 AM
+# 0 6 1 * * /home/diego/documentos/github/projetos/tattoo_studio_system_v4/backend/scripts/cron_atomic_extrato.sh
+
+# Every 1st of month at 10:00 PM
+# 0 22 1 * * /home/diego/documentos/github/projetos/tattoo_studio_system_v4/backend/scripts/cron_atomic_extrato.sh
+
+# Weekly backup reminder (every Monday at 9:00 AM)
+# 0 9 * * 1 /home/diego/documentos/github/projetos/tattoo_studio_system_v4/backend/scripts/cron_atomic_extrato.sh --dry-run
+
+# Installation Instructions:
+# 1. Edit your CRON table: crontab -e
+# 2. Add one of the lines above (uncommented)
+# 3. Save and exit
+# 4. Verify: crontab -l
+
+# Log rotation (optional - runs monthly on the 2nd at 3:00 AM)
+# 0 3 2 * * /usr/sbin/logrotate /home/diego/documentos/github/projetos/tattoo_studio_system_v4/backend/logs/logrotate.conf
+
+# Note: Adjust paths according to your actual installation directory
+# Make sure the script has execute permissions: chmod +x /path/to/cron_atomic_extrato.sh

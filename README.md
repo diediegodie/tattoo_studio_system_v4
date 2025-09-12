@@ -132,3 +132,116 @@ Stop: docker compose down
 Logs: docker compose logs app -f
 Run only app: docker compose up -d app
 Enter app container: docker compose exec app bash
+
+---
+
+## Atomic Transaction System
+
+### Overview
+The system includes atomic transaction support for data integrity during monthly extrato generation. This ensures that data transfers from historico tables to extrato are performed atomically with automatic rollback on failures.
+
+### Key Features
+- **Atomic Transactions**: Entire extrato generation wrapped in single database transaction
+- **Backup Verification**: Backup must exist before data transfer begins
+- **Automatic Rollback**: Failed operations automatically rollback to maintain data consistency
+- **Comprehensive Logging**: All operations logged with timestamps and status
+
+### Usage
+
+#### Manual Generation
+```bash
+# Generate extrato for specific month
+python backend/scripts/run_atomic_extrato.py --year 2025 --month 9
+
+# Force generation (overwrite existing)
+python backend/scripts/run_atomic_extrato.py --year 2025 --month 9 --force
+
+# Monthly automation (uses previous month)
+python backend/scripts/run_atomic_extrato.py
+```
+
+#### Automated Generation (CRON)
+```bash
+# Edit CRON table
+crontab -e
+
+# Add monthly execution (1st of each month at 2:00 AM)
+0 2 1 * * /path/to/backend/scripts/cron_atomic_extrato.sh
+```
+
+### Monitoring
+```bash
+# Health check
+python backend/scripts/monitor_atomic_extrato.py
+
+# Generate detailed report
+python backend/scripts/monitor_atomic_extrato.py --report
+```
+
+### Testing
+```bash
+# Test atomic functionality
+python backend/scripts/test_atomic_extrato.py
+
+# Test deletion function specifically
+python backend/scripts/test_atomic_extrato.py --test-deletion
+
+# Test batch processing functionality
+python backend/scripts/test_batch_processing.py
+
+# Integration testing
+python backend/scripts/test_atomic_integration.py
+
+# Health check only
+python backend/scripts/test_atomic_integration.py --health-check
+
+# Dry run (no actual database changes)
+python backend/scripts/test_atomic_integration.py --dry-run
+```
+
+### Configuration
+
+#### Batch Processing
+The system automatically processes large datasets in configurable batches:
+
+```bash
+# Set batch size via environment variable
+export BATCH_SIZE=50
+
+# Or in .env file
+BATCH_SIZE=50
+```
+
+**Default batch size**: 100 records per batch
+**Minimum batch size**: 1 record per batch
+**Environment variable**: `BATCH_SIZE`
+
+### Demonstration
+```bash
+# Run batch processing demonstration
+python backend/scripts/demo_batch_processing.py
+
+# Shows how batch processing works transparently
+# Demonstrates configuration options
+# Includes performance examples
+```
+
+### Files
+- `backend/scripts/run_atomic_extrato.py` - Main execution script
+- `backend/scripts/cron_atomic_extrato.sh` - CRON wrapper script
+- `backend/scripts/test_atomic_extrato.py` - Test script
+- `backend/scripts/test_atomic_deletion.py` - Deletion function unit tests
+- `backend/scripts/test_batch_processing.py` - Batch processing unit tests
+- `backend/scripts/test_atomic_integration.py` - Integration test suite
+- `backend/scripts/demo_batch_processing.py` - Batch processing demonstration
+- `backend/scripts/monitor_atomic_extrato.py` - Health monitoring script
+- `backend/scripts/README_atomic_extrato.md` - Detailed documentation
+- `backend/scripts/cron_config.txt` - CRON configuration examples
+- `backend/scripts/logrotate_atomic_extrato.conf` - Log rotation config
+
+### Logs
+- `backend/logs/atomic_extrato.log` - Main operation logs
+- `backend/logs/atomic_extrato_cron.log` - CRON execution logs
+- `backend/logs/backup_process.log` - Backup-related logs
+
+For detailed information, see `backend/scripts/README_atomic_extrato.md`.
