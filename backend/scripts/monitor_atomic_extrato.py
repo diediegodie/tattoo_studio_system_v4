@@ -14,11 +14,8 @@ from pathlib import Path
 # Add backend to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from app.services.extrato_service import check_and_generate_extrato_with_transaction
-from app.services.extrato_service import (
-    check_and_generate_extrato_with_transaction,
-    verify_backup_before_transfer,
-)
+from app.services.extrato_atomic import check_and_generate_extrato_with_transaction
+from app.services.extrato_core import verify_backup_before_transfer
 
 # Configuration
 LOG_DIR = Path(__file__).parent.parent / "logs"

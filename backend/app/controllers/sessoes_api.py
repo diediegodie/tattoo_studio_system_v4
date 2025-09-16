@@ -1,0 +1,211 @@
+"""
+API endpoints for sessoes module.
+Handles JSON API operations for sessions.
+"""
+
+import logging
+from datetime import date, time, datetime
+from decimal import Decimal
+from typing import Union
+
+from flask import Blueprint, request, jsonify
+from flask_login import login_required
+from sqlalchemy.orm import joinedload
+
+from app.controllers.sessoes_helpers import api_response
+from app.db.base import Sessao
+from app.db.session import SessionLocal
+
+logger = logging.getLogger(__name__)
+
+# Import the blueprint from sessoes_controller instead of creating a new one
+from app.controllers.sessoes_controller import sessoes_bp
+
+
+@sessoes_bp.route("/api", methods=["GET"])
+@login_required
+def api_list_sessoes():
+    """Return JSON array of sessions."""
+    db = None
+    try:
+        from app.db.session import SessionLocal
+
+        db = SessionLocal()
+        from sqlalchemy.orm import joinedload
+
+        sessoes = (
+            db.query(Sessao)
+            .options(joinedload(Sessao.cliente), joinedload(Sessao.artista))
+            .order_by(Sessao.data.asc(), Sessao.hora.asc())
+            .all()
+        )
+
+        def to_dict(s):
+            return {
+                "id": s.id,
+                "data": s.data.isoformat() if s.data else None,
+                "hora": s.hora.strftime("%H:%M:%S") if s.hora else None,
+                "cliente": (
+                    {"id": s.cliente.id, "name": s.cliente.name} if s.cliente else None
+                ),
+                "artista": (
+                    {"id": s.artista.id, "name": s.artista.name} if s.artista else None
+                ),
+                "valor": float(s.valor) if s.valor is not None else None,
+                "observacoes": s.observacoes,
+                "google_event_id": s.google_event_id,
+                "created_at": s.created_at.isoformat() if s.created_at else None,
+                "updated_at": s.updated_at.isoformat() if s.updated_at else None,
+            }
+
+        return api_response(
+            True, "Sessions retrieved successfully", [to_dict(s) for s in sessoes]
+        )
+    except Exception as e:
+        logger.error(f"Error in api_list_sessoes: {str(e)}")
+        return jsonify([]), 500
+    finally:
+        if db:
+            db.close()
+
+
+@sessoes_bp.route("/api/<int:sessao_id>", methods=["GET"])
+@login_required
+def api_get_sessao(sessao_id: int):
+    db = None
+    try:
+        from app.db.session import SessionLocal
+
+        db = SessionLocal()
+        s = db.get(Sessao, sessao_id)
+        if not s:
+            return api_response(False, "Sessão não encontrada", None, 404)
+
+        data = {
+            "id": s.id,
+            "data": s.data.isoformat() if s.data else None,
+            "hora": s.hora.strftime("%H:%M:%S") if s.hora else None,
+            "cliente": (
+                {"id": s.cliente.id, "name": s.cliente.name} if s.cliente else None
+            ),
+            "artista": (
+                {"id": s.artista.id, "name": s.artista.name} if s.artista else None
+            ),
+            "valor": float(s.valor) if s.valor is not None else None,
+            "observacoes": s.observacoes,
+            "google_event_id": s.google_event_id,
+            "created_at": s.created_at.isoformat() if s.created_at else None,
+            "updated_at": s.updated_at.isoformat() if s.updated_at else None,
+        }
+        return api_response(True, "Sessão encontrada", data, 200)
+    except Exception as e:
+        logger.error(f"Error in api_get_sessao: {str(e)}")
+        return api_response(False, f"Error: {str(e)}", None, 500)
+    finally:
+        if db:
+            db.close()
+
+
+@sessoes_bp.route("/api/<int:sessao_id>", methods=["PUT"])
+@login_required
+def api_update_sessao(sessao_id: int):
+    db = None
+    try:
+        from app.db.session import SessionLocal
+
+        db = SessionLocal()
+        if not request.is_json:
+            return api_response(False, "Expected JSON payload", None, 400)
+        payload = request.get_json()
+
+        s = db.query(Sessao).get(sessao_id)
+        if not s:
+            return api_response(False, "Sessão não encontrada", None, 404)
+
+        # Server-side validation: ensure required fields are present
+        required_fields = ["data", "hora", "cliente_id", "artista_id", "valor"]
+        for field in required_fields:
+            if (
+                field not in payload
+                or payload.get(field) is None
+                or str(payload.get(field)).strip() == ""
+            ):
+                return api_response(False, f"Campo {field} é obrigatório", None, 400)
+
+        # Update fields if provided
+        try:
+            if "data" in payload and payload["data"]:
+                # Expect YYYY-MM-DD
+                s.data = (
+                    date.fromisoformat(payload["data"])
+                    if isinstance(payload["data"], str)
+                    else payload["data"]
+                )
+            if "hora" in payload and payload["hora"]:
+                # Accept HH:MM or HH:MM:SS
+                try:
+                    s.hora = time.fromisoformat(payload["hora"])
+                except Exception:
+                    s.hora = datetime.strptime(payload["hora"], "%H:%M").time()
+            if "cliente_id" in payload and payload["cliente_id"]:
+                s.cliente_id = int(payload["cliente_id"])
+            if "artista_id" in payload and payload["artista_id"]:
+                s.artista_id = int(payload["artista_id"])
+            if "valor" in payload and payload["valor"] is not None:
+                s.valor = Decimal(str(payload["valor"]))
+            if "observacoes" in payload:
+                s.observacoes = payload.get("observacoes")
+
+            db.add(s)
+            db.commit()
+            db.refresh(s)
+        except Exception as e:
+            db.rollback()
+            return api_response(False, f"Update failed: {str(e)}", None, 400)
+
+        data = {
+            "id": s.id,
+            "data": s.data.isoformat() if s.data else None,
+            "hora": s.hora.strftime("%H:%M:%S") if s.hora else None,
+            "cliente": (
+                {"id": s.cliente.id, "name": s.cliente.name} if s.cliente else None
+            ),
+            "artista": (
+                {"id": s.artista.id, "name": s.artista.name} if s.artista else None
+            ),
+            "valor": float(s.valor) if s.valor is not None else None,
+            "observacoes": s.observacoes,
+            "google_event_id": s.google_event_id,
+            "created_at": s.created_at.isoformat() if s.created_at else None,
+            "updated_at": s.updated_at.isoformat() if s.updated_at else None,
+        }
+        return api_response(True, "Sessão atualizada com sucesso", data, 200)
+    finally:
+        if db:
+            db.close()
+
+
+@sessoes_bp.route("/api/<int:sessao_id>", methods=["DELETE"])
+@login_required
+def api_delete_sessao(sessao_id: int):
+    db = None
+    try:
+        from app.db.session import SessionLocal
+
+        db = SessionLocal()
+
+        s = db.query(Sessao).get(sessao_id)
+        if not s:
+            return api_response(False, "Sessão não encontrada", None, 404)
+
+        try:
+            db.delete(s)
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            return api_response(False, f"Delete failed: {str(e)}", None, 400)
+
+        return api_response(True, "Sessão excluída", None, 200)
+    finally:
+        if db:
+            db.close()

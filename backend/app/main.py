@@ -299,7 +299,7 @@ def create_app():
     @login_required
     def extrato():
         # Generate extrato for previous month in background thread
-        from app.services.extrato_service import run_extrato_in_background
+        from app.services.extrato_automation import run_extrato_in_background
 
         run_extrato_in_background()
         return render_template("extrato.html")
@@ -326,7 +326,13 @@ def create_app():
     @login_required
     def sessoes():
         # Redirect to the SOLID-compliant sessions list controller
-        return redirect(url_for("sessoes.list_sessoes"))
+        return redirect(url_for("sessoes.sessoes_home"))
+
+    @app.route("/agenda")
+    @login_required
+    def agenda():
+        # Redirect to the calendar page (Google Agenda)
+        return redirect(url_for("calendar.calendar_page"))
 
     @app.route("/health")
     def health_check():

@@ -22,8 +22,10 @@ sys.path.insert(
     0, "/home/diego/documentos/github/projetos/tattoo_studio_system_v4/backend"
 )
 
-from app.services.extrato_service import (
+from app.services.extrato_atomic import (
     check_and_generate_extrato_with_transaction,
+)
+from app.services.extrato_core import (
     verify_backup_before_transfer,
     delete_historical_records_atomic,
 )

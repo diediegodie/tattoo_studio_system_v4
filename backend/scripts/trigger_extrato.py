@@ -12,7 +12,7 @@ from datetime import datetime
 # Add the backend directory to the path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from app.services.extrato_service import check_and_generate_extrato, generate_extrato
+from app.services.extrato_generation import check_and_generate_extrato, generate_extrato
 
 
 def main():
