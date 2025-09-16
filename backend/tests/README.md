@@ -14,7 +14,10 @@ Our testing approach follows these principles:
 
 ```
 tests/
-├── conftest.py              # Central pytest configuration
+├── conftest.py              # Core pytest setup and basic fixtures
+├── config/                  # Split configuration files
+│   ├── fixtures.py          # Complex test fixtures
+│   └── markers.py           # Pytest markers and categorization
 ├── unit/                    # Unit tests
 │   └── test_auth_security.py
 ├── integration/             # Integration tests
@@ -102,31 +105,52 @@ pytest tests/unit/test_auth_security.py -v
 
 ## Test Configuration
 
-### Central Configuration (`conftest.py`)
+### Split Configuration Structure
 
+The test configuration is organized across three files to maintain file size limits and improve maintainability:
+
+#### Core Setup (`conftest.py`)
 The `conftest.py` file provides:
-- **Shared Fixtures**: Mock users, repositories, services
-- **Test Markers**: Category markers for organizing tests
-- **Import Path Setup**: Proper Python path configuration
-- **Session Configuration**: App config for testing
+- **Import Path Setup**: Proper Python path configuration for Docker and local development
+- **Database Configuration**: Test database setup and environment variables
+- **Core Fixtures**: Basic mock fixtures (mock_user, mock_db_session, app, client)
+- **Session Configuration**: App configuration for testing
+
+#### Complex Fixtures (`config/fixtures.py`)
+The `config/fixtures.py` file contains:
+- **Advanced Fixtures**: Complex test fixtures (authenticated_client, jwt_authenticated_client)
+- **Database Fixtures**: SQLite and PostgreSQL database setup fixtures
+- **Service Mocks**: Google Calendar, JotForm, and other external service mocks
+- **Integration Fixtures**: Full application context fixtures for integration tests
+
+#### Test Markers (`config/markers.py`)
+The `config/markers.py` file provides:
+- **Marker Registration**: All pytest marker definitions and descriptions
+- **Collection Modification**: Automatic marker assignment based on file paths
+- **Test Categorization**: Consistent test organization and filtering
 
 ### Available Fixtures
 
 ```python
-# Mock data
+# Core fixtures (conftest.py)
 def mock_user():
     """Returns a mock user dictionary"""
 
-# Mock services  
-def mock_user_repository():
-    """Returns a mocked UserRepository"""
+def app():
+    """Returns Flask test app"""
 
-def mock_user_service(mock_user_repository):
-    """Returns a mocked UserService"""
+def client(app):
+    """Returns Flask test client"""
 
-# Configuration
-def app_config():
-    """Returns test app configuration"""
+# Complex fixtures (config/fixtures.py)
+def authenticated_client():
+    """Returns authenticated test client"""
+
+def sqlite_db():
+    """Returns SQLite test database"""
+
+def postgres_db():
+    """Returns PostgreSQL test database"""
 ```
 
 ### Test Markers

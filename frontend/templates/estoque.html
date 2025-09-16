@@ -97,17 +97,34 @@
 						<h2>Menu</h2>
 					</header>
 					<ul>
-						<li><a href="{{ url_for('index') }}">Início</a></li>
-                        <li><a href="{{ url_for('estoque') }}">Estoque</a></li>
-                        <li><a href="{{ url_for('client.client_list') }}">Clientes</a></li>
-                        <li><a href="{{ url_for('calendar.calendar_page') }}">Google Agenda</a></li>
-                        <li><a href="{{ url_for('sessoes') }}">Próximas Sessões</a></li>
-                        <li><a href="{{ url_for('financeiro') }}">Pagamentos</a></li>
-                        <li><a href="{{ url_for('gastos.gastos_home') }}">Gastos</a></li>
-                        <li><a href="{{ url_for('cadastro_interno') }}">Artistas</a></li>
-                        <li><a href="{{ url_for('calculadora') }}">Calculadora de Porcentagem</a></li>
-                        <li><a href="{{ url_for('historico') }}">Histórico</a></li>
-                        <li><a href="{{ url_for('extrato') }}">Extrato</a></li>
+						<li><a href="{{ url_for('index') }}"
+								class="{% if request.endpoint=='index' %}active{% endif %}">Início</a></li>
+						<li><a href="{{ url_for('estoque') }}"
+								class="{% if request.endpoint=='estoque' %}active{% endif %}">Estoque</a></li>
+						<li><a href="{{ url_for('client.client_list') }}"
+								class="{% if request.endpoint and request.endpoint.startswith('client.') %}active{% endif %}">Clientes</a>
+						</li>
+						<li><a href="{{ url_for('calendar.calendar_page') }}"
+								class="{% if request.endpoint and request.endpoint.startswith('calendar.') %}active{% endif %}">Google
+								Agenda</a></li>
+						<li><a href="{{ url_for('sessoes') }}"
+								class="{% if request.endpoint=='sessoes' or (request.endpoint and 'sessao' in request.endpoint) %}active{% endif %}">Próximas
+								Sessões</a></li>
+						<li><a href="{{ url_for('financeiro') }}"
+								class="{% if request.endpoint and request.endpoint.startswith('financeiro') %}active{% endif %}">Pagamentos</a>
+						</li>
+						<li><a href="{{ url_for('gastos.gastos_home') }}"
+								class="{% if request.endpoint and request.endpoint.startswith('gastos.') %}active{% endif %}">Gastos</a>
+						</li>
+						<li><a href="{{ url_for('cadastro_interno') }}"
+								class="{% if request.endpoint=='cadastro_interno' %}active{% endif %}">Artistas</a></li>
+						<li><a href="{{ url_for('calculadora') }}"
+								class="{% if request.endpoint=='calculadora' %}active{% endif %}">Calculadora de
+								Porcentagem</a></li>
+						<li><a href="{{ url_for('historico') }}"
+								class="{% if request.endpoint=='historico' %}active{% endif %}">Histórico</a></li>
+						<li><a href="{{ url_for('extrato') }}"
+								class="{% if request.endpoint=='extrato' %}active{% endif %}">Extrato</a></li>
 					</ul>
 				</nav>
 			</div>

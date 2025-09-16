@@ -16,8 +16,10 @@ import uuid
 
 from app.db.session import SessionLocal
 from app.db.base import ExtratoRunLog, Extrato
-from app.services.extrato_service import (
+from app.services.extrato_atomic import (
     generate_extrato_with_atomic_transaction,
+)
+from app.services.extrato_core import (
     get_previous_month,
 )
 from app.services.undo_service import UndoService
@@ -353,7 +355,7 @@ def preview_transfer():
                 )
 
             # Query data that would be transferred
-            from app.services.extrato_service import query_data
+            from app.services.extrato_core import query_data
 
             pagamentos, sessoes, comissoes, gastos = query_data(db, mes, ano)
 

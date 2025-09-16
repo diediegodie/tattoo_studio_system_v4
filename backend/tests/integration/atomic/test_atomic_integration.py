@@ -19,8 +19,10 @@ from pathlib import Path
 # Add backend to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
-from app.services.extrato_service import (
+from app.services.extrato_atomic import (
     check_and_generate_extrato_with_transaction,
+)
+from app.services.extrato_core import (
     verify_backup_before_transfer,
     delete_historical_records_atomic,
 )
@@ -165,7 +167,7 @@ def test_batch_processing_integration(logger):
     logger.info("=== Testing Batch Processing Integration ===")
 
     try:
-        from app.services.extrato_service import (
+        from app.services.extrato_batch import (
             get_batch_size,
             process_records_in_batches,
         )
@@ -217,7 +219,7 @@ def run_health_check(logger):
         logger.info("✓ Backup service is available")
 
         # Test extrato service imports
-        from app.services.extrato_service import (
+        from app.services.extrato_atomic import (
             generate_extrato_with_atomic_transaction,
         )
 

@@ -12,11 +12,8 @@ import json
 from datetime import datetime, timezone, timedelta
 from unittest.mock import patch, MagicMock
 from sqlalchemy.exc import IntegrityError, OperationalError
-from app.services.extrato_service import (
-    generate_extrato_with_atomic_transaction,
-    check_existing_extrato,
-    get_previous_month,
-)
+from app.services.extrato_atomic import generate_extrato_with_atomic_transaction
+from app.services.extrato_core import check_existing_extrato, get_previous_month
 from app.db.base import Extrato, Pagamento, Sessao, Comissao, ExtratoRunLog
 from app.db.session import SessionLocal
 
@@ -25,7 +22,7 @@ class TestExtratoTransferFailureAndRollback:
     """Test failure scenarios and rollback behavior."""
 
     @patch(
-        "app.services.extrato_service.verify_backup_before_transfer", return_value=True
+        "app.services.extrato_atomic.verify_backup_before_transfer", return_value=True
     )
     def test_transfer_failure_with_partial_data_rollback(self, mock_backup, db_session):
         """Test that partial failures trigger complete rollback."""
@@ -45,7 +42,7 @@ class TestExtratoTransferFailureAndRollback:
         db_session.commit()
 
         # Mock a failure during the transfer process
-        with patch("app.services.extrato_service.query_data") as mock_query:
+        with patch("app.services.extrato_atomic.query_data") as mock_query:
             mock_query.side_effect = OperationalError(
                 None, None, Exception("Connection lost")
             )
@@ -88,7 +85,7 @@ class TestExtratoTransferFailureAndRollback:
 
         # Attempt to generate extrato for same month/year
         with patch(
-            "app.services.extrato_service.verify_backup_before_transfer",
+            "app.services.extrato_atomic.verify_backup_before_transfer",
             return_value=True,
         ):
             result = generate_extrato_with_atomic_transaction(mes, ano)
@@ -107,7 +104,7 @@ class TestDuplicateDataPrevention:
     """Test duplicate data prevention mechanisms."""
 
     @patch(
-        "app.services.extrato_service.verify_backup_before_transfer", return_value=True
+        "app.services.extrato_atomic.verify_backup_before_transfer", return_value=True
     )
     def test_idempotent_extrato_generation(self, mock_backup, db_session):
         """Test that running extrato generation multiple times is safe."""
@@ -142,7 +139,7 @@ class TestDuplicateDataPrevention:
         assert len(extratos) == 1
 
     @patch(
-        "app.services.extrato_service.verify_backup_before_transfer", return_value=True
+        "app.services.extrato_atomic.verify_backup_before_transfer", return_value=True
     )
     def test_duplicate_prevention_with_force_flag(self, mock_backup, db_session):
         """Test duplicate prevention can be overridden with force flag."""
@@ -181,7 +178,7 @@ class TestTimeZoneDivergenceHandling:
     """Test time zone handling and normalization."""
 
     @patch(
-        "app.services.extrato_service.verify_backup_before_transfer", return_value=True
+        "app.services.extrato_atomic.verify_backup_before_transfer", return_value=True
     )
     def test_naive_datetime_normalization(self, mock_backup, db_session):
         """Test that naive datetimes are properly handled."""
@@ -215,7 +212,7 @@ class TestTimeZoneDivergenceHandling:
         assert totais["receita_total"] == 200.0
 
     @patch(
-        "app.services.extrato_service.verify_backup_before_transfer", return_value=True
+        "app.services.extrato_atomic.verify_backup_before_transfer", return_value=True
     )
     def test_timezone_aware_datetime_handling(self, mock_backup, db_session):
         """Test handling of timezone-aware datetimes."""
@@ -249,7 +246,7 @@ class TestTimeZoneDivergenceHandling:
         assert totais["receita_total"] == 150.0
 
     @patch(
-        "app.services.extrato_service.verify_backup_before_transfer", return_value=True
+        "app.services.extrato_atomic.verify_backup_before_transfer", return_value=True
     )
     def test_mixed_timezone_data_consistency(self, mock_backup, db_session):
         """Test handling of mixed timezone data in the same month."""
@@ -294,14 +291,14 @@ class TestTimeZoneDivergenceHandling:
     def test_previous_month_calculation_edge_cases(self):
         """Test edge cases in previous month calculation."""
         # Test January (should return December of previous year)
-        with patch("app.services.extrato_service.datetime") as mock_datetime:
+        with patch("app.services.extrato_core.datetime") as mock_datetime:
             mock_datetime.now.return_value = datetime(2025, 1, 15)
             mes, ano = get_previous_month()
             assert mes == 12
             assert ano == 2024
 
         # Test normal month
-        with patch("app.services.extrato_service.datetime") as mock_datetime:
+        with patch("app.services.extrato_core.datetime") as mock_datetime:
             mock_datetime.now.return_value = datetime(2025, 6, 15)
             mes, ano = get_previous_month()
             assert mes == 5

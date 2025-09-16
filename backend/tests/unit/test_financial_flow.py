@@ -7,9 +7,11 @@ from datetime import date, time
 from decimal import Decimal
 from unittest.mock import Mock, patch, MagicMock
 
-from controllers.sessoes_controller import finalizar_sessao
-from controllers.financeiro_controller import registrar_pagamento
-from db.base import Sessao, Pagamento
+from app.controllers.sessoes_controller import finalizar_sessao
+
+# Remove direct import of registrar_pagamento to avoid blueprint registration issues
+# from controllers.financeiro_controller import registrar_pagamento
+from app.db.base import Sessao, Pagamento
 from flask import Flask
 
 
@@ -135,9 +137,12 @@ class TestPaymentRegistrationWithSession:
         }
 
     def test_payment_registration_with_session_linkage(
-        self, app, mock_db_session, sample_payment_data
+        self, app, mock_db_session, sample_session, sample_payment_data
     ):
         """Test payment registration with session linkage."""
+        # Import here to avoid blueprint registration at module level
+        from controllers.financeiro_controller import registrar_pagamento
+
         # Arrange
         sample_session = Sessao(id=1, status="completed")
         mock_db_session.query.return_value.filter.return_value.first.return_value = (
@@ -161,8 +166,43 @@ class TestPaymentRegistrationWithSession:
             # Assert: redirect helper was invoked
             mock_redirect.assert_called()
 
+    def test_payment_registration_without_session_linkage(self, app, mock_db_session):
+        """Test payment registration without session linkage."""
+        # Import here to avoid blueprint registration at module level
+        from controllers.financeiro_controller import registrar_pagamento
+
+        # Arrange
+        payment_data = {
+            "data": "2024-01-15",
+            "valor": "100.00",
+            "forma_pagamento": "dinheiro",
+            "cliente_id": "1",
+            "artista_id": "1",
+            "observacoes": "Test payment",
+        }
+
+        with app.test_request_context(), patch.dict(
+            registrar_pagamento.__globals__, {"SessionLocal": lambda: mock_db_session}
+        ), patch("controllers.financeiro_controller.request") as mock_request, patch(
+            "controllers.financeiro_controller.flash"
+        ), patch(
+            "controllers.financeiro_controller.redirect"
+        ) as mock_redirect:
+
+            mock_request.method = "POST"
+            mock_request.form.get.side_effect = lambda key: payment_data.get(key)
+
+            # Act (call the original function to avoid login_required wrapper)
+            result = registrar_pagamento.__wrapped__()
+
+            # Assert: redirect helper was invoked
+            mock_redirect.assert_called()
+
     def test_payment_registration_without_session(self, app, mock_db_session):
         """Test payment registration without session linkage."""
+        # Import here to avoid blueprint registration at module level
+        from controllers.financeiro_controller import registrar_pagamento
+
         # Arrange
         payment_data = {
             "data": "2024-01-15",

@@ -13,7 +13,7 @@ from pathlib import Path
 # Add backend to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from app.services.extrato_service import get_batch_size, process_records_in_batches
+from app.services.extrato_batch import get_batch_size, process_records_in_batches
 
 
 def demonstrate_batch_processing():

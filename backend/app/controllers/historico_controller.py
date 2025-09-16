@@ -29,7 +29,7 @@ def _safe_redirect(path_or_endpoint: str):
 @login_required
 def historico_home():
     # Generate extrato for previous month
-    from app.services.extrato_service import run_extrato_in_background
+    from app.services.extrato_automation import run_extrato_in_background
 
     run_extrato_in_background()
 
@@ -37,7 +37,7 @@ def historico_home():
     try:
         db = SessionLocal()
         # Get current month totals
-        from app.services.extrato_service import get_current_month_totals
+        from app.services.extrato_generation import get_current_month_totals
 
         current_totals = get_current_month_totals(db)
         # Debug: validate expected keys in totals

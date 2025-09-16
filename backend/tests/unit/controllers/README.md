@@ -47,17 +47,29 @@ This directory contains unit and integration tests for the HTTP controller layer
 - **Key Areas**: JotForm sync, client listing, API endpoints
 - **Status**: Clean, SOLID-compliant, no duplications
 
-### `test_appointment_controller_extended.py` ✅ WORKING
-- **Purpose**: Comprehensive appointment controller testing
-- **Status**: Fully implemented with 27 passing tests
-- **Features**: Full HTTP endpoint testing, error handling, SOLID compliance
+### `test_appointment_controller_unit.py` ✅ WORKING
+- **Purpose**: CRUD operations for appointment controller
+- **Status**: Core HTTP endpoint testing for create, read, update operations
+- **Features**: Basic functionality validation, success path testing
+
+### `test_appointment_controller_validation.py` ✅ WORKING
+- **Purpose**: Input validation and error handling for appointment controller
+- **Status**: Comprehensive validation testing with edge cases
+- **Features**: Missing fields, invalid data types, malformed input validation
+
+### `test_appointment_controller_business.py` ✅ WORKING
+- **Purpose**: Business logic and architectural compliance testing
+- **Status**: SOLID principles verification and service integration
+- **Features**: Interface segregation, dependency injection validation
 
 ```
 tests/unit/controllers/
-├── test_appointment_controller.py         # Original appointment controller tests
-├── test_appointment_controller_extended.py # Extended comprehensive tests
-├── test_auth_controller.py                # Authentication controller tests
-└── test_client_controller.py              # Client controller tests
+├── test_appointment_controller.py              # Original appointment controller tests
+├── test_appointment_controller_unit.py         # CRUD operations tests
+├── test_appointment_controller_validation.py   # Input validation tests
+├── test_appointment_controller_business.py     # Business logic & SOLID tests
+├── test_auth_controller.py                     # Authentication controller tests
+└── test_client_controller.py                   # Client controller tests
 ```
 
 ## Testing Philosophy
@@ -150,7 +162,10 @@ class Test[Controller]SOLID:
 
 ### AppointmentController Tests
 
-**File**: `test_appointment_controller_extended.py`
+**Files**:
+- `test_appointment_controller_unit.py` - CRUD operations
+- `test_appointment_controller_validation.py` - Input validation
+- `test_appointment_controller_business.py` - Business logic & SOLID
 
 **Coverage**: 27 comprehensive tests covering:
 - Create appointment (9 tests)
@@ -217,10 +232,15 @@ pytest tests/unit/controllers/ -v
 
 ### Run Specific Controller Tests
 ```bash
-# Appointment controller
-pytest tests/unit/controllers/test_appointment_controller_extended.py -v
+# Appointment controller (all parts)
+pytest tests/unit/controllers/test_appointment_controller_unit.py -v
+pytest tests/unit/controllers/test_appointment_controller_validation.py -v
+pytest tests/unit/controllers/test_appointment_controller_business.py -v
 
-# Auth controller  
+# Or run all appointment tests at once
+pytest tests/unit/controllers/test_appointment_controller*.py -v
+
+# Auth controller
 pytest tests/unit/controllers/test_auth_controller.py -v
 
 # Client controller

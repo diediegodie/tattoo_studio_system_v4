@@ -14,7 +14,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
-from app.services.extrato_service import delete_historical_records_atomic
+from app.services.extrato_core import delete_historical_records_atomic
 from app.db.base import Pagamento, Sessao, Comissao, Gasto
 
 
@@ -64,7 +64,7 @@ class TestHistoricalRecordsDeletion:
 
         return pagamentos, sessoes, comissoes, gastos
 
-    @patch("app.services.extrato_service.logger")
+    @patch("app.services.extrato_core.logger")
     def test_successful_deletion_all_record_types(self, mock_logger):
         """Test successful deletion of all record types."""
         # Arrange
@@ -109,7 +109,7 @@ class TestHistoricalRecordsDeletion:
             "✓ Successfully deleted all 11 historical records for 09/2025", extra={}
         )
 
-    @patch("app.services.extrato_service.logger")
+    @patch("app.services.extrato_core.logger")
     def test_successful_deletion_empty_lists(self, mock_logger):
         """Test successful deletion when no records exist."""
         # Arrange
@@ -135,7 +135,7 @@ class TestHistoricalRecordsDeletion:
         # Verify logging
         mock_logger.info.assert_any_call("No records to delete", extra={})
 
-    @patch("app.services.extrato_service.logger")
+    @patch("app.services.extrato_core.logger")
     def test_deletion_failure_commission_error(self, mock_logger):
         """Test deletion failure when commission deletion fails."""
         # Arrange
@@ -166,7 +166,7 @@ class TestHistoricalRecordsDeletion:
             "Failed to delete commission 1: Commission deletion failed", extra={}
         )
 
-    @patch("app.services.extrato_service.logger")
+    @patch("app.services.extrato_core.logger")
     def test_deletion_failure_payment_error(self, mock_logger):
         """Test deletion failure when payment deletion fails."""
         # Arrange
@@ -201,7 +201,7 @@ class TestHistoricalRecordsDeletion:
             "Failed to delete payment 1: Payment deletion failed", extra={}
         )
 
-    @patch("app.services.extrato_service.logger")
+    @patch("app.services.extrato_core.logger")
     def test_circular_reference_breaking(self, mock_logger):
         """Test that circular references are properly broken."""
         # Arrange
@@ -233,7 +233,7 @@ class TestHistoricalRecordsDeletion:
             "✓ Broke circular references between sessions and payments", extra={}
         )
 
-    @patch("app.services.extrato_service.logger")
+    @patch("app.services.extrato_core.logger")
     def test_deletion_count_verification_success(self, mock_logger):
         """Test that deletion count verification works correctly."""
         # Arrange
@@ -258,7 +258,7 @@ class TestHistoricalRecordsDeletion:
             "✓ Successfully deleted all 11 historical records for 09/2025", extra={}
         )
 
-    @patch("app.services.extrato_service.logger")
+    @patch("app.services.extrato_core.logger")
     def test_deletion_count_verification_failure(self, mock_logger):
         """Test that deletion count verification detects mismatches."""
         # Arrange
@@ -294,7 +294,7 @@ class TestHistoricalRecordsDeletion:
             "Failed to delete payment 2: Deletion failed due to constraint", extra={}
         )
 
-    @patch("app.services.extrato_service.logger")
+    @patch("app.services.extrato_core.logger")
     def test_partial_success_logging(self, mock_logger):
         """Test that partial success is properly logged."""
         # Arrange

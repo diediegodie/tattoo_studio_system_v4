@@ -15,11 +15,13 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
-from app.services.extrato_service import (
+from app.services.extrato_batch import (
     get_batch_size,
     process_records_in_batches,
     serialize_data_batch,
     calculate_totals_batch,
+)
+from app.services.extrato_atomic import (
     generate_extrato_with_atomic_transaction,
 )
 from app.db.base import Pagamento, Sessao, Comissao, Gasto
@@ -234,7 +236,7 @@ class TestBatchProcessing:
         assert credit_card["total"] == 100.0
         assert cash["total"] == 200.0
 
-    @patch("app.services.extrato_service.logger")
+    @patch("app.services.extrato_batch.logger")
     def test_process_records_in_batches_success(self, mock_logger):
         """Test successful batch processing."""
         records = list(range(10))  # 10 records
@@ -256,7 +258,7 @@ class TestBatchProcessing:
         mock_logger.info.assert_any_call("Processing batch 1/4 (3 records)", extra={})
         mock_logger.info.assert_any_call("✓ Batch 1/4 completed successfully", extra={})
 
-    @patch("app.services.extrato_service.logger")
+    @patch("app.services.extrato_core.logger")
     def test_process_records_in_batches_empty(self, mock_logger):
         """Test batch processing with empty records."""
         records = []
@@ -271,7 +273,7 @@ class TestBatchProcessing:
         # No logging should occur for empty records
         mock_logger.info.assert_not_called()
 
-    @patch("app.services.extrato_service.logger")
+    @patch("app.services.extrato_batch.logger")
     def test_process_records_in_batches_failure(self, mock_logger):
         """Test batch processing failure handling."""
         records = list(range(6))
@@ -290,7 +292,7 @@ class TestBatchProcessing:
             "✗ Batch 2/2 failed: Batch processing failed", extra={}
         )
 
-    @patch("app.services.extrato_service.logger")
+    @patch("app.services.extrato_batch.logger")
     def test_process_records_in_batches_single_batch(self, mock_logger):
         """Test batch processing with single batch."""
         records = [1, 2]
