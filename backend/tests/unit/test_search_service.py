@@ -50,6 +50,9 @@ class TestSearchService:
             "sessoes": [],
             "comissoes": [],
             "extratos": [],
+            "gastos": [],
+            "inventory": [],
+            "all_results_sorted": [],
         }
 
     def test_search_pagamentos(self, search_service, mock_db):
@@ -59,6 +62,7 @@ class TestSearchService:
         mock_db.query.return_value = mock_query
         mock_query.join.return_value = mock_query
         mock_query.filter.return_value = mock_query
+        mock_query.order_by.return_value = mock_query
         mock_query.all.return_value = []
 
         results = search_service.search("maria")
@@ -68,6 +72,9 @@ class TestSearchService:
         assert "sessoes" in results
         assert "comissoes" in results
         assert "extratos" in results
+        assert "gastos" in results
+        assert "inventory" in results
+        assert "all_results_sorted" in results
         assert all(isinstance(v, list) for v in results.values())
 
     def test_json_contains_query(self, search_service):

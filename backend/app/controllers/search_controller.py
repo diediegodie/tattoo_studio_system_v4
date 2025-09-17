@@ -29,11 +29,17 @@ def search_api():
         service = SearchService(db)
         results = service.search(query)
 
+        # Calculate total excluding the unified list to avoid double counting
+        category_totals = sum(
+            len(v) for k, v in results.items() if k != "all_results_sorted"
+        )
+
         return jsonify(
             {
                 "query": query,
                 "results": results,
-                "total_results": sum(len(v) for v in results.values()),
+                "total_results": category_totals,
+                "unified_results": results.get("all_results_sorted", []),
             }
         )
     except Exception as e:
@@ -76,13 +82,17 @@ def search_results_page():
         service = SearchService(db)
         results = service.search(query)
 
-        total_results = sum(len(v) for v in results.values())
+        # Calculate total excluding the unified list to avoid double counting
+        total_results = sum(
+            len(v) for k, v in results.items() if k != "all_results_sorted"
+        )
 
         return render_template(
             "search_results.html",
             query=query,
             results=results,
             total_results=total_results,
+            unified_results=results.get("all_results_sorted", []),
             error=None,
         )
     except Exception as e:

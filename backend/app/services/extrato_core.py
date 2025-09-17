@@ -194,10 +194,23 @@ def serialize_data(pagamentos, sessoes, comissoes, gastos):
 
 def calculate_totals(pagamentos_data, sessoes_data, comissoes_data, gastos_data=None):
     """Calculate totals including despesas if provided."""
-    receita_total = sum(p["valor"] for p in pagamentos_data)
-    comissoes_total = sum(c["valor"] for c in comissoes_data)
+    import os
+
     gastos_data = gastos_data or []
-    despesas_total = sum(g["valor"] for g in gastos_data)
+
+    receita_total = sum(float(p.get("valor", 0)) for p in pagamentos_data) + sum(
+        float(s.get("valor", 0)) for s in sessoes_data
+    )
+    comissoes_total = sum(float(c.get("valor", 0)) for c in comissoes_data)
+    despesas_total = sum(float(g.get("valor", 0)) for g in gastos_data)
+
+    # Debug logging if enabled
+    if os.getenv("HISTORICO_DEBUG", "").lower() in ("1", "true", "yes"):
+        logger.info(
+            f"HISTORICO_DEBUG: calculate_totals - receita_total:{receita_total} comissoes_total:{comissoes_total} despesas_total:{despesas_total}"
+        )
+
+    # ...existing code...
 
     # Por artista
     artistas = {}
@@ -207,6 +220,13 @@ def calculate_totals(pagamentos_data, sessoes_data, comissoes_data, gastos_data=
             if artista not in artistas:
                 artistas[artista] = {"receita": 0, "comissao": 0}
             artistas[artista]["receita"] += p["valor"]
+
+    for s in sessoes_data:
+        artista = s["artista_name"]
+        if artista:
+            if artista not in artistas:
+                artistas[artista] = {"receita": 0, "comissao": 0}
+            artistas[artista]["receita"] += s["valor"]
 
     for c in comissoes_data:
         artista = c["artista_name"]
@@ -249,12 +269,14 @@ def calculate_totals(pagamentos_data, sessoes_data, comissoes_data, gastos_data=
     ]
 
     saldo = receita_total - despesas_total  # commissions shown separately
+    receita_liquida = receita_total - comissoes_total  # for UI display
 
     return {
         "receita_total": receita_total,
         "comissoes_total": comissoes_total,
         "despesas_total": despesas_total,
         "saldo": saldo,
+        "receita_liquida": receita_liquida,
         "por_artista": por_artista,
         "por_forma_pagamento": por_forma_pagamento,
         "gastos_por_forma_pagamento": gastos_por_forma_pagamento,
@@ -460,3 +482,20 @@ def _log_extrato_run(mes, ano, status, message=None):
         print(f"Warning: Could not log extrato run: {e}")
     finally:
         db.close()
+
+
+def current_month_range():
+    """Compute start and end datetime for the current month (server-local time).
+
+    Returns (start_date, end_date) as naive datetime objects.
+    TODO: Consider timezone handling if app spans multiple timezones.
+    """
+    from datetime import datetime
+
+    now = datetime.now()
+    start_date = datetime(now.year, now.month, 1)
+    if now.month == 12:
+        end_date = datetime(now.year + 1, 1, 1)
+    else:
+        end_date = datetime(now.year, now.month + 1, 1)
+    return start_date, end_date
