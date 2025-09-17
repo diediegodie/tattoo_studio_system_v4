@@ -1,5 +1,6 @@
 from flask import Flask, render_template, jsonify, redirect, url_for, flash, session
 import os
+import sys
 from sqlalchemy import text
 from app.db.session import engine
 from flask_dance.contrib.google import make_google_blueprint, google
@@ -473,5 +474,13 @@ def create_app():
         print(f"Warning: APScheduler not available for background token refresh: {e}")
     except Exception as e:
         print(f"Warning: Failed to initialize background token refresh: {e}")
+
+    # Add CLI commands
+    @app.cli.command("reset-seed-test")
+    def reset_seed_test_command():
+        """Reset database, seed test data, and run tests."""
+        from scripts.reset_seed_test import main
+
+        sys.exit(main())
 
     return app
