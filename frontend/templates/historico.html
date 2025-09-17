@@ -303,8 +303,7 @@
                                     </tr> #}
                                     <tr>
                                         <td>Receita Líquida (Bruta - Comissões)</td>
-                                        <td>R$ {{ '%.2f' % (current_totals['receita_total'] -
-                                            current_totals['comissoes_total']) }}</td>
+                                        <td>R$ {{ '%.2f' % current_totals['receita_liquida'] }}</td>
                                     </tr>
                                 </tbody>
                             </table>

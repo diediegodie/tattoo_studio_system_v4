@@ -98,67 +98,55 @@ def generate_extrato(mes, ano, force=False):
 
 
 def get_current_month_totals(db):
-    """Calculate totals for the current month from the database, including gastos."""
-    from datetime import datetime
-    from sqlalchemy import func
+    """Calculate totals for the current month from the database, including gastos.
 
-    today = datetime.now()
-    start_date = datetime(today.year, today.month, 1)
-    if today.month == 12:
-        end_date = datetime(today.year + 1, 1, 1)
-    else:
-        end_date = datetime(today.year, today.month + 1, 1)
+    Uses centralized current_month_range() and query_data() to ensure all entities
+    are filtered by the same date window.
+    """
+    from app.services.extrato_core import (
+        current_month_range,
+        query_data,
+        serialize_data,
+        calculate_totals,
+    )
+    import os
 
-    # Get pagamentos
-    pagamentos = (
-        db.query(Pagamento)
-        .options(joinedload(Pagamento.artista))
-        .filter(Pagamento.data >= start_date, Pagamento.data < end_date)
-        .all()
+    start_date, end_date = current_month_range()
+
+    # Debug logging if enabled
+    if os.getenv("HISTORICO_DEBUG", "").lower() in ("1", "true", "yes"):
+        logger.info(
+            f"HISTORICO_DEBUG: Current month window: {start_date} to {end_date}"
+        )
+
+    # Reuse query_data to ensure consistent filtering across all entities
+    pagamentos, sessoes, comissoes, gastos = query_data(
+        db, start_date.month, start_date.year
     )
 
-    # Get comissoes
-    comissoes = (
-        db.query(Comissao)
-        .options(joinedload(Comissao.artista))
-        .filter(Comissao.created_at >= start_date, Comissao.created_at < end_date)
-        .all()
-    )
-
-    # Get gastos
-    gastos = (
-        db.query(Gasto).filter(Gasto.data >= start_date, Gasto.data < end_date).all()
-    )
+    # Debug counts
+    if os.getenv("HISTORICO_DEBUG", "").lower() in ("1", "true", "yes"):
+        logger.info(
+            f"HISTORICO_DEBUG: Queried counts - pagamentos:{len(pagamentos)} sessoes:{len(sessoes)} comissoes:{len(comissoes)} gastos:{len(gastos)}"
+        )
 
     # Serialize for calculation
-    pagamentos_data = [
-        {
-            "valor": float(p.valor),
-            "artista_name": p.artista.name if p.artista else None,
-            "forma_pagamento": p.forma_pagamento,
-        }
-        for p in pagamentos
-    ]
+    pagamentos_data, sessoes_data, comissoes_data, gastos_data = serialize_data(
+        pagamentos, sessoes, comissoes, gastos
+    )
 
-    comissoes_data = [
-        {
-            "valor": float(c.valor),
-            "artista_name": c.artista.name if c.artista else None,
-        }
-        for c in comissoes
-    ]
+    # Calculate totals (now includes receita_liquida)
+    totals = calculate_totals(
+        pagamentos_data, sessoes_data, comissoes_data, gastos_data
+    )
 
-    gastos_data = [
-        {
-            "valor": float(g.valor),
-            "forma_pagamento": g.forma_pagamento,
-            "categoria": getattr(g, "categoria", None),
-        }
-        for g in gastos
-    ]
+    # Debug final totals
+    if os.getenv("HISTORICO_DEBUG", "").lower() in ("1", "true", "yes"):
+        logger.info(
+            f"HISTORICO_DEBUG: Final totals - receita_total:{totals['receita_total']} comissoes_total:{totals['comissoes_total']} despesas_total:{totals['despesas_total']} receita_liquida:{totals['receita_liquida']}"
+        )
 
-    # Use existing calculate_totals function
-    return calculate_totals(pagamentos_data, [], comissoes_data, gastos_data)
+    return totals
 
 
 def check_and_generate_extrato(mes=None, ano=None, force=False):

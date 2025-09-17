@@ -7,6 +7,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
     <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/x-icon">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}" />
+    <style>
+        mark {
+            background-color: #ffff00;
+            padding: 0 2px;
+            border-radius: 2px;
+        }
+    </style>
 </head>
 
 <body class="is-preload">
@@ -57,6 +64,68 @@
 
                 <!-- Results -->
                 {% if total_results > 0 %}
+
+                <!-- Unified Results (All entities sorted by date) -->
+                {% if unified_results %}
+                <section class="result-group">
+                    <h3>Todos os Resultados ({{ unified_results|length }}) - Ordenados por Data</h3>
+                    {% for result in unified_results %}
+                    <div class="search-result">
+                        <h4>{{ result.entity_type }} #{{ result.id }}</h4>
+                        {% if result.data %}
+                        <p><strong>Data:</strong> {{ result.data }}
+                            {% if result.hora %} às {{ result.hora }}{% endif %}</p>
+                        {% endif %}
+                        {% if result.cliente_name %}
+                        <p><strong>Cliente:</strong> {{ result.cliente_name }}</p>
+                        {% endif %}
+                        {% if result.artista_name %}
+                        <p><strong>Artista:</strong> {{ result.artista_name }}</p>
+                        {% elif result.created_by_name %}
+                        <p><strong>Criado por:</strong> {{ result.created_by_name }}</p>
+                        {% endif %}
+                        {% if result.valor %}
+                        <p><strong>Valor:</strong> R$ {{ "%.2f"|format(result.valor) }}</p>
+                        {% endif %}
+                        {% if result.nome %}
+                        <p><strong>Nome:</strong> {{ result.nome }}</p>
+                        {% endif %}
+                        {% if result.descricao %}
+                        <p><strong>Descrição:</strong> {{ result.descricao }}</p>
+                        {% endif %}
+                        {% if result.observacoes %}
+                        <p><strong>Observações:</strong> {{ result.observacoes }}</p>
+                        {% endif %}
+                        {% if result.status %}
+                        <p><strong>Status:</strong> {{ result.status }}</p>
+                        {% endif %}
+                        {% if result.forma_pagamento %}
+                        <p><strong>Forma de Pagamento:</strong> {{ result.forma_pagamento }}</p>
+                        {% endif %}
+                        {% if result.percentual %}
+                        <p><strong>Percentual:</strong> {{ "%.2f"|format(result.percentual) }}%</p>
+                        {% endif %}
+                        {% if result.quantity %}
+                        <p><strong>Quantidade:</strong> {{ result.quantity }}</p>
+                        {% endif %}
+                        <p><strong>Fonte:</strong> {{ result.source|title }}</p>
+                        {% if result.source == 'pagamento' or result.source == 'sessao' %}
+                        <p><a href="{{ url_for('financeiro.financeiro_home') }}" class="edit-link">Ver no Sistema</a>
+                        </p>
+                        {% elif result.source == 'inventory' %}
+                        <p><a href="{{ url_for('estoque') }}" class="edit-link">Ver no Estoque</a></p>
+                        {% else %}
+                        <p><a href="{{ url_for('index') }}" class="edit-link">Ver no Sistema</a></p>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </section>
+
+                <hr style="margin: 2em 0; border: none; height: 1px; background-color: #ddd;">
+
+                <h3>Resultados por Categoria</h3>
+                {% endif %}
+
                 <!-- Pagamentos -->
                 {% if results.pagamentos %}
                 <section class="result-group">
@@ -134,6 +203,51 @@
                 </section>
                 {% endif %}
 
+                <!-- Gastos -->
+                {% if results.gastos %}
+                <section class="result-group">
+                    <h3>Gastos ({{ results.gastos|length }})</h3>
+                    {% for gasto in results.gastos %}
+                    <div class="search-result">
+                        <h4>Gasto #{{ gasto.id }}</h4>
+                        <p><strong>Data:</strong> {{ gasto.data }}</p>
+                        <p><strong>Descrição:</strong> {{ gasto.descricao }}</p>
+                        <p><strong>Valor:</strong> R$ {{ "%.2f"|format(gasto.valor) }}</p>
+                        <p><strong>Forma de Pagamento:</strong> {{ gasto.forma_pagamento }}</p>
+                        <p><strong>Criado por:</strong> {{ gasto.created_by_name }}</p>
+                        <p><a href="{{ url_for('financeiro.financeiro_home') }}" class="edit-link">Ver no Financeiro</a>
+                        </p>
+                    </div>
+                    {% endfor %}
+                </section>
+                {% endif %}
+
+                <!-- Estoque -->
+                {% if results.inventory %}
+                <section class="result-group">
+                    <h3>Estoque ({{ results.inventory|length }})</h3>
+                    {% for item in results.inventory %}
+                    <div class="search-result">
+                        <h4>{{ item.nome }}</h4>
+                        <p><strong>Quantidade:</strong> {{ item.quantidade }}</p>
+                        {% if item.category %}
+                        <p><strong>Categoria:</strong> {{ item.category }}</p>
+                        {% endif %}
+                        {% if item.unit_price %}
+                        <p><strong>Preço Unitário:</strong> R$ {{ "%.2f"|format(item.unit_price) }}</p>
+                        {% endif %}
+                        {% if item.supplier %}
+                        <p><strong>Fornecedor:</strong> {{ item.supplier }}</p>
+                        {% endif %}
+                        {% if item.observacoes %}
+                        <p><strong>Observações:</strong> {{ item.observacoes }}</p>
+                        {% endif %}
+                        <p><a href="{{ url_for('estoque') }}" class="edit-link">Ver no Estoque</a></p>
+                    </div>
+                    {% endfor %}
+                </section>
+                {% endif %}
+
                 {% else %}
                 <section class="no-results">
                     <h3>Nenhum resultado encontrado</h3>
@@ -206,6 +320,45 @@
     <script src="{{ url_for('static', filename='js/breakpoints.min.js') }}"></script>
     <script src="{{ url_for('static', filename='js/util.js') }}"></script>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+
+    <!-- Search Highlighting Script -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const searchQuery = "{{ query | lower }}";
+            const tokens = searchQuery.split(/\s+/).filter(t => t.length > 0);
+
+            function highlightElement(element) {
+                element.childNodes.forEach(node => {
+                    if (node.nodeType === Node.TEXT_NODE) {
+                        // Skip text inside <strong> tags (labels)
+                        if (node.parentNode.tagName === 'STRONG') return;
+                        let text = node.textContent;
+                        let hasChanges = false;
+                        tokens.forEach(token => {
+                            const escapedToken = token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                            const regex = new RegExp('(' + escapedToken + ')', 'gi');
+                            if (regex.test(text)) {
+                                text = text.replace(regex, '<mark>$1</mark>');
+                                hasChanges = true;
+                            }
+                        });
+                        if (hasChanges) {
+                            const span = document.createElement('span');
+                            span.innerHTML = text;
+                            node.parentNode.replaceChild(span, node);
+                        }
+                    } else if (node.nodeType === Node.ELEMENT_NODE) {
+                        highlightElement(node);
+                    }
+                });
+            }
+
+            // Highlight in all result paragraphs
+            document.querySelectorAll('.search-result p').forEach(p => {
+                highlightElement(p);
+            });
+        });
+    </script>
 
 </body>
 
