@@ -376,8 +376,8 @@
     return null;
   }
 
-  // Wire events on DOMContentLoaded - Use event delegation for dynamic buttons
-  document.addEventListener('DOMContentLoaded', function () {
+  // Wire events - check if DOM is already loaded
+  function setupEventListeners() {
     console.log('[financeiro] Event delegation handlers bound');
 
     // Use event delegation to handle dynamically added payment buttons
@@ -431,9 +431,14 @@
         return;
       }
     });
-  });
+  }
 
-  // Expose for debugging
+  // Set up event listeners immediately if DOM is ready, otherwise wait for DOMContentLoaded
+  if (document.readyState === 'loading' || document.readyState === 'interactive') {
+    document.addEventListener('DOMContentLoaded', setupEventListeners);
+  } else {
+    setupEventListeners();
+  }
   window.financeiroClient = financeiroClient;
   window.financeiroHelpers = { deletePagamento, editPagamento, finalizarPagamento };
 

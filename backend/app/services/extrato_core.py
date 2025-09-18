@@ -198,9 +198,9 @@ def calculate_totals(pagamentos_data, sessoes_data, comissoes_data, gastos_data=
 
     gastos_data = gastos_data or []
 
-    receita_total = sum(float(p.get("valor", 0)) for p in pagamentos_data) + sum(
-        float(s.get("valor", 0)) for s in sessoes_data
-    )
+    # FIXED: Calculate revenue from payments only (actual money received)
+    # Previous logic incorrectly double-counted by adding sessions + payments
+    receita_total = sum(float(p.get("valor", 0)) for p in pagamentos_data)
     comissoes_total = sum(float(c.get("valor", 0)) for c in comissoes_data)
     despesas_total = sum(float(g.get("valor", 0)) for g in gastos_data)
 

@@ -1,36 +1,13 @@
-<!DOCTYPE HTML>
-<html>
-
-<head>
-	<title>Sessões</title>
-	<meta charset="utf-8" />
-	<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
-	<link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/x-icon">
-	<link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}" />
-</head>
+{% set page_title = 'Sessões' %}
+{% include 'partials/_head.html' %}
 
 <body class="is-preload">
-
-	<!-- Wrapper -->
+	{% include 'partials/_flash_messages.html' %}
 	<div id="wrapper">
-
-		<!-- Main -->
 		<div id="main">
 			<div class="inner">
-
-				<!-- Flash Messages -->
-				{% with messages = get_flashed_messages(with_categories=true) %}
-				{% if messages %}
-				<div class="flash-messages">
-					{% for category, message in messages %}
-					<div class="flash-message {{ category }}">{{ message }}</div>
-					{% endfor %}
-				</div>
-				{% endif %}
-				{% endwith %}
-
 				<!-- Template selects for edit modal (hidden, reuse server-rendered options from nova_sessao) -->
-				<div id="template-selects" style="display:none;">
+				<div id="template-selects" class="hidden">
 					<select id="tmpl_cliente_select">
 						<option value="">Selecione...</option>
 						{% for client in clients %}
@@ -89,7 +66,7 @@
 										<td>
 											<button class="button small options-btn"
 												onclick="toggleOptions(this)">Opções</button>
-											<span class="options-actions" style="display:none;">
+											<span class="options-actions">
 												<button class="button small finish-btn" data-id="{{ sessao.id }}"
 													data-data="{{ sessao.data.strftime('%Y-%m-%d') if sessao.data else '' }}"
 													data-cliente-id="{{ sessao.cliente.id if sessao.cliente else '' }}"
@@ -123,69 +100,14 @@
 					</script>
 
 				</section>
-
 			</div>
 		</div>
 
-		<!-- Sidebar -->
-		<div id="sidebar" class="inactive">
-			<div class="toggle"></div>
-			<div class="inner">
-
-				<!-- Search -->
-				<section id="search" class="alt">
-					<form method="get" action="{{ url_for('search.search_results_page') }}">
-						<input type="text" name="q" id="query" placeholder="Buscar cliente ou artista..." required />
-						<button type="submit" style="display: none;"></button>
-					</form>
-				</section>
-
-				<!-- Menu -->
-				<nav id="menu">
-					<header class="major">
-						<h2>Menu</h2>
-					</header>
-					<ul>
-						<li><a href="{{ url_for('index') }}"
-								class="{% if request.endpoint=='index' %}active{% endif %}">Início</a></li>
-						<li><a href="{{ url_for('estoque') }}"
-								class="{% if request.endpoint=='estoque' %}active{% endif %}">Estoque</a></li>
-						<li><a href="{{ url_for('client.client_list') }}"
-								class="{% if request.endpoint and request.endpoint.startswith('client.') %}active{% endif %}">Clientes</a>
-						</li>
-						<li><a href="{{ url_for('calendar.calendar_page') }}"
-								class="{% if request.endpoint and request.endpoint.startswith('calendar.') %}active{% endif %}">Google
-								Agenda</a></li>
-						<li><a href="{{ url_for('sessoes') }}"
-								class="{% if request.endpoint=='sessoes' or (request.endpoint and 'sessao' in request.endpoint) %}active{% endif %}">Próximas
-								Sessões</a></li>
-						<li><a href="{{ url_for('financeiro') }}"
-								class="{% if request.endpoint and request.endpoint.startswith('financeiro') %}active{% endif %}">Pagamentos</a>
-						</li>
-						<li><a href="{{ url_for('gastos.gastos_home') }}"
-								class="{% if request.endpoint and request.endpoint.startswith('gastos.') %}active{% endif %}">Gastos</a>
-						</li>
-						<li><a href="{{ url_for('cadastro_interno') }}"
-								class="{% if request.endpoint=='cadastro_interno' %}active{% endif %}">Artistas</a></li>
-						<li><a href="{{ url_for('calculadora') }}"
-								class="{% if request.endpoint=='calculadora' %}active{% endif %}">Calculadora de
-								Porcentagem</a></li>
-						<li><a href="{{ url_for('historico') }}"
-								class="{% if request.endpoint=='historico' %}active{% endif %}">Histórico</a></li>
-						<li><a href="{{ url_for('extrato') }}"
-								class="{% if request.endpoint=='extrato' %}active{% endif %}">Extrato</a></li>
-					</ul>
-				</nav>
-			</div>
-		</div>
+		{% include 'partials/_sidebar.html' %}
 	</div>
 
-	<!-- Scripts -->
-	<script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
-	<script src="{{ url_for('static', filename='js/browser.min.js') }}"></script>
-	<script src="{{ url_for('static', filename='js/breakpoints.min.js') }}"></script>
-	<script src="{{ url_for('static', filename='js/util.js') }}"></script>
-	<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+	<script src="{{ url_for('static', filename='js/common.js') }}"></script>
+	{% include 'partials/_base_scripts.html' %}
 	<script src="{{ url_for('static', filename='js/sessoes.js') }}"></script>
 
 </body>

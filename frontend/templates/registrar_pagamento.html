@@ -1,13 +1,5 @@
-<!DOCTYPE HTML>
-<html>
-
-<head>
-    <title>Registrar Pagamento</title>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
-    <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/x-icon">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}" />
-</head>
+{% set page_title = 'Registrar Pagamento' %}
+{% include 'partials/_head.html' %}
 
 <body class="is-preload">
 
@@ -30,40 +22,31 @@
                     </header>
 
                     <!-- Flash messages (show validation/server errors immediately) -->
-                    {% with messages = get_flashed_messages(with_categories=true) %}
-                    {% if messages %}
-                    <div class="flash-messages">
-                        {% for category, message in messages %}
-                        <div class="flash-message {{ category }}">{{ message }}</div>
-                        {% endfor %}
-                    </div>
-                    {% endif %}
-                    {% endwith %}
+                    {% include 'partials/_flash_messages.html' %}
 
                     {# Debug: show submitted form values when re-rendering (development only) #}
                     {% if request.form %}
-                    <div style="background:#f8f8f8;border:1px solid #eee;padding:0.5rem;margin-bottom:1rem;">
+                    <div class="debug-box">
                         <strong>Debug POST values:</strong>
-                        <pre style="white-space:pre-wrap">{{ request.form }}</pre>
+                        <pre class="debug-pre">{{ request.form }}</pre>
                     </div>
                     {% endif %}
 
                     <section>
                         <form id="registrar-pagamento-form" method="post"
-                            action="{{ url_for('financeiro.registrar_pagamento') }}"
-                            style="max-width:600px;margin:0 auto;">
+                            action="{{ url_for('financeiro.registrar_pagamento') }}" class="form-container">
                             <!-- Hidden field for session linkage; prefer POSTed value when re-rendering -->
                             <input type="hidden" name="sessao_id"
                                 value="{{ request.form.get('sessao_id') or sessao_id or '' }}">
-                            <div style="display:flex;flex-wrap:wrap;gap:1em;">
-                                <div style="flex:1 1 200px;min-width:180px;">
+                            <div class="flex-form-row">
+                                <div class="flex-form-field">
                                     <label for="data">Data</label>
-                                    <input type="date" name="data" id="data" required style="width:100%;"
+                                    <input type="date" name="data" id="data" required class="full-width"
                                         value="{{ request.form.get('data') or data or '' }}">
                                 </div>
-                                <div style="flex:1 1 200px;min-width:180px;">
+                                <div class="flex-form-field">
                                     <label for="cliente_id">Cliente</label>
-                                    <select name="cliente_id" id="cliente_id" required style="width:100%;">
+                                    <select name="cliente_id" id="cliente_id" required class="full-width">
                                         <option value="">Selecione...</option>
                                         {% for client in clients %}
                                         {% set sel_cliente = request.form.get('cliente_id') or cliente_id %}
@@ -72,9 +55,9 @@
                                         {% endfor %}
                                     </select>
                                 </div>
-                                <div style="flex:1 1 200px;min-width:180px;">
+                                <div class="flex-form-field">
                                     <label for="artista_id">Artista</label>
-                                    <select name="artista_id" id="artista_id" required style="width:100%;">
+                                    <select name="artista_id" id="artista_id" required class="full-width">
                                         <option value="">Selecione...</option>
                                         {% for artist in artists %}
                                         {% set sel_artista = request.form.get('artista_id') or artista_id %}
@@ -83,14 +66,14 @@
                                         {% endfor %}
                                     </select>
                                 </div>
-                                <div style="flex:1 1 200px;min-width:180px;">
+                                <div class="flex-form-field">
                                     <label for="valor">Valor</label>
                                     <input type="number" name="valor" id="valor" step="0.01" min="0" required
-                                        style="width:100%;" value="{{ request.form.get('valor') or valor or '' }}">
+                                        class="full-width" value="{{ request.form.get('valor') or valor or '' }}">
                                 </div>
-                                <div style="flex:1 1 200px;min-width:180px;">
+                                <div class="flex-form-field">
                                     <label for="forma_pagamento">Forma de Pagamento</label>
-                                    <select name="forma_pagamento" id="forma_pagamento" required style="width:100%;">
+                                    <select name="forma_pagamento" id="forma_pagamento" required class="full-width">
                                         <option value="">Selecione...</option>
                                         {% set sel_forma = request.form.get('forma_pagamento') or forma_pagamento %}
                                         <option value="Dinheiro" {% if sel_forma=='Dinheiro' %}selected{% endif %}>
@@ -104,21 +87,21 @@
                                         </option>
                                     </select>
                                 </div>
-                                <div style="flex:1 1 200px;min-width:180px;">
+                                <div class="flex-form-field">
                                     <label for="comissao_percent">Porcentagem de Comissão do Artista (%)</label>
                                     <input type="number" name="comissao_percent" id="comissao_percent" min="0" max="100"
-                                        step="0.01" placeholder="Opcional" style="width:100%;"
+                                        step="0.01" placeholder="Opcional" class="full-width"
                                         value="{{ request.form.get('comissao_percent') or '' }}">
-                                    <small style="display:block;color:#666;margin-top:.25rem;">Deixe em branco ou zero
+                                    <small class="help-text">Deixe em branco ou zero
                                         para não registrar comissão</small>
                                 </div>
-                                <div style="flex:1 1 100%;min-width:180px;">
+                                <div class="full-width-field">
                                     <label for="observacoes">Observações</label>
                                     <textarea name="observacoes" id="observacoes" rows="3"
-                                        style="width:100%;resize:vertical;">{{ request.form.get('observacoes') or observacoes or '' }}</textarea>
+                                        class="textarea-full">{{ request.form.get('observacoes') or observacoes or '' }}</textarea>
                                 </div>
                             </div>
-                            <div style="display:flex;justify-content:center;gap:1em;margin-top:2em;">
+                            <div class="form-buttons">
                                 <button type="submit" class="button primary">Salvar</button>
                                 <button type="reset" class="button">Limpar</button>
                                 <a href="{{ url_for('financeiro.financeiro_home') }}" class="button">Cancelar</a>
@@ -142,63 +125,9 @@
         </div>
 
 
-        <!-- Sidebar -->
-        <div id="sidebar" class="inactive">
-            <div class="toggle"></div>
-            <div class="inner">
-
-                <!-- Search -->
-                <section id="search" class="alt">
-                    <form method="get" action="{{ url_for('search.search_results_page') }}">
-                        <input type="text" name="q" id="query" placeholder="Buscar cliente ou artista..." required />
-                        <button type="submit" style="display: none;"></button>
-                    </form>
-                </section>
-
-                <!-- Menu -->
-                <nav id="menu">
-                    <header class="major">
-                        <h2>Menu</h2>
-                    </header>
-                    <ul>
-                        <li><a href="{{ url_for('index') }}"
-                                class="{% if request.endpoint=='index' %}active{% endif %}">Início</a></li>
-                        <li><a href="{{ url_for('estoque') }}"
-                                class="{% if request.endpoint=='estoque' %}active{% endif %}">Estoque</a></li>
-                        <li><a href="{{ url_for('client.client_list') }}"
-                                class="{% if request.endpoint and request.endpoint.startswith('client.') %}active{% endif %}">Clientes</a>
-                        </li>
-                        <li><a href="{{ url_for('calendar.calendar_page') }}"
-                                class="{% if request.endpoint and request.endpoint.startswith('calendar.') %}active{% endif %}">Google
-                                Agenda</a></li>
-                        <li><a href="{{ url_for('sessoes') }}"
-                                class="{% if request.endpoint=='sessoes' or (request.endpoint and 'sessao' in request.endpoint) %}active{% endif %}">Próximas
-                                Sessões</a></li>
-                        <li><a href="{{ url_for('financeiro') }}"
-                                class="{% if request.endpoint and request.endpoint.startswith('financeiro') %}active{% endif %}">Pagamentos</a>
-                        </li>
-                        <li><a href="{{ url_for('gastos.gastos_home') }}"
-                                class="{% if request.endpoint and request.endpoint.startswith('gastos.') %}active{% endif %}">Gastos</a>
-                        </li>
-                        <li><a href="{{ url_for('cadastro_interno') }}"
-                                class="{% if request.endpoint=='cadastro_interno' %}active{% endif %}">Artistas</a></li>
-                        <li><a href="{{ url_for('calculadora') }}"
-                                class="{% if request.endpoint=='calculadora' %}active{% endif %}">Calculadora de
-                                Porcentagem</a></li>
-                        <li><a href="{{ url_for('historico') }}"
-                                class="{% if request.endpoint=='historico' %}active{% endif %}">Histórico</a></li>
-                        <li><a href="{{ url_for('extrato') }}"
-                                class="{% if request.endpoint=='extrato' %}active{% endif %}">Extrato</a></li>
-                    </ul>
-                </nav>
-            </div>
-        </div>
-        <!-- Scripts -->
-        <script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
-        <script src="{{ url_for('static', filename='js/browser.min.js') }}"></script>
-        <script src="{{ url_for('static', filename='js/breakpoints.min.js') }}"></script>
-        <script src="{{ url_for('static', filename='js/util.js') }}"></script>
-        <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+        {% include 'partials/_sidebar.html' %}
+        <script src="{{ url_for('static', filename='js/common.js') }}"></script>
+        {% include 'partials/_base_scripts.html' %}
 
 </body>
 

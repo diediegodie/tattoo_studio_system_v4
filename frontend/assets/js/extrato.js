@@ -1,6 +1,5 @@
-// extrato.js
-// Handler for extrato.html - fetches extrato data and shows result in a modal
-document.addEventListener('DOMContentLoaded', function () {
+// Initialize extrato - check if DOM is already loaded
+function initializeExtrato() {
   const form = document.getElementById('extrato-form');
   if (!form) return;
 
@@ -284,4 +283,11 @@ document.addEventListener('DOMContentLoaded', function () {
       content.innerHTML = '<p><strong>Erro:</strong> Falha ao carregar dados do extrato.</p>';
     }
   });
-});
+}
+
+// Set up initialization immediately if DOM is ready, otherwise wait for DOMContentLoaded
+if (document.readyState === 'loading' || document.readyState === 'interactive') {
+  document.addEventListener('DOMContentLoaded', initializeExtrato);
+} else {
+  initializeExtrato();
+}

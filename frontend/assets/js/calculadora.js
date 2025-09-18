@@ -1,6 +1,5 @@
-// calculadora.js
-// Handler for calculadora.html - computes commission and shows result in a modal
-document.addEventListener('DOMContentLoaded', function () {
+// Initialize calculadora - check if DOM is already loaded
+function initializeCalculadora() {
   const form = document.getElementById('calculadora-form');
   if (!form) return;
 
@@ -99,4 +98,11 @@ document.addEventListener('DOMContentLoaded', function () {
       container.focus();
     }
   });
-});
+}
+
+// Set up initialization immediately if DOM is ready, otherwise wait for DOMContentLoaded
+if (document.readyState === 'loading' || document.readyState === 'interactive') {
+  document.addEventListener('DOMContentLoaded', initializeCalculadora);
+} else {
+  initializeCalculadora();
+}

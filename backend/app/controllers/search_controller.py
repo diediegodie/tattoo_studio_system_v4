@@ -61,7 +61,7 @@ def search_results_page():
     if not query:
         return render_template(
             "search_results.html",
-            query="",
+            search_query="",
             results={},
             total_results=0,
             error='Query parameter "q" is required',
@@ -71,7 +71,7 @@ def search_results_page():
     if len(query) > 100:
         return render_template(
             "search_results.html",
-            query=query,
+            search_query=query,
             results={},
             total_results=0,
             error="Query too long (max 100 characters)",
@@ -89,7 +89,7 @@ def search_results_page():
 
         return render_template(
             "search_results.html",
-            query=query,
+            search_query=query,
             results=results,
             total_results=total_results,
             unified_results=results.get("all_results_sorted", []),
@@ -98,7 +98,7 @@ def search_results_page():
     except Exception as e:
         return render_template(
             "search_results.html",
-            query=query,
+            search_query=query,
             results={},
             total_results=0,
             error=f"Search failed: {str(e)}",

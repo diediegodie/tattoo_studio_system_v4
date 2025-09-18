@@ -1,14 +1,6 @@
-<!DOCTYPE HTML>
-<html>
-
-<head>
-    <title>Reordenar Estoque</title>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
-    <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/x-icon">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}" />
-    <script src="{{ url_for('static', filename='js/drag_drop.js') }}" defer></script>
-</head>
+{% set page_title = 'Reordenar Estoque' %}
+{% include 'partials/_head.html' %}
+<script src="{{ url_for('static', filename='js/drag_drop.js') }}" defer></script>
 
 <body class="is-preload">
     <div id="wrapper">
@@ -55,6 +47,8 @@
             </div>
         </div>
     </div>
+    <script src="{{ url_for('static', filename='js/common.js') }}"></script>
+    {% include 'partials/_base_scripts.html' %}
 </body>
 
 </html>

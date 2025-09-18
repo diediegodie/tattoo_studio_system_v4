@@ -20,12 +20,12 @@ function confirmAction(message) {
   return Promise.resolve(true);
 }
 
-// Options toggle logic
+// Options toggle logic - use CSS classes instead of inline styles for consistency
 function toggleOptions(btn) {
   // Only show/hide .options-actions inside the Opções column for this row
   var actions = btn.parentElement.querySelector('.options-actions');
   if (actions) {
-    actions.style.display = (actions.style.display === 'none' || actions.style.display === '') ? 'inline-block' : 'none';
+    actions.classList.toggle('visible');
   }
 }
 
@@ -180,7 +180,8 @@ async function deleteGasto(id) {
 }
 
 // Initialize event listeners
-document.addEventListener('DOMContentLoaded', function() {
+// Set up event listeners - check if DOM is already loaded
+function setupEventListeners() {
   console.log('[gastos] Event delegation handlers bound');
 
   // Use event delegation for dynamically added buttons
@@ -213,4 +214,11 @@ document.addEventListener('DOMContentLoaded', function() {
       return;
     }
   });
-});
+}
+
+// Set up event listeners immediately if DOM is ready, otherwise wait for DOMContentLoaded
+if (document.readyState === 'loading' || document.readyState === 'interactive') {
+  document.addEventListener('DOMContentLoaded', setupEventListeners);
+} else {
+  setupEventListeners();
+}

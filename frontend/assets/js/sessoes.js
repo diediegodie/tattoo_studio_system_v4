@@ -361,7 +361,8 @@
   }
 
   // Wire events on DOMContentLoaded - Use event delegation for dynamic buttons
-  document.addEventListener('DOMContentLoaded', function () {
+  // Set up event listeners - check if DOM is already loaded
+  function setupEventListeners() {
     console.log('[sessoes] Event delegation handlers bound');
 
     // Use event delegation to handle dynamically added session buttons
@@ -403,9 +404,14 @@
         return;
       }
     });
-  });
+  }
 
-  // Expose for debugging
+  // Set up event listeners immediately if DOM is ready, otherwise wait for DOMContentLoaded
+  if (document.readyState === 'loading' || document.readyState === 'interactive') {
+    document.addEventListener('DOMContentLoaded', setupEventListeners);
+  } else {
+    setupEventListeners();
+  }
   window.sessoesClient = sessoesClient;
   window.sessoesHelpers = { deleteSessao, editSessao, finalizarSessao };
 

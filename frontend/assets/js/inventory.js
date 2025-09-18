@@ -341,15 +341,57 @@ document.addEventListener('DOMContentLoaded', function() {
     // Locker button
     document.getElementById('lock-toggle').onclick = toggleLockMode;
     // Delegate clicks for quantity buttons (works for server-rendered and JS-rendered rows)
-    document.querySelector('.table-wrapper').addEventListener('click', function(e) {
+    document.addEventListener('click', function(e) {
         const btn = e.target.closest('.btn-up, .btn-down');
         if (!btn) return;
         e.preventDefault();
+        e.stopPropagation();
         const id = btn.getAttribute('data-id');
         const delta = parseInt(btn.getAttribute('data-delta') || '0', 10);
-        if (id) changeQuantity(id, delta);
+        if (id && delta !== 0) {
+            console.log(`🔢 Botão quantidade clicado: ID=${id}, Delta=${delta}`);
+            changeQuantity(id, delta);
+        }
     });
-    // No need for event delegation, all handlers are attached in renderInventory
+    // Delegate clicks for options, edit, and delete buttons
+    document.addEventListener('click', function(e) {
+        const optionsBtn = e.target.closest('.options-btn');
+        if (optionsBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('🔽 Botão opções clicado');
+            toggleOptions(optionsBtn);
+            return;
+        }
+        const editBtn = e.target.closest('.edit-item-btn');
+        if (editBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            const row = editBtn.closest('tr');
+            const id = row ? row.getAttribute('data-id') : editBtn.getAttribute('data-id');
+            if (id) {
+                console.log(`✏️ Botão editar clicado: ID=${id}`);
+                editItem(id);
+            } else {
+                console.error('❌ ID não encontrado para botão editar');
+            }
+            return;
+        }
+        const deleteBtn = e.target.closest('.delete-item-btn');
+        if (deleteBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            const row = deleteBtn.closest('tr');
+            const id = row ? row.getAttribute('data-id') : deleteBtn.getAttribute('data-id');
+            if (id) {
+                console.log(`🗑️ Botão excluir clicado: ID=${id}`);
+                deleteItem(id);
+            } else {
+                console.error('❌ ID não encontrado para botão excluir');
+            }
+            return;
+        }
+    });
     updateLockerControls();
 
     // Intercept add item form (on /estoque/novo) and submit via fetch to insert locally
