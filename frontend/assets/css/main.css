@@ -1353,3 +1353,273 @@ button.primary:active,
     padding: 50px;
     color: #666;
 }
+
+/* Details rows visibility */
+.details-row {
+    display: none;
+}
+
+.details-row.visible {
+    display: table-row;
+}
+
+/* ========================================
+   LAYOUT UTILITY CLASSES
+   Added to replace inline styles across templates
+   ======================================== */
+
+/* Header Controls - Top-right absolute positioned controls */
+.header-controls {
+    position: absolute;
+    top: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+}
+
+/* Flex Layout Utilities */
+.flex-between {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1em;
+}
+
+.flex-gap-small {
+    display: flex;
+    gap: 8px;
+    margin-left: auto;
+}
+
+.flex-form-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1em;
+}
+
+.flex-form-field {
+    flex: 1 1 200px;
+    min-width: 180px;
+}
+
+.full-width-field {
+    flex: 1 1 100%;
+    min-width: 180px;
+}
+
+.form-container {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+/* Float Utilities */
+.float-right {
+    float: right;
+    margin-right: 10px;
+}
+
+/* Spacing Utilities */
+.mb-1 {
+    margin-bottom: 1em;
+}
+
+.ml-auto {
+    margin-left: auto;
+}
+
+.ml-small {
+    margin-left: 0.75em;
+}
+
+/* Text Utilities */
+.text-muted {
+    color: #666;
+}
+
+/* Width Utilities */
+.full-width {
+    width: 100%;
+}
+
+/* Visibility Utilities */
+.hidden {
+    display: none;
+}
+
+.hidden-with-margin {
+    display: none;
+    margin-left: 0.75em;
+}
+
+/* Button Layout Utilities */
+.login-button-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+/* Button Style Utilities */
+.button-success-outline {
+    background: none !important;
+    background-color: transparent !important;
+    background-image: none !important;
+    border: 1px solid #28a745 !important;
+    color: #28a745 !important;
+    box-shadow: none !important;
+}
+
+/* Form Button Layout */
+.form-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 1em;
+    margin-top: 2em;
+}
+
+/* Form Container Utilities */
+.form-box {
+    max-width: 400px;
+    margin: 0 auto;
+}
+
+.form-box-wide {
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+/* Input Utilities */
+.input-full-mb {
+    width: 100%;
+    margin-bottom: 1em;
+}
+
+/* Actions Utilities */
+.actions-center {
+    justify-content: center;
+}
+
+/* Message Container */
+.message-container {
+    margin-top: 1em;
+    text-align: center;
+}
+
+/* Section Utilities */
+.section-top-margin {
+    margin-top: 3em;
+}
+
+/* Button Spacing */
+.btn-margin-right {
+    margin-right: 0.5em;
+}
+
+/* Modal Utilities */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.7);
+    z-index: 1000;
+}
+
+.modal-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    padding: 2em;
+    border-radius: 8px;
+    max-width: 500px;
+    width: 90%;
+}
+
+/* Text Alignment */
+.text-right {
+    text-align: right;
+}
+
+.text-center {
+    text-align: center;
+}
+
+/* Margin Utilities */
+.mt-1 {
+    margin-top: 1em;
+}
+
+/* ========================================
+   ADDITIONAL UTILITY CLASSES
+   Added to replace remaining inline styles
+   ======================================== */
+
+/* Form Container Utilities */
+.form-container-narrow {
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+/* Debug Utilities */
+.debug-box {
+    background: #f8f8f8;
+    border: 1px solid #eee;
+    padding: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.debug-pre {
+    white-space: pre-wrap;
+}
+
+/* HR Utilities */
+.hr-separator {
+    margin: 2em 0;
+    border: none;
+    height: 1px;
+    background-color: #ddd;
+}
+
+/* Additional Cadastro Interno Utilities */
+.cadastro-modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.7);
+    z-index: 1000;
+}
+
+.cadastro-modal-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    padding: 2em;
+    border-radius: 8px;
+    max-width: 500px;
+    width: 90%;
+}
+
+/* Helper Text */
+.help-text {
+    display: block;
+    color: #666;
+    margin-top: 0.25rem;
+}
+
+/* Textarea Utilities */
+.textarea-full {
+    width: 100%;
+    resize: vertical;
+}

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Test Estoque Buttons</title>
+    <style>
+        .options-actions {
+            display: none;
+        }
+
+        .visible {
+            display: inline-block !important;
+        }
+
+        .button {
+            padding: 5px 10px;
+            margin: 2px;
+            border: 1px solid #ccc;
+            background: #f0f0f0;
+            cursor: pointer;
+        }
+
+        .small {
+            font-size: 12px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Test Estoque Button Functionality</h1>
+
+    <div class="table-wrapper">
+        <table>
+            <tbody>
+                <tr data-id="1">
+                    <td>Test Item 1</td>
+                    <td>5</td>
+                    <td>Test notes</td>
+                    <td>
+                        <button class="button small options-btn" onclick="toggleOptions(this)">Opções</button>
+                        <span class="options-actions">
+                            <button class="button small edit-item-btn" data-id="1">Editar</button>
+                            <button class="button small delete-item-btn" data-id="1">Excluir</button>
+                        </span>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div id="log"></div>
+
+    <script src="/static/js/common.js"></script>
+    <script>
+        // Mock functions for testing
+        window.editItem = function (id) {
+            log('Edit item called with ID: ' + id);
+        };
+
+        window.deleteItem = function (id) {
+            log('Delete item called with ID: ' + id);
+        };
+
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            logDiv.innerHTML += '<p>' + new Date().toLocaleTimeString() + ': ' + message + '</p>';
+        }
+
+        // Test the event delegation
+        document.querySelector('.table-wrapper').addEventListener('click', function (e) {
+            const editBtn = e.target.closest('.edit-item-btn');
+            if (editBtn) {
+                e.preventDefault();
+                const row = editBtn.closest('tr');
+                const id = row ? row.getAttribute('data-id') : null;
+                if (id) window.editItem(id);
+                return;
+            }
+
+            const deleteBtn = e.target.closest('.delete-item-btn');
+            if (deleteBtn) {
+                e.preventDefault();
+                const row = deleteBtn.closest('tr');
+                const id = row ? row.getAttribute('data-id') : null;
+                if (id) window.deleteItem(id);
+                return;
+            }
+        });
+
+        log('Test page loaded. Click the buttons to test functionality.');
+    </script>
+</body>
+
+</html>

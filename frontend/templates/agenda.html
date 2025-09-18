@@ -1,35 +1,11 @@
-<!DOCTYPE HTML>
-<html>
-
-<head>
-    <title>Agenda - Alma Negra System</title>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
-    <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/x-icon">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}" />
-
-</head>
+{% set page_title = 'Agenda - Alma Negra System' %}
+{% include 'partials/_head.html' %}
 
 <body class="is-preload">
-
-    <!-- Wrapper -->
+    {% include 'partials/_flash_messages.html' %}
     <div id="wrapper">
-
-        <!-- Main -->
         <div id="main">
             <div class="inner">
-
-                <!-- Flash Messages -->
-                {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                <div class="flash-messages">
-                    {% for category, message in messages %}
-                    <div class="flash-message {{ category }}">{{ message }}</div>
-                    {% endfor %}
-                </div>
-                {% endif %}
-                {% endwith %}
-
                 <!-- Header -->
                 <header id="header">
                     <a href="#" class="logo"><strong>Google</strong> Agenda</a>
@@ -62,33 +38,27 @@
                                     <span class="client-name"><strong>{{ event.title or 'Evento sem título'
                                             }}</strong></span>
                                     <br>
-                                    <small style="color: #666;">{{ event.start_time.strftime('%d/%m/%Y às %H:%M') if
+                                    <small class="text-muted">{{ event.start_time.strftime('%d/%m/%Y às %H:%M') if
                                         event.start_time else 'Data não definida' }}</small>
                                 </td>
                                 <td>
                                     {% if event.google_event_id in events_with_sessions %}
-                                    <a href="{{ url_for('sessoes.list_sessoes') }}" class="button small options-btn"
-                                        style="float: right; margin-right: 10px;
-                                            background: none !important;
-                                            background-color: transparent !important;
-                                            background-image: none !important;
-                                            border: 1px solid #28a745 !important;
-                                            color: #28a745 !important;
-                                            box-shadow: none !important;" onclick="event.stopPropagation();">
+                                    <a href="{{ url_for('sessoes.list_sessoes') }}"
+                                        class="button small options-btn float-right button-success-outline"
+                                        onclick="event.stopPropagation();">
                                         Sessão criada
                                     </a>
 
 
                                     {% else %}
                                     <a href="{{ url_for('sessoes.nova_sessao') }}?event_id={{ event.google_event_id or event.id or loop.index }}"
-                                        class="button small options-btn" style="float: right; margin-right: 10px;"
-                                        onclick="event.stopPropagation();">
+                                        class="button small options-btn float-right" onclick="event.stopPropagation();">
                                         Criar Sessão
                                     </a>
                                     {% endif %}
                                 </td>
                             </tr>
-                            <tr id="details-{{ loop.index }}" class="client-details-row" style="display:none;">
+                            <tr id="details-{{ loop.index }}" class="client-details-row details-row">
                                 <td colspan="2">
                                     <table class="client-table">
                                         <tbody>
@@ -154,90 +124,12 @@
                 </section>
             </div>
         </div>
-
         <!-- Sidebar -->
-        <div id="sidebar" class="inactive">
-            <div class="toggle"></div>
-            <div class="inner">
-
-                <!-- Search -->
-                <section id="search" class="alt">
-                    <form method="get" action="{{ url_for('search.search_results_page') }}">
-                        <input type="text" name="q" id="query" placeholder="Buscar cliente ou artista..." required />
-                        <button type="submit" style="display: none;"></button>
-                    </form>
-                </section>
-
-                <!-- Menu -->
-                <nav id="menu">
-                    <header class="major">
-                        <h2>Menu</h2>
-                    </header>
-                    <ul>
-                        <li><a href="{{ url_for('index') }}"
-                                class="{% if request.endpoint=='index' %}active{% endif %}">Início</a></li>
-                        <li><a href="{{ url_for('estoque') }}"
-                                class="{% if request.endpoint=='estoque' %}active{% endif %}">Estoque</a></li>
-                        <li><a href="{{ url_for('client.client_list') }}"
-                                class="{% if request.endpoint and request.endpoint.startswith('client.') %}active{% endif %}">Clientes</a>
-                        </li>
-                        <li><a href="{{ url_for('calendar.calendar_page') }}"
-                                class="{% if request.endpoint and request.endpoint.startswith('calendar.') %}active{% endif %}">Google
-                                Agenda</a></li>
-                        <li><a href="{{ url_for('sessoes') }}"
-                                class="{% if request.endpoint=='sessoes' or (request.endpoint and 'sessao' in request.endpoint) %}active{% endif %}">Próximas
-                                Sessões</a></li>
-                        <li><a href="{{ url_for('financeiro') }}"
-                                class="{% if request.endpoint and request.endpoint.startswith('financeiro') %}active{% endif %}">Pagamentos</a>
-                        </li>
-                        <li><a href="{{ url_for('gastos.gastos_home') }}"
-                                class="{% if request.endpoint and request.endpoint.startswith('gastos.') %}active{% endif %}">Gastos</a>
-                        </li>
-                        <li><a href="{{ url_for('cadastro_interno') }}"
-                                class="{% if request.endpoint=='cadastro_interno' %}active{% endif %}">Artistas</a></li>
-                        <li><a href="{{ url_for('calculadora') }}"
-                                class="{% if request.endpoint=='calculadora' %}active{% endif %}">Calculadora de
-                                Porcentagem</a></li>
-                        <li><a href="{{ url_for('historico') }}"
-                                class="{% if request.endpoint=='historico' %}active{% endif %}">Histórico</a></li>
-                        <li><a href="{{ url_for('extrato') }}"
-                                class="{% if request.endpoint=='extrato' %}active{% endif %}">Extrato</a></li>
-                    </ul>
-                </nav>
-            </div>
-        </div>
+        {% include 'partials/_sidebar.html' %}
     </div>
 
-    <!-- Scripts -->
-    <script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/browser.min.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/breakpoints.min.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/util.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
-
-    <script>
-        function toggleDetails(id) {
-            var row = document.getElementById(id);
-            if (row.style.display === "none" || row.style.display === "") {
-                row.style.display = "table-row";
-            } else {
-                row.style.display = "none";
-            }
-        }
-
-        function toggleOptions(btn) {
-            var actions = btn.parentElement.querySelector('.options-actions');
-            if (actions) {
-                actions.style.display = (actions.style.display === 'none' || actions.style.display === '') ? 'inline-block' : 'none';
-            }
-        }
-
-        document.querySelectorAll('.options-btn, .options-actions button').forEach(btn => {
-            btn.addEventListener('click', function (e) {
-                e.stopPropagation();
-            });
-        });
-    </script>
+    <script src="{{ url_for('static', filename='js/common.js') }}"></script>
+    {% include 'partials/_base_scripts.html' %}
 
 </body>
 

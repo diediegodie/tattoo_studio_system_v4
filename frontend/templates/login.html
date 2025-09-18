@@ -1,37 +1,15 @@
-<!DOCTYPE HTML>
-<html>
-
-<head>
-    <title>Login - Alma Negra</title>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
-    <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/x-icon">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}" />
-
-</head>
+{% set page_title = 'Login - Alma Negra' %}
+{% include 'partials/_head.html' %}
 
 <body class="is-preload">
-    <!-- Wrapper -->
+    {% include 'partials/_flash_messages.html' %}
     <div id="wrapper">
-        <!-- Main -->
         <div id="main">
             <div class="inner">
-                <!-- Flash Messages -->
-                {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                <div class="flash-messages">
-                    {% for category, message in messages %}
-                    <div class="flash-message {{ category }}">{{ message }}</div>
-                    {% endfor %}
-                </div>
-                {% endif %}
-                {% endwith %}
-
                 <!-- Header com botões alinhados -->
-                <header id="header"
-                    style="display: flex; align-items: center; justify-content: center; gap: 2rem; margin-bottom: 2rem;">
+                <header id="header" class="login-button-container">
                     <a href="#" class="logo"><strong>Login</strong> com Google</a>
-                    <a href="{{ url_for('google_login') }}" class="button primary" style="font-size: 1em;">
+                    <a href="{{ url_for('google_login') }}" class="button primary">
                         <i class="fab fa-google"></i> Entrar com Google
                     </a>
                 </header>
@@ -47,12 +25,8 @@
             </div>
         </div>
     </div>
-    <!-- Scripts -->
-    <script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/browser.min.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/breakpoints.min.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/util.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/common.js') }}"></script>
+    {% include 'partials/_base_scripts.html' %}
 </body>
 
 </html>

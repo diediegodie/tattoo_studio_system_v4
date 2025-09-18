@@ -28,7 +28,8 @@ class JotFormService(IJotFormService):
         url = f"{self.base_url}/form/{self.form_id}/submissions?apiKey={self.api_key}"
 
         try:
-            response = requests.get(url)
+            # FIXED: Add timeout to prevent hanging requests
+            response = requests.get(url, timeout=30)
             response.raise_for_status()
 
             data = response.json()

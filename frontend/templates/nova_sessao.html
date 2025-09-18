@@ -1,13 +1,5 @@
-<!DOCTYPE HTML>
-<html>
-
-<head>
-    <title>Nova Sessão</title>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
-    <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/x-icon">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}" />
-</head>
+{% set page_title = 'Nova Sessão' %}
+{% include 'partials/_head.html' %}
 
 <body class="is-preload">
     <div id="wrapper">
@@ -22,47 +14,45 @@
                         <!-- REMOVE CSS INLINE - USE EXISTING CLASSES, CHECK OTHER HTML PAGES -->
                     </header>
                     <form method="post" action="{{ url_for('sessoes.nova_sessao') }}" class="form">
-                        <div style="max-width:600px;margin:0 auto;">
-                            <div style="display:flex;flex-wrap:wrap;gap:1em;">
-                                <div style="flex:1 1 200px;min-width:180px;">
+                        <div class="form-container">
+                            <div class="flex-form-row">
+                                <div class="flex-form-field">
                                     <label for="data">Data</label>
-                                    <input type="date" name="data" id="data" required style="width:100%;" {% if event
-                                        and event.start_time %}value="{{ event.start_time.strftime('%Y-%m-%d') }}" {%
-                                        endif %}>
-                                </div>
-                                <div style="flex:1 1 200px;min-width:180px;">
-                                    <label for="hora">Hora</label>
-                                    <input type="time" name="hora" id="hora" required style="width:100%;" {% if event
-                                        and event.start_time %}value="{{ event.start_time.strftime('%H:%M') }}" {% endif
+                                    <input type="date" name="data" id="data" required class="full-width" {% if event and
+                                        event.start_time %}value="{{ event.start_time.strftime('%Y-%m-%d') }}" {% endif
                                         %}>
                                 </div>
-                                <div style="flex:1 1 200px;min-width:180px;">
+                                <div class="flex-form-field">
+                                    <label for="hora">Hora</label>
+                                    <input type="time" name="hora" id="hora" required class="full-width" {% if event and
+                                        event.start_time %}value="{{ event.start_time.strftime('%H:%M') }}" {% endif %}>
+                                </div>
+                                <div class="flex-form-field">
                                     <label for="cliente_id">Cliente</label>
-                                    <select name="cliente_id" id="cliente_id" required style="width:100%;">
+                                    <select name="cliente_id" id="cliente_id" required class="full-width">
                                         <option value="">Selecione...</option>
                                         {% for client in clients %}
                                         <option value="{{ client.id }}">{{ client.name }}</option>
                                         {% endfor %}
                                     </select>
                                 </div>
-                                <div style="flex:1 1 200px;min-width:180px;">
+                                <div class="flex-form-field">
                                     <label for="artista_id">Artista</label>
-                                    <select name="artista_id" id="artista_id" required style="width:100%;">
+                                    <select name="artista_id" id="artista_id" required class="full-width">
                                         <option value="">Selecione...</option>
                                         {% for artist in artists %}
                                         <option value="{{ artist.id }}">{{ artist.name }}</option>
                                         {% endfor %}
                                     </select>
                                 </div>
-                                <div style="flex:1 1 200px;min-width:180px;">
+                                <div class="flex-form-field">
                                     <label for="valor">Valor</label>
                                     <input type="number" name="valor" id="valor" step="0.01" min="0" required
-                                        style="width:100%;">
+                                        class="full-width">
                                 </div>
-                                <div style="flex:1 1 100%;min-width:180px;">
+                                <div class="flex-form-field full-width-field">
                                     <label for="observacoes">Observações</label>
-                                    <textarea name="observacoes" id="observacoes" rows="3"
-                                        style="width:100%;resize:vertical;">{% if event %}{% if event_title_with_suffix %}{{ event_title_with_suffix }}{% else %}{{ event.title }}{% endif %}{% if event.description %}
+                                    <textarea name="observacoes" id="observacoes" rows="3" class="full-width">{% if event %}{% if event_title_with_suffix %}{{ event_title_with_suffix }}{% else %}{{ event.title }}{% endif %}{% if event.description %}
 
 {{ event.description }}{% endif %}{% endif %}</textarea>
                                 </div>
@@ -72,7 +62,7 @@
                                 <input type="hidden" name="google_event_id" value="{{ event.google_event_id }}">
                                 {% endif %}
                             </div>
-                            <div style="display:flex;justify-content:center;gap:1em;margin-top:2em;">
+                            <div class="form-buttons">
                                 <button type="submit" class="button primary">Salvar</button>
                                 <a href="{{ url_for('sessoes') }}" class="button">Cancelar</a>
                             </div>
@@ -81,58 +71,10 @@
                 </section>
             </div>
         </div>
-        <div id="sidebar" class="inactive">
-            <div class="toggle"></div>
-            <div class="inner">
-                <section id="search" class="alt">
-                    <form method="get" action="{{ url_for('search.search_results_page') }}">
-                        <input type="text" name="q" id="query" placeholder="Buscar cliente ou artista..." required />
-                        <button type="submit" style="display: none;"></button>
-                    </form>
-                </section>
-                <nav id="menu">
-                    <header class="major">
-                        <h2>Menu</h2>
-                    </header>
-                    <ul>
-                        <li><a href="{{ url_for('index') }}"
-                                class="{% if request.endpoint=='index' %}active{% endif %}">Início</a></li>
-                        <li><a href="{{ url_for('estoque') }}"
-                                class="{% if request.endpoint=='estoque' %}active{% endif %}">Estoque</a></li>
-                        <li><a href="{{ url_for('client.client_list') }}"
-                                class="{% if request.endpoint and request.endpoint.startswith('client.') %}active{% endif %}">Clientes</a>
-                        </li>
-                        <li><a href="{{ url_for('calendar.calendar_page') }}"
-                                class="{% if request.endpoint and request.endpoint.startswith('calendar.') %}active{% endif %}">Google
-                                Agenda</a></li>
-                        <li><a href="{{ url_for('sessoes') }}"
-                                class="{% if request.endpoint=='sessoes' or (request.endpoint and 'sessao' in request.endpoint) %}active{% endif %}">Próximas
-                                Sessões</a></li>
-                        <li><a href="{{ url_for('financeiro') }}"
-                                class="{% if request.endpoint and request.endpoint.startswith('financeiro') %}active{% endif %}">Pagamentos</a>
-                        </li>
-                        <li><a href="{{ url_for('gastos.gastos_home') }}"
-                                class="{% if request.endpoint and request.endpoint.startswith('gastos.') %}active{% endif %}">Gastos</a>
-                        </li>
-                        <li><a href="{{ url_for('cadastro_interno') }}"
-                                class="{% if request.endpoint=='cadastro_interno' %}active{% endif %}">Artistas</a></li>
-                        <li><a href="{{ url_for('calculadora') }}"
-                                class="{% if request.endpoint=='calculadora' %}active{% endif %}">Calculadora de
-                                Porcentagem</a></li>
-                        <li><a href="{{ url_for('historico') }}"
-                                class="{% if request.endpoint=='historico' %}active{% endif %}">Histórico</a></li>
-                        <li><a href="{{ url_for('extrato') }}"
-                                class="{% if request.endpoint=='extrato' %}active{% endif %}">Extrato</a></li>
-                    </ul>
-                </nav>
-            </div>
-        </div>
+        {% include 'partials/_sidebar.html' %}
     </div>
-    <script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/browser.min.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/breakpoints.min.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/util.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/common.js') }}"></script>
+    {% include 'partials/_base_scripts.html' %}
 </body>
 
 </html>

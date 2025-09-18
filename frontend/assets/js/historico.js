@@ -216,8 +216,8 @@
     await performDeletion(`/historico/api/comissao/${id}`, id, 'com', 'Comissão excluída.', 'Erro ao excluir comissão.');
   }
 
-  // Attach handlers on DOMContentLoaded - Use event delegation for dynamic buttons
-  document.addEventListener('DOMContentLoaded', function () {
+  // Attach handlers - check if DOM is already loaded
+  function setupEventListeners() {
     // Prevent multiple attachments if this script is executed more than once
     if (document.body._historicoBound) return;
     document.body._historicoBound = true;
@@ -289,6 +289,13 @@
         }
       }
     });
-  });
+  }
+
+  // Set up event listeners immediately if DOM is ready, otherwise wait for DOMContentLoaded
+  if (document.readyState === 'loading' || document.readyState === 'interactive') {
+    document.addEventListener('DOMContentLoaded', setupEventListeners);
+  } else {
+    setupEventListeners();
+  }
 
 })(typeof window !== 'undefined' ? window : this);

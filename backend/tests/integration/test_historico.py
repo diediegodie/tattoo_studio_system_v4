@@ -261,16 +261,21 @@ class TestHistoricoEndpoint:
             assert totals["receita_liquida"] == 1000.00
 
     def test_only_sessions_no_commissions(self, app, db_session):
-        """Test edge case: only sessions, no commissions."""
+        """Test edge case: only sessions, no commissions.
+
+        FIXED: Sessions without payments should not count as revenue.
+        Revenue represents actual money collected, not potential income.
+        """
         with app.app_context():
             test_data = {"sessions": [{"valor": 750.00}]}
             self._create_test_data_current_month(db_session, test_data)
 
             totals = get_current_month_totals(db_session)
 
-            assert totals["receita_total"] == 750.00
+            # CORRECTED: Sessions without payments = 0 revenue (no actual money received)
+            assert totals["receita_total"] == 0.00
             assert totals["comissoes_total"] == 0.00
-            assert totals["receita_liquida"] == 750.00
+            assert totals["receita_liquida"] == 0.00
 
     def test_negative_net_revenue(self, app, db_session):
         """Test edge case: commissions exceed revenue (negative net revenue)."""

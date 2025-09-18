@@ -1,7 +1,5 @@
-// DRAG_DROP.JS - Drag & Drop reordering for inventory table
-console.log('🟦 DRAG_DROP.JS CARREGADO');
-
-document.addEventListener('DOMContentLoaded', function() {
+// Initialize drag and drop - check if DOM is already loaded
+function initializeDragDrop() {
     const tbody = document.querySelector('.table-wrapper table tbody');
     if (!tbody) return;
 
@@ -80,4 +78,11 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .catch((err) => { console.error('Drag-drop submit error', err); if (window.showToast) window.showToast('Erro na requisição.', 'error'); });
     });
-});
+}
+
+// Set up initialization immediately if DOM is ready, otherwise wait for DOMContentLoaded
+if (document.readyState === 'loading' || document.readyState === 'interactive') {
+  document.addEventListener('DOMContentLoaded', initializeDragDrop);
+} else {
+  initializeDragDrop();
+}
