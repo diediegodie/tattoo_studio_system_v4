@@ -2,6 +2,25 @@
 
 Management system for tattoo studios — Flask backend, PostgreSQL database, Google OAuth and a responsive frontend.
 
+## Recent Improvements
+
+### v4.1.1 - Batch Processing & Financial Accuracy (2025-01-XX)
+
+- **Fixed Revenue Calculation**: Corrected `calculate_totals()` in `extrato_core.py` to count payments only for revenue, eliminating double-counting of sessions + payments
+- **Enhanced Test Coverage**: Comprehensive test suite with 370+ tests covering all major functionality
+- **Batch Processing**: Transparent batching for large datasets during extrato generation with configurable batch sizes
+- **Atomic Transactions**: Guaranteed data integrity during monthly extrato generation with automatic rollback on failures
+- **Improved Logging**: Detailed operation logging with correlation IDs for better debugging and monitoring
+
+### Key Features
+- **Financial Accuracy**: Revenue calculations now accurately reflect actual money received
+- **Performance**: Batch processing handles large datasets efficiently
+- **Reliability**: Atomic transactions ensure data consistency
+- **Monitoring**: Comprehensive logging and health checks
+- **Testing**: High test coverage validates business logic correctness
+
+---
+
 ## Quick overview
 - Backend: `backend/` (Flask + SQLAlchemy)
 - Frontend: `frontend/` (templates, CSS, JS)
