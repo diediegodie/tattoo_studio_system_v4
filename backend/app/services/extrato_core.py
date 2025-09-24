@@ -6,26 +6,19 @@ including data querying, serialization, calculation, and validation.
 """
 
 import json
-import os
 import logging
+import os
 import uuid
 from datetime import datetime, timedelta
 from logging.handlers import RotatingFileHandler
-from typing import Optional, List, Tuple, Any
-from sqlalchemy.orm import joinedload
+from typing import Any, List, Optional, Tuple
+
+from app.db.base import (Client, Comissao, Extrato, ExtratoRunLog, Gasto,
+                         Pagamento, Sessao, User)
 from app.db.session import SessionLocal
-from app.db.base import (
-    Pagamento,
-    Sessao,
-    Comissao,
-    Extrato,
-    Client,
-    User,
-    ExtratoRunLog,
-    Gasto,
-)
-from app.services.undo_service import UndoService
 from app.services.backup_service import BackupService
+from app.services.undo_service import UndoService
+from sqlalchemy.orm import joinedload
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -193,7 +186,53 @@ def serialize_data(pagamentos, sessoes, comissoes, gastos):
 
 
 def calculate_totals(pagamentos_data, sessoes_data, comissoes_data, gastos_data=None):
-    """Calculate totals including despesas if provided."""
+    """
+    Calculate comprehensive financial totals for extrato generation.
+
+    This function computes all financial metrics for a given month's extrato,
+    including revenue, commissions, expenses, and detailed breakdowns. It ensures
+    accurate financial reporting by avoiding double-counting of revenue from both
+    sessions and payments.
+
+    Args:
+        pagamentos_data (list): List of payment dictionaries with keys:
+            - 'valor': Payment amount (float)
+            - 'artista_name': Artist name (str)
+            - 'forma_pagamento': Payment method (str)
+            - 'sessao_data': Session date if linked to session (str, optional)
+        sessoes_data (list): List of session dictionaries with keys:
+            - 'valor': Session value (float)
+            - 'artista_name': Artist name (str)
+            - 'data': Session date (str)
+        comissoes_data (list): List of commission dictionaries with keys:
+            - 'valor': Commission amount (float)
+            - 'artista_name': Artist name (str)
+        gastos_data (list, optional): List of expense dictionaries with keys:
+            - 'valor': Expense amount (float)
+            - 'forma_pagamento': Payment method (str, optional)
+            - 'categoria': Expense category (str, optional)
+
+    Returns:
+        dict: Comprehensive financial summary containing:
+            - 'receita_total': Total revenue from payments only (float)
+            - 'comissoes_total': Total commissions paid (float)
+            - 'despesas_total': Total expenses (float)
+            - 'saldo': Net balance (receita - despesas) (float)
+            - 'receita_liquida': Net revenue after commissions and expenses (float)
+            - 'por_artista': List of dicts with artist breakdowns:
+                [{'artista': str, 'receita': float, 'comissao': float}, ...]
+            - 'por_forma_pagamento': List of dicts with payment method breakdowns:
+                [{'forma': str, 'total': float}, ...]
+            - 'gastos_por_forma_pagamento': List of dicts with expense payment methods:
+                [{'forma': str, 'total': float}, ...]
+            - 'gastos_por_categoria': List of dicts with expense categories:
+                [{'categoria': str, 'total': float}, ...]
+
+    Note:
+        Revenue calculation was fixed to count payments only, avoiding double-counting
+        that occurred when both sessions and payments were included. This ensures
+        accurate financial reporting based on actual money received.
+    """
     import os
 
     gastos_data = gastos_data or []
@@ -209,34 +248,81 @@ def calculate_totals(pagamentos_data, sessoes_data, comissoes_data, gastos_data=
         logger.info(
             f"HISTORICO_DEBUG: calculate_totals - receita_total:{receita_total} comissoes_total:{comissoes_total} despesas_total:{despesas_total}"
         )
+        logger.info(
+            f"HISTORICO_DEBUG: Input data counts - payments:{len(pagamentos_data)} sessions:{len(sessoes_data)} commissions:{len(comissoes_data)}"
+        )
 
     # ...existing code...
 
-    # Por artista
+    # Por artista - Only include artists with actual participation (sessions or commissions)
     artistas = {}
+
+    # First, collect sessions that have linked payments to avoid double counting
+    sessions_with_payments = set()
+    for p in pagamentos_data:
+        if p.get("sessao_data"):  # Payment is linked to a session
+            sessions_with_payments.add(p["sessao_data"])
+
+    # Collect active artists (those with payments, unpaid sessions, or commissions)
+    active_artists = set()
+
+    # Artists with payments
+    for p in pagamentos_data:
+        if p["artista_name"]:
+            active_artists.add(p["artista_name"])
+
+    # Artists with unpaid sessions (sessions not linked to payments)
+    for s in sessoes_data:
+        if s["artista_name"] and s["data"] not in sessions_with_payments:
+            active_artists.add(s["artista_name"])
+
+    # Artists with commissions
+    for c in comissoes_data:
+        if c["artista_name"]:
+            active_artists.add(c["artista_name"])
+
+    # Initialize active artists with zero values
+    for artista in active_artists:
+        artistas[artista] = {"receita": 0, "comissao": 0}
+
+    # Calculate receita from payments (actual money received)
     for p in pagamentos_data:
         artista = p["artista_name"]
-        if artista:
-            if artista not in artistas:
-                artistas[artista] = {"receita": 0, "comissao": 0}
+        if artista and artista in active_artists:
             artistas[artista]["receita"] += p["valor"]
 
+    # Calculate receita from unpaid sessions only (to avoid double counting)
     for s in sessoes_data:
         artista = s["artista_name"]
-        if artista:
-            if artista not in artistas:
-                artistas[artista] = {"receita": 0, "comissao": 0}
+        # Only count sessions that don't have a linked payment
+        if (
+            artista
+            and artista in active_artists
+            and s["data"] not in sessions_with_payments
+        ):
             artistas[artista]["receita"] += s["valor"]
 
+    # Calculate commissions for active artists
     for c in comissoes_data:
         artista = c["artista_name"]
-        if artista and artista in artistas:
+        if artista and artista in active_artists:
             artistas[artista]["comissao"] += c["valor"]
 
     por_artista = [
         {"artista": k, "receita": v["receita"], "comissao": v["comissao"]}
         for k, v in artistas.items()
     ]
+
+    # Debug logging for artist calculations
+    if os.getenv("HISTORICO_DEBUG", "").lower() in ("1", "true", "yes"):
+        logger.info(f"HISTORICO_DEBUG: Active artists found: {active_artists}")
+        logger.info(
+            f"HISTORICO_DEBUG: Sessions with payments: {sessions_with_payments}"
+        )
+        for artist_data in por_artista:
+            logger.info(
+                f"HISTORICO_DEBUG: Artist {artist_data['artista']}: Receita R${artist_data['receita']}, Comissão R${artist_data['comissao']}"
+            )
 
     # Por forma de pagamento (receitas)
     formas = {}
@@ -269,7 +355,13 @@ def calculate_totals(pagamentos_data, sessoes_data, comissoes_data, gastos_data=
     ]
 
     saldo = receita_total - despesas_total  # commissions shown separately
-    receita_liquida = receita_total - comissoes_total  # for UI display
+    receita_liquida = receita_total - comissoes_total - despesas_total  # for UI display
+
+    # Debug logging for net revenue calculation
+    if os.getenv("HISTORICO_DEBUG", "").lower() in ("1", "true", "yes"):
+        logger.info(
+            f"HISTORICO_DEBUG: Net Revenue Calculation -> Receita Bruta: {receita_total}, Comissões: {comissoes_total}, Gastos: {despesas_total}, Receita Líquida: {receita_liquida}"
+        )
 
     return {
         "receita_total": receita_total,
@@ -469,9 +561,24 @@ def delete_historical_records_atomic(
 
 
 def _log_extrato_run(mes, ano, status, message=None):
-    """Log an extrato generation run to the database."""
-    from app.db.session import SessionLocal
+    """
+    Log an extrato generation run to the database for audit purposes.
+
+    This internal function records the outcome of extrato generation attempts,
+    including success/failure status and optional error messages.
+
+    Args:
+        mes (int): Month of the extrato generation (1-12)
+        ano (int): Year of the extrato generation
+        status (str): Status of the run ('success', 'failed', 'partial', etc.)
+        message (str, optional): Additional message or error details
+
+    Note:
+        This function creates its own database session and handles errors gracefully
+        to avoid interfering with the main extrato generation process.
+    """
     from app.db.base import ExtratoRunLog
+    from app.db.session import SessionLocal
 
     db = SessionLocal()
     try:
@@ -485,10 +592,17 @@ def _log_extrato_run(mes, ano, status, message=None):
 
 
 def current_month_range():
-    """Compute start and end datetime for the current month (server-local time).
+    """
+    Compute start and end datetime for the current month in server-local time.
 
-    Returns (start_date, end_date) as naive datetime objects.
-    TODO: Consider timezone handling if app spans multiple timezones.
+    Returns:
+        tuple: (start_date, end_date) as naive datetime objects representing
+               the first day of the current month at 00:00:00 and the first day
+               of the next month at 00:00:00.
+
+    Note:
+        Returns naive datetime objects. Consider timezone handling if the
+        application spans multiple timezones.
     """
     from datetime import datetime
 
