@@ -3,8 +3,8 @@ Test script to verify backup functionality.
 Run this to ensure the backup system works correctly.
 """
 
-import sys
 import os
+import sys
 from datetime import datetime
 
 # Add the app directory to the Python path

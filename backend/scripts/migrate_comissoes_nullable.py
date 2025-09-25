@@ -5,8 +5,9 @@ This allows payments and commissions to be independent entities.
 Run this script to update the database schema.
 """
 
-from sqlalchemy import create_engine, text
 import os
+
+from sqlalchemy import create_engine, text
 
 
 def run_migration():

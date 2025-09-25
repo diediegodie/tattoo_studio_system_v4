@@ -4,17 +4,18 @@ Atomic Extrato Monitoring Script
 Checks the status of atomic extrato operations and reports health metrics.
 """
 
-import os
-import sys
 import json
 import logging
+import os
+import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 
 # Add backend to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from app.services.extrato_atomic import check_and_generate_extrato_with_transaction
+from app.services.extrato_atomic import \
+    check_and_generate_extrato_with_transaction
 from app.services.extrato_core import verify_backup_before_transfer
 
 # Configuration

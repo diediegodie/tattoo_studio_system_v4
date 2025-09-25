@@ -8,19 +8,19 @@ This module tests user retrieval operations with comprehensive coverage:
 - Error handling and edge cases
 """
 
-import pytest
-from unittest.mock import Mock
 from typing import Optional
+from unittest.mock import Mock
 
+import pytest
 # Test configuration and imports
 from tests.config.test_paths import ensure_domain_imports
 
 ensure_domain_imports()
 
 try:
-    from app.repositories.user_repo import UserRepository
-    from app.domain.entities import User as DomainUser
     from app.db.base import User as DbUser
+    from app.domain.entities import User as DomainUser
+    from app.repositories.user_repo import UserRepository
 
     IMPORTS_AVAILABLE = True
 except ImportError as e:

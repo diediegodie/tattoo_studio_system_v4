@@ -7,17 +7,6 @@
   const financeiro = window.financeiroHelpers || null;
 
   // Promise-based confirmation modal fallback using native confirm if no custom UI
-  function confirmAction(message) {
-    // Use global confirmation if available, otherwise fall back to native confirm
-    if (typeof window.confirmAction === 'function') {
-      return window.confirmAction(message);
-    }
-    if (typeof window.confirm === 'function') {
-      return Promise.resolve(window.confirm(message));
-    }
-    return Promise.resolve(true);
-  }
-
   async function editPagamentoHandler(id) {
     if (!id) return;
     if (financeiro && typeof financeiro.editPagamento === 'function') {
@@ -29,9 +18,11 @@
   }
 
     // Unified deletion utility to standardize behavior across all delete operations
-  async function performDeletion(endpoint, id, dataIdPrefix = '', successMessage = 'Item excluído.', errorMessage = 'Erro ao excluir item.') {
+  async function performDeletion(endpoint, id, dataIdPrefix = '', successMessage = 'Ação concluída com sucesso.', errorMessage = 'Não foi possível concluir a ação. Tente novamente.') {
+    console.log('[DEBUG] performDeletion called with endpoint:', endpoint, 'id:', id);
     try {
       console.log(`[historico] Attempting to delete item ${id} from ${endpoint}`);
+      if (window.showToast) window.showToast('Processando...', 'info');
       const headers = { 'Accept': 'application/json' };
       const r = await fetch(endpoint, {
         method: 'DELETE',
@@ -40,6 +31,7 @@
       });
 
       console.log(`[historico] Delete response status: ${r.status}`);
+      console.log('[DEBUG] Delete API call completed, status:', r.status);
 
       if (r.ok) {
         let json;
@@ -70,11 +62,13 @@
             window.location.reload();
           }
 
-          if (window.showToast) window.showToast(successMessage, 'success');
+          if (window.notifySuccess) window.notifySuccess('Ação concluída com sucesso.');
+          // Close the unified modal if it's open (caller may have left it open)
+          try { if (typeof closeModal === 'function') closeModal(); } catch(e) { /* ignore */ }
           return true;
         } else {
           console.log(`[historico] Deletion failed with message: ${json?.message || 'Unknown error'}`);
-          if (window.showToast) window.showToast(json?.message || errorMessage, 'error');
+          if (window.notifyError) window.notifyError('Não foi possível concluir a ação. Tente novamente.');
           return false;
         }
       } else {
@@ -84,7 +78,7 @@
 
         // Don't show generic error for authentication issues
         if (r.status === 302 || r.status === 401) {
-          if (window.showToast) window.showToast('Sessão expirada. Redirecionando para login...', 'error');
+          if (window.notifyError) window.notifyError('Acesso não autorizado. Faça login e tente novamente.');
           window.location.href = '/auth/login';
           return false;
         }
@@ -94,23 +88,38 @@
       }
     } catch (e) {
       console.error('[historico] Delete error:', e);
-      if (window.showToast) window.showToast(`${errorMessage}: ${e.message}`, 'error');
+      if (window.notifyError) window.notifyError('Falha de conexão. Verifique sua internet e tente novamente.');
       return false;
     }
   }
 
   async function deletePagamentoHandler(id) {
-    if (!id) return;
+    console.log('[DEBUG] deletePagamentoHandler called with id:', id);
+    if (!id) {
+      console.error('[DEBUG] No ID provided to deletePagamentoHandler');
+      return;
+    }
 
-    if (!(await confirmAction('Tem certeza que deseja excluir este pagamento?'))) return;
+    const confirmed = await window.confirmAction('Tem certeza que deseja excluir este pagamento?');
+    console.log('[DEBUG] User confirmation result:', confirmed);
+    if (!confirmed) return;
 
+    console.log('[DEBUG] Proceeding with payment deletion, id:', id);
     await performDeletion(`/financeiro/api/${id}`, id, '', 'Pagamento excluído.', 'Erro ao excluir pagamento.');
   }
 
   async function deleteComissaoHandler(id) {
-    if (!id) return;
-    if (!(await confirmAction('Tem certeza que deseja excluir esta comissão?'))) return;
+    console.log('[DEBUG] deleteComissaoHandler called with id:', id);
+    if (!id) {
+      console.error('[DEBUG] No ID provided to deleteComissaoHandler');
+      return;
+    }
 
+    const confirmed = await window.confirmAction('Tem certeza que deseja excluir esta comissão?');
+    console.log('[DEBUG] User confirmation result:', confirmed);
+    if (!confirmed) return;
+
+    console.log('[DEBUG] Proceeding with commission deletion, id:', id);
     await performDeletion(`/historico/api/comissao/${id}`, id, 'com', 'Comissão excluída.', 'Erro ao excluir comissão.');
   }
 
@@ -121,50 +130,56 @@
       const headers = { 'Accept': 'application/json' };
       const r = await fetch(`/historico/api/comissao/${id}`, { headers: headers, credentials: 'same-origin' });
       if (!r.ok) {
-        if (window.showToast) window.showToast('Falha ao carregar comissão.', 'error');
+        if (window.notifyError) window.notifyError('Falha ao carregar comissão.');
         return;
       }
       const payload = await r.json();
       if (!payload || !payload.success) {
-        if (window.showToast) window.showToast(payload.message || 'Falha ao carregar comissão.', 'error');
+        if (window.notifyError) window.notifyError(payload.message || 'Falha ao carregar comissão.');
         return;
       }
       const c = payload.data;
 
-      // Build a small modal reusing modal styles
-      let modal = document.getElementById('historico-comissao-edit-modal');
-      if (!modal) {
-        modal = document.createElement('div');
-        modal.id = 'historico-comissao-edit-modal';
-        modal.innerHTML = `
-          <div class="modal-overlay">
-            <div class="modal-container">
-              <div class="modal-scrollable">
-                <h2>Editar Comissão</h2>
-                <form id="historico-comissao-edit-form">
-                  <label>Percentual:<br><input type="number" step="0.01" name="percentual" required></label><br><br>
-                  <label>Valor:<br><input type="number" step="0.01" name="valor" required></label><br><br>
-                  <label>Observações:<br><textarea name="observacoes"></textarea></label><br><br>
-                </form>
-              </div>
-              <div class="modal-footer">
-                <button type="submit" form="historico-comissao-edit-form" class="button primary">Salvar</button>
-                <button type="button" id="historico-comissao-cancel" class="button">Cancelar</button>
-              </div>
-            </div>
-          </div>
-        `;
-        document.body.appendChild(modal);
-      }
+      // Build modal content
+      const modalContent = `
+        <form id="historico-comissao-edit-form">
+          <label>Percentual:<br><input type="number" step="0.01" name="percentual" required></label><br><br>
+          <label>Valor:<br><input type="number" step="0.01" name="valor" required></label><br><br>
+          <label>Observações:<br><textarea name="observacoes"></textarea></label><br><br>
+        </form>
+      `;
 
-      const form = modal.querySelector('#historico-comissao-edit-form');
+      // Use unified modal system
+      openCustomModal({
+        title: 'Editar Comissão',
+        content: modalContent,
+        showConfirm: true,
+        showCancel: true,
+        confirmText: 'Salvar',
+        cancelText: 'Cancelar',
+        onConfirm: async function() {
+          console.log('[DEBUG] historico.js onConfirm triggered for commission edit');
+          const form = document.querySelector('#historico-comissao-edit-form');
+          if (form) {
+            console.log('[DEBUG] Found form, dispatching submit event');
+            const submitEvent = new Event('submit', { cancelable: true });
+            form.dispatchEvent(submitEvent);
+          } else {
+            console.error('[DEBUG] Form not found for commission edit');
+          }
+        },
+        onCancel: null,
+        closeOnConfirm: false, // Don't close on confirm, let form handler do it
+        closeOnCancel: true
+      });
+
+      // Get the form after modal is created and prefill values
+      const form = document.querySelector('#historico-comissao-edit-form');
       form.elements['percentual'].value = c.percentual || '';
       form.elements['valor'].value = c.valor || '';
       form.elements['observacoes'].value = c.observacoes || '';
 
-      modal.style.display = 'block';
-      modal.querySelector('#historico-comissao-cancel').onclick = function () { modal.remove(); };
-
+      // Set up form submission handler
       form.onsubmit = async function (e) {
         e.preventDefault();
         const fd = new FormData(form);
@@ -193,10 +208,10 @@
                 cols[5].textContent = data.data.observacoes || '';
               }
             }
-            if (window.showToast) window.showToast('Comissão atualizada.', 'success');
-            modal.remove();
+            if (window.notifySuccess) window.notifySuccess('Comissão atualizada.');
+            closeModal();
           } else {
-            if (window.showToast) window.showToast((data && data.message) || 'Erro ao atualizar comissão.', 'error');
+            if (window.notifyError) window.notifyError((data && data.message) || 'Erro ao atualizar comissão.');
           }
         } catch (err) {
           console.error(err);
@@ -211,7 +226,7 @@
 
   async function deleteComissaoHandler(id) {
     if (!id) return;
-    if (!(await confirmAction('Tem certeza que deseja excluir esta comissão?'))) return;
+    if (!(await window.confirmAction('Tem certeza que deseja excluir esta comissão?'))) return;
 
     await performDeletion(`/historico/api/comissao/${id}`, id, 'com', 'Comissão excluída.', 'Erro ao excluir comissão.');
   }

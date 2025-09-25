@@ -4,25 +4,17 @@ Handles web-based CRUD operations for sessions.
 """
 
 import logging
-from datetime import datetime, date, time
+from datetime import date, datetime, time
 from decimal import Decimal
 from typing import Union
-
-from flask import (
-    Blueprint,
-    render_template,
-    request,
-    redirect,
-    url_for,
-    flash,
-)
-from flask_login import login_required
-from sqlalchemy.exc import IntegrityError
-from werkzeug.wrappers.response import Response
 
 from app.controllers.sessoes_helpers import _get_user_service
 from app.db.base import Client, Sessao
 from app.db.session import SessionLocal
+from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask_login import login_required
+from sqlalchemy.exc import IntegrityError
+from werkzeug.wrappers.response import Response
 
 logger = logging.getLogger(__name__)
 
@@ -65,11 +57,12 @@ def nova_sessao() -> Union[str, Response]:
             # If event_id is provided, fetch the event data from calendar service
             if event_id:
                 try:
+                    from datetime import timedelta
+
                     from app.services.google_calendar_service import (
                         GoogleCalendarService,
                     )
                     from flask_login import current_user
-                    from datetime import timedelta
 
                     calendar_service = GoogleCalendarService()
 
@@ -121,14 +114,13 @@ def nova_sessao() -> Union[str, Response]:
         elif request.method == "POST":
             # Process form submission
             data = request.form.get("data")
-            hora = request.form.get("hora")
             cliente_id = request.form.get("cliente_id")
             artista_id = request.form.get("artista_id")
             valor = request.form.get("valor")
             observacoes = request.form.get("observacoes")
 
             # Validate required fields
-            if not all([data, hora, cliente_id, artista_id, valor]):
+            if not all([data, cliente_id, artista_id, valor]):
                 flash("Todos os campos obrigatórios devem ser preenchidos.", "error")
                 return redirect(url_for("sessoes.nova_sessao"))
 
@@ -158,26 +150,6 @@ def nova_sessao() -> Union[str, Response]:
                         is_google_event=False,
                         event_title_with_suffix="",
                     )
-
-            try:
-                # hora: accept HH:MM or HH:MM:SS
-                try:
-                    parsed_time = time.fromisoformat(hora)
-                except Exception:
-                    parsed_time = datetime.strptime(hora, "%H:%M").time()
-            except Exception:
-                flash("Formato de hora inválido.", "error")
-                clients = db.query(Client).order_by(Client.name).all()
-                user_service = _get_user_service()
-                artists = user_service.list_artists()
-                return render_template(
-                    "nova_sessao.html",
-                    clients=clients,
-                    artists=artists,
-                    event=None,
-                    is_google_event=False,
-                    event_title_with_suffix="",
-                )
 
             try:
                 cliente_id_int = int(cliente_id)
@@ -226,7 +198,6 @@ def nova_sessao() -> Union[str, Response]:
             # Create session with proper types
             sessao = Sessao(
                 data=parsed_date,
-                hora=parsed_time,
                 valor=valor_decimal,
                 observacoes=observacoes,
                 cliente_id=cliente_id_int,
@@ -358,7 +329,7 @@ def list_sessoes() -> str:
             db.query(Sessao)
             .options(joinedload(Sessao.cliente), joinedload(Sessao.artista))
             .filter(Sessao.status == "active")  # Only active sessions
-            .order_by(Sessao.data.asc(), Sessao.hora.asc())
+            .order_by(Sessao.data.asc(), Sessao.created_at.asc())
             .all()
         )
 

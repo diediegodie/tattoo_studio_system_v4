@@ -1,18 +1,15 @@
-from flask import Flask, render_template, jsonify, redirect, url_for, flash, session
 import os
 import sys
-from sqlalchemy import text
+
 from app.db.session import engine
-from flask_dance.contrib.google import make_google_blueprint, google
-from flask_dance.consumer import oauth_authorized
-from flask_login import (
-    LoginManager,
-    login_user,
-    logout_user,
-    login_required,
-    current_user,
-)
 from dotenv import load_dotenv
+from flask import (Flask, flash, jsonify, redirect, render_template, session,
+                   url_for)
+from flask_dance.consumer import oauth_authorized
+from flask_dance.contrib.google import google, make_google_blueprint
+from flask_login import (LoginManager, current_user, login_required,
+                         login_user, logout_user)
+from sqlalchemy import text
 
 # Load environment variables
 load_dotenv()
@@ -29,6 +26,10 @@ google_oauth_bp = make_google_blueprint(
         "https://www.googleapis.com/auth/calendar.events",
     ],
     redirect_url="/auth/google/authorized",
+    # Request offline access to get refresh tokens
+    offline=True,
+    # Force consent to ensure refresh tokens are provided
+    reprompt_consent=True,
 )
 # Set unique name immediately to avoid conflicts
 google_oauth_bp.name = "google_oauth_calendar"
@@ -55,11 +56,11 @@ def google_logged_in(blueprint, token):
         f"[DEBUG] Google user ID: {google_user_id}, email: {google_info.get('email')}"
     )
 
+    from app.core.security import create_user_token
     from app.db.session import SessionLocal
     from app.repositories.user_repo import UserRepository
-    from app.services.user_service import UserService
     from app.services.oauth_token_service import OAuthTokenService
-    from app.core.security import create_user_token
+    from app.services.user_service import UserService
 
     db = SessionLocal()
     try:
@@ -209,6 +210,7 @@ def create_app():
     app.config["LOGIN_DISABLED"] = (
         os.getenv("LOGIN_DISABLED", "false").lower() == "true"
     )
+    app.config["SHOW_API_DOCS"] = os.getenv("SHOW_API_DOCS", "false").lower() == "true"
 
     # Initialize Flask-Login
     login_manager = LoginManager()
@@ -217,7 +219,7 @@ def create_app():
     login_manager.login_message = "Por favor, faça login para acessar esta página."
 
     # Import models after app creation
-    from app.db.base import User, OAuth
+    from app.db.base import OAuth, User
 
     @login_manager.user_loader
     def load_user(user_id):
@@ -259,9 +261,9 @@ def create_app():
     @login_required
     def cadastro_interno():
         # Load artists to display in the table
-        from app.services.user_service import UserService
-        from app.repositories.user_repo import UserRepository
         from app.db.session import SessionLocal
+        from app.repositories.user_repo import UserRepository
+        from app.services.user_service import UserService
 
         db_session = SessionLocal()
         try:
@@ -280,9 +282,9 @@ def create_app():
     @app.route("/estoque")
     @login_required
     def estoque():
+        from app.db.session import SessionLocal
         from app.repositories.inventory_repository import InventoryRepository
         from app.services.inventory_service import InventoryService
-        from app.db.session import SessionLocal
 
         db = SessionLocal()
         repository = InventoryRepository(db)
@@ -352,7 +354,7 @@ def create_app():
         if test_database_connection():
             return jsonify(
                 {
-                    "message": "Database Connected Successfully!",
+                    "message": "Conexão com banco de dados estabelecida com sucesso!",
                     "database_url": os.getenv("DATABASE_URL", "Not set"),
                 }
             )
@@ -360,7 +362,7 @@ def create_app():
             return (
                 jsonify(
                     {
-                        "message": "Database Connection Failed!",
+                        "message": "Falha na conexão com banco de dados!",
                         "database_url": os.getenv("DATABASE_URL", "Not set"),
                     }
                 ),
@@ -369,21 +371,21 @@ def create_app():
 
     # Register blueprints/controllers here
 
-    from app.controllers.api_controller import api_bp
-    from app.controllers.auth_controller import auth_bp
-    from app.controllers.client_controller import client_bp
-    from app.controllers.sessoes_controller import sessoes_bp
-    from app.controllers.artist_controller import artist_bp
-    from app.controllers.calendar_controller import calendar_bp
-    from app.controllers.inventory_controller import inventory_bp
-    from app.controllers.drag_drop_controller import drag_drop_bp
-    from app.controllers.financeiro_controller import financeiro_bp
-    from app.controllers.historico_controller import historico_bp
-    from app.controllers.extrato_controller import extrato_bp
-    from app.controllers.search_controller import search_bp
-    from app.controllers.gastos_controller import gastos_bp
     from app.controllers.admin_extrato_controller import admin_extrato_bp
+    from app.controllers.api_controller import api_bp
+    from app.controllers.artist_controller import artist_bp
+    from app.controllers.auth_controller import auth_bp
+    from app.controllers.calendar_controller import calendar_bp
+    from app.controllers.client_controller import client_bp
+    from app.controllers.drag_drop_controller import drag_drop_bp
+    from app.controllers.extrato_controller import extrato_bp
+    from app.controllers.financeiro_controller import financeiro_bp
+    from app.controllers.gastos_controller import gastos_bp
+    from app.controllers.historico_controller import historico_bp
+    from app.controllers.inventory_controller import inventory_bp
     from app.controllers.reports_controller import reports_bp
+    from app.controllers.search_controller import search_bp
+    from app.controllers.sessoes_controller import sessoes_bp
 
     app.register_blueprint(api_bp)
     app.register_blueprint(auth_bp)
@@ -406,12 +408,13 @@ def create_app():
 
     # Initialize background token refresh scheduler
     try:
+        import logging
+
+        from app.db.base import OAuth
+        from app.db.session import SessionLocal
+        from app.services.oauth_token_service import OAuthTokenService
         from apscheduler.schedulers.background import BackgroundScheduler
         from apscheduler.triggers.interval import IntervalTrigger
-        from app.services.oauth_token_service import OAuthTokenService
-        from app.db.session import SessionLocal
-        from app.db.base import OAuth
-        import logging
 
         logger = logging.getLogger(__name__)
 
@@ -433,7 +436,7 @@ def create_app():
                         if new_token:
                             refreshed_count += 1
                             logger.info(
-                                f"Successfully refreshed token for user {user_id}"
+                                f"Token atualizado com sucesso para o usuário {user_id}"
                             )
                         else:
                             failed_count += 1

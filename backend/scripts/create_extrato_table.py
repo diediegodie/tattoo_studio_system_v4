@@ -10,17 +10,16 @@ Usage:
 The script reads DATABASE_URL from the environment (same as the app).
 """
 
-import sys
 import os
+import sys
 
 # Add the backend directory to the Python path
 backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, backend_dir)
 
-from app.db.session import engine, Base
-
 # Import all models to register them with Base
 import app.db.base
+from app.db.session import Base, engine
 
 
 def main():

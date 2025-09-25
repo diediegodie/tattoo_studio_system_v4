@@ -6,31 +6,23 @@ Flask test client, database transaction isolation, and comprehensive
 authentication scenarios following SOLID principles.
 """
 
-import pytest
 import json
-from unittest.mock import patch, Mock
 from dataclasses import dataclass
+from unittest.mock import Mock, patch
 
+import pytest
+from tests.fixtures.auth_fixtures import (auth_headers_expired,
+                                          auth_headers_invalid,
+                                          auth_headers_valid, auth_test_helper,
+                                          authentication_scenarios,
+                                          expired_jwt_token, invalid_jwt_token,
+                                          mock_authenticated_user, oauth_mock,
+                                          valid_jwt_token)
 # Import integration fixtures
-from tests.fixtures.integration_fixtures import (
-    app,
-    client,
-    db_session,
-    authenticated_client,
-    database_transaction_isolator,
-)
-from tests.fixtures.auth_fixtures import (
-    valid_jwt_token,
-    expired_jwt_token,
-    invalid_jwt_token,
-    auth_headers_valid,
-    auth_headers_expired,
-    auth_headers_invalid,
-    mock_authenticated_user,
-    authentication_scenarios,
-    auth_test_helper,
-    oauth_mock,
-)
+from tests.fixtures.integration_fixtures import (app, authenticated_client,
+                                                 client,
+                                                 database_transaction_isolator,
+                                                 db_session)
 
 
 @dataclass

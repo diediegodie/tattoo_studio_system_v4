@@ -3,9 +3,10 @@ Example protected routes demonstrating JWT authentication decorators.
 These routes show different authentication patterns.
 """
 
-from flask import Blueprint, jsonify, request, make_response, g
-from flask_login import logout_user, current_user, login_required
-from app.core.auth_decorators import jwt_required, get_current_user
+from app.core.auth_decorators import get_current_user, jwt_required
+from flask import (Blueprint, g, jsonify, make_response, render_template,
+                   request)
+from flask_login import current_user, login_required, logout_user
 
 # Create a blueprint for API routes
 api_bp = Blueprint("api", __name__, url_prefix="/api")
@@ -20,7 +21,7 @@ def api_logout():
     except Exception:
         pass
     # Prepare response to clear JWT cookie
-    response = make_response(jsonify({"message": "Logout successful."}))
+    response = make_response(jsonify({"message": "Logout realizado com sucesso."}))
     response.set_cookie("access_token", "", expires=0)
     return response
 
@@ -62,10 +63,10 @@ def dashboard():
     # Using Flask-Login session user
     user = current_user
     if not user or not getattr(user, "is_authenticated", False):
-        return jsonify({"error": "Authentication required"}), 401
+        return jsonify({"error": "Autenticação necessária"}), 401
     return jsonify(
         {
-            "message": f"Welcome to your dashboard, {user.name}!",
+            "message": f"Bem-vindo ao seu painel, {user.name}!",
             "user_id": user.id,
             "auth_method": "session",
         }
@@ -126,7 +127,12 @@ def admin_only():
             }
         )
     else:
-        return jsonify({"error": "Forbidden", "message": "Admin access required"}), 403
+        return (
+            jsonify(
+                {"error": "Proibido", "message": "Acesso de administrador necessário"}
+            ),
+            403,
+        )
 
 
 @api_bp.route("/health", methods=["GET"])
@@ -144,8 +150,8 @@ def unauthorized(error):
     return (
         jsonify(
             {
-                "error": "Unauthorized",
-                "message": "Authentication required to access this resource",
+                "error": "Não autorizado",
+                "message": "Autenticação necessária para acessar este recurso",
                 "status_code": 401,
             }
         ),
@@ -159,10 +165,17 @@ def forbidden(error):
     return (
         jsonify(
             {
-                "error": "Forbidden",
-                "message": "You do not have permission to access this resource",
+                "error": "Proibido",
+                "message": "Você não tem permissão para acessar este recurso",
                 "status_code": 403,
             }
         ),
         403,
     )
+
+
+@api_bp.route("/docs", methods=["GET"])
+@login_required
+def api_docs():
+    """API Documentation page."""
+    return render_template("api_docs.html")

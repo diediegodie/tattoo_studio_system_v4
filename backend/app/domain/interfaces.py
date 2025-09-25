@@ -6,9 +6,10 @@ enabling dependency injection and easier testing.
 """
 
 from abc import ABC, abstractmethod
-from typing import Optional, List
 from datetime import datetime
-from .entities import User, Appointment, InventoryItem, Client, CalendarEvent
+from typing import List, Optional
+
+from .entities import Appointment, CalendarEvent, Client, InventoryItem, User
 
 
 class IUserReader(ABC):

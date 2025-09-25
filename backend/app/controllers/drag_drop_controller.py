@@ -1,14 +1,14 @@
-from flask import Blueprint, render_template
+from app.db.session import SessionLocal
 from app.repositories.inventory_repository import InventoryRepository
 from app.services.inventory_service import InventoryService
-from app.db.session import SessionLocal
+from flask import Blueprint, render_template
 
 drag_drop_bp = Blueprint("drag_drop", __name__)
 
 
 @drag_drop_bp.route("/drag_drop", methods=["GET", "POST", "PATCH"])
 def drag_drop():
-    from flask import request, redirect, url_for, flash
+    from flask import flash, redirect, request, url_for
 
     if request.method in ["POST", "PATCH"]:
         from flask import jsonify

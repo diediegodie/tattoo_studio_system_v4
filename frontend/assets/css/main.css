@@ -1611,6 +1611,63 @@ button.primary:active,
     width: 90%;
 }
 
+/* Form Box Utilities */
+.form-box-narrow {
+    max-width: 400px;
+    margin: 0 auto;
+}
+
+/* Input Field Utilities */
+.input-full-mb {
+    width: 100%;
+    margin-bottom: 1em;
+}
+
+/* Actions Utilities */
+.actions-center {
+    justify-content: center;
+}
+
+/* Message Container */
+.message-container {
+    margin-top: 1em;
+    text-align: center;
+}
+
+/* Section Spacing */
+.section-mt-3 {
+    margin-top: 3em;
+}
+
+/* Button Spacing */
+.btn-margin-right {
+    margin-right: 0.5em;
+}
+
+/* Modal Form Actions */
+.modal-actions {
+    text-align: right;
+    margin-top: 1em;
+}
+
+/* Alert/Message Utilities */
+.alert-message {
+    padding: 0.75rem 1.25rem;
+    margin-bottom: 1rem;
+    border: 1px solid transparent;
+    border-radius: 0.25rem;
+}
+
+.alert-success {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.alert-error {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
 /* Helper Text */
 .help-text {
     display: block;

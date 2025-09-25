@@ -5,9 +5,9 @@ This module provides fixtures for testing services with proper dependency inject
 and mocking of repository dependencies.
 """
 
-import pytest
 from unittest.mock import Mock
 
+import pytest
 # Import after ensuring paths are set up
 from tests.config import setup_test_imports
 
@@ -182,6 +182,7 @@ class ServiceTestVerifiers:
             mock_repo = service._test_repo_mock
             method = getattr(mock_repo, method_name)
             method.assert_called_with(*expected_args, **expected_kwargs)
+
 
 # Parametrized test data for common service test scenarios
 SERVICE_TEST_SCENARIOS = {

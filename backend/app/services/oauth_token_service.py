@@ -3,15 +3,15 @@ OAuth Token Service - SOLID compliant token management
 Single Responsibility: Handle OAuth token operations for Google Calendar
 """
 
-import logging
 import json
-import requests
-from typing import Optional, Dict, Any
-from datetime import datetime, timezone, timedelta
-from flask import current_app
+import logging
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, Optional
 
-from app.db.session import SessionLocal
+import requests
 from app.db.base import OAuth
+from app.db.session import SessionLocal
+from flask import current_app
 
 logger = logging.getLogger(__name__)
 
@@ -48,15 +48,21 @@ class OAuthTokenService:
                 f"[DEBUG] Token data type: {type(token)}, has [REDACTED_ACCESS_TOKEN] in token if isinstance(token, dict) else 'Not a dict'}"
             )
 
-            # Check if record already exists
+            # Check if record already exists by provider_user_id (unique constraint)
             existing = (
                 self.db.query(OAuth)
-                .filter(OAuth.user_id == int(user_id), OAuth.provider == provider)
+                .filter(
+                    OAuth.provider_user_id == provider_user_id,
+                    OAuth.provider == provider,
+                )
                 .first()
             )
 
             if existing:
                 # Update existing token - use setattr for SQLAlchemy attributes
+                print(
+                    f"[DEBUG] Updating existing OAuth record for provider_user_id: {provider_user_id}"
+                )
                 setattr(
                     existing,
                     "token",
@@ -66,13 +72,18 @@ class OAuthTokenService:
                         else json.loads(token) if isinstance(token, str) else token
                     ),
                 )
-                setattr(existing, "provider_user_id", provider_user_id)
+                setattr(
+                    existing, "user_id", int(user_id)
+                )  # Update user_id in case it changed
                 self.db.commit()
                 logger.info(
                     f"Updated OAuth token for {provider} user {provider_user_id}"
                 )
             else:
                 # Create new token record
+                print(
+                    f"[DEBUG] Creating new OAuth record for provider_user_id: {provider_user_id}"
+                )
                 oauth_record = OAuth()
                 # Set all attributes after creation using setattr
                 setattr(oauth_record, "provider", provider)
@@ -209,7 +220,6 @@ class OAuthTokenService:
                 return None
 
             import json
-            import requests
             from datetime import datetime, timedelta
 
             token_value = getattr(oauth_record, "token", None)
@@ -396,8 +406,8 @@ class OAuthTokenService:
         try:
             # This would typically be handled by Flask-Dance blueprint
             # But we can provide the URL for manual authorization
-            from urllib.parse import urlencode
             import os
+            from urllib.parse import urlencode
 
             params = {
                 "client_id": os.getenv("GOOGLE_CLIENT_ID"),

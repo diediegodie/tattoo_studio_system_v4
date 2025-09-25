@@ -11,10 +11,10 @@ These tests focus on the basic HTTP functionality and successful operation paths
 following SOLID principles and interface-based testing.
 """
 
-import pytest
-from unittest.mock import Mock, patch
 from datetime import datetime, timedelta
+from unittest.mock import Mock, patch
 
+import pytest
 # Use the established test path setup
 from tests.config.test_paths import ensure_domain_imports
 
@@ -22,8 +22,8 @@ ensure_domain_imports()
 
 try:
     import app.controllers.appointment_controller as appointment_controller
-    from app.services.appointment_service import AppointmentService
     from app.schemas.dtos import AppointmentResponse, ErrorResponse
+    from app.services.appointment_service import AppointmentService
 
     # Get the class from the module
     AppointmentController = appointment_controller.AppointmentController

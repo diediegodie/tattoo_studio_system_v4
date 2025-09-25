@@ -1,12 +1,11 @@
-from flask import Blueprint, request, jsonify, make_response
 from typing import Dict
-from flask_login import login_required, current_user
 
+from app.core.security import create_user_token
 from app.db.session import SessionLocal
 from app.repositories.user_repo import UserRepository
 from app.services.user_service import UserService
-from app.core.security import create_user_token
-
+from flask import Blueprint, jsonify, make_response, request
+from flask_login import current_user, login_required
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 

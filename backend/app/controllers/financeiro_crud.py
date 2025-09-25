@@ -4,17 +4,15 @@ Handles web-based CRUD operations for payments.
 """
 
 import logging
+
+from app.controllers.financeiro_helpers import (_get_user_service,
+                                                _safe_redirect, _safe_render)
+from app.db.base import Client
+from app.db.base import Pagamento as PagamentoModel
+from app.db.session import SessionLocal
+from app.repositories.pagamento_repository import PagamentoRepository
 from flask import Blueprint, flash
 from flask_login import login_required
-
-from app.db.session import SessionLocal
-from app.db.base import Client, Pagamento as PagamentoModel
-from app.repositories.pagamento_repository import PagamentoRepository
-from app.controllers.financeiro_helpers import (
-    _safe_render,
-    _safe_redirect,
-    _get_user_service,
-)
 
 logger = logging.getLogger(__name__)
 

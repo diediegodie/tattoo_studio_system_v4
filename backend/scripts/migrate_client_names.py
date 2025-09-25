@@ -12,16 +12,16 @@ This script:
 Run this script once after deploying the client repository refactor.
 """
 
-import sys
 import os
+import sys
 from pathlib import Path
 
 # Add the backend directory to the Python path
 backend_dir = Path(__file__).parent.parent
 sys.path.insert(0, str(backend_dir))
 
-from app.db.session import SessionLocal
 from app.db.base import Client as DbClient
+from app.db.session import SessionLocal
 from app.utils.client_utils import normalize_display_name
 
 

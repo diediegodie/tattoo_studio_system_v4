@@ -8,22 +8,13 @@ the main service for better maintainability.
 import json
 import logging
 from datetime import datetime
-from sqlalchemy.orm import joinedload
+
+from app.db.base import Comissao, Extrato, Gasto, Pagamento, Sessao
 from app.db.session import SessionLocal
-from app.db.base import (
-    Pagamento,
-    Sessao,
-    Comissao,
-    Extrato,
-    Gasto,
-)
-from app.services.extrato_core import (
-    check_existing_extrato,
-    query_data,
-    serialize_data,
-    calculate_totals,
-    _log_extrato_run,
-)
+from app.services.extrato_core import (_log_extrato_run, calculate_totals,
+                                       check_existing_extrato, query_data,
+                                       serialize_data)
+from sqlalchemy.orm import joinedload
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -103,13 +94,11 @@ def get_current_month_totals(db):
     Uses centralized current_month_range() and query_data() to ensure all entities
     are filtered by the same date window.
     """
-    from app.services.extrato_core import (
-        current_month_range,
-        query_data,
-        serialize_data,
-        calculate_totals,
-    )
     import os
+
+    from app.services.extrato_core import (calculate_totals,
+                                           current_month_range, query_data,
+                                           serialize_data)
 
     start_date, end_date = current_month_range()
 
@@ -155,7 +144,9 @@ def check_and_generate_extrato(mes=None, ano=None, force=False):
     Enhanced version with production-ready logic and database logging.
     """
     import logging
-    from app.services.extrato_core import get_previous_month, should_run_monthly_extrato
+
+    from app.services.extrato_core import (get_previous_month,
+                                           should_run_monthly_extrato)
 
     logger = logging.getLogger(__name__)
 

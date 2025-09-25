@@ -5,13 +5,13 @@ This module provides Flask app setup, test client, and test runner fixtures
 for integration tests.
 """
 
-import pytest
-import tempfile
 import os
-from unittest.mock import Mock, patch
+import tempfile
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from datetime import datetime, timezone, timedelta
+from unittest.mock import Mock, patch
 
+import pytest
 # Set up test environment paths
 from tests.config.test_paths import setup_test_environment
 
@@ -20,10 +20,11 @@ setup_test_environment()
 try:
     # Quick availability check for Flask and SQLAlchemy. Do NOT import
     # application modules that may create engines at module import time.
-    import flask  # type: ignore
-    from sqlalchemy import text  # type: ignore
-    import jwt
     from datetime import datetime, timedelta, timezone
+
+    import flask  # type: ignore
+    import jwt
+    from sqlalchemy import text  # type: ignore
 
     FLASK_IMPORTS_AVAILABLE = True
 except ImportError as e:
@@ -131,10 +132,9 @@ def app(test_database):
     # Create application context and ensure the db tables exist on the
     # SessionLocal/engine that the application code uses.
     with app.app_context():
-        from app.db.base import Base
-
         # Import the session module lazily (should now honor DATABASE_URL)
         from app.db import session as db_session_mod
+        from app.db.base import Base
 
         # Use the engine from db.session (reloaded above) so tests and
         # application share the same database connection. Prefer calling

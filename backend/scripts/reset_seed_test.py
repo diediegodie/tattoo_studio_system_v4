@@ -18,20 +18,20 @@ Environment Variables:
     DOCKER_RESET=1 - Force Docker reset mode
 """
 
-import sys
+import argparse
 import os
 import subprocess
-import argparse
+import sys
 import webbrowser
-from datetime import datetime, date
+from datetime import date, datetime
 from pathlib import Path
 
 # Add backend to path
 backend_dir = Path(__file__).parent.parent
 sys.path.insert(0, str(backend_dir))
 
+from app.db.base import Base, Client, Comissao, Gasto, Pagamento, Sessao, User
 from app.db.session import SessionLocal, engine
-from app.db.base import User, Client, Sessao, Pagamento, Comissao, Gasto, Base
 
 
 def detect_environment():
@@ -101,8 +101,8 @@ def reset_database(env_type):
             os.environ["DATABASE_URL"] = local_db_url
 
             # Import after setting the environment
-            from app.db.session import engine as local_engine
             from app.db.base import Base
+            from app.db.session import engine as local_engine
 
             # Drop all tables and recreate
             Base.metadata.drop_all(bind=local_engine)
@@ -176,7 +176,6 @@ def seed_test_data():
         # Create session
         session = Sessao(
             data=current_date,
-            hora=datetime.now().time(),
             valor=800.00,
             observacoes="Sessão teste",
             cliente_id=test_client.id,

@@ -13,11 +13,12 @@ Following SOLID testing principles:
 - Dependency Inversion: Mocks are injected through interfaces
 """
 
-import pytest
-from unittest.mock import Mock, MagicMock, patch
-from datetime import datetime
 import sys
+from datetime import datetime
 from pathlib import Path
+from unittest.mock import MagicMock, Mock, patch
+
+import pytest
 
 # Add the app directory to Python path for imports
 app_dir = Path(__file__).parent.parent.parent / "app"
@@ -25,9 +26,9 @@ if str(app_dir) not in sys.path:
     sys.path.insert(0, str(app_dir))
 
 try:
-    from domain.entities import User as DomainUser
     from app.repositories.user_repo import UserRepository
     from app.services.user_service import UserService
+    from domain.entities import User as DomainUser
 
     # Note: Controller tests will be mocked since they require app context
 except ImportError as e:

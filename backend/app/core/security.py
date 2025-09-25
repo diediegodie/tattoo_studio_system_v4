@@ -1,11 +1,10 @@
 import os
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
 
 import jwt
 from passlib.context import CryptContext
 from passlib.hash import bcrypt
-
 
 # Password hashing configuration
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")

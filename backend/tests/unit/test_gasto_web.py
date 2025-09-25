@@ -2,8 +2,9 @@
 """
 Test script to create a gasto via authenticated HTTP request
 """
-import requests
 from datetime import datetime
+
+import requests
 
 # Base URL for the app
 BASE_URL = "http://localhost:5000"

@@ -1,24 +1,25 @@
+from flask_dance.consumer.storage.sqla import OAuthConsumerMixin
+from flask_login import UserMixin
 from sqlalchemy import (
-    Column,
-    Integer,
-    String,
-    DateTime,
-    Boolean,
-    ForeignKey,
-    func,
-    Date,
-    Time,
-    Numeric,
-    UniqueConstraint,
     JSON,
+    Boolean,
+    Column,
+    Date,
+    DateTime,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    Time,
+    UniqueConstraint,
+    func,
 )
-from sqlalchemy.sql import func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.mutable import MutableDict
-from flask_login import UserMixin
-from flask_dance.consumer.storage.sqla import OAuthConsumerMixin
-from .session import Base
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
+
+from .session import Base
 
 
 def get_json_type():
@@ -146,7 +147,6 @@ class Sessao(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     data = Column(Date, nullable=False)
-    hora = Column(Time, nullable=False)
     valor = Column(Numeric(10, 2), nullable=False)
     observacoes = Column(String(255))
     cliente_id = Column(Integer, ForeignKey("clients.id"), nullable=False, index=True)
@@ -172,7 +172,7 @@ class Sessao(Base):
 
     def __repr__(self):
         return (
-            f"<Sessao(id={self.id}, data={self.data}, hora={self.hora}, valor={self.valor}, "
+            f"<Sessao(id={self.id}, data={self.data}, valor={self.valor}, "
             f"cliente_id={self.cliente_id}, artista_id={self.artista_id}, status={self.status})>"
         )
 

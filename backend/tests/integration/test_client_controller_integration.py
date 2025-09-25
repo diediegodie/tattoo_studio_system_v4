@@ -6,27 +6,28 @@ using Flask test client, database transaction isolation, and
 authentication fixtures following SOLID principles.
 """
 
-import pytest
 import json
-from unittest.mock import patch, Mock
 from datetime import datetime
+from unittest.mock import Mock, patch
+
+import pytest
+from tests.fixtures.auth_fixtures import (
+    auth_headers_invalid,
+    auth_headers_missing,
+    auth_headers_valid,
+    auth_test_helper,
+    protected_endpoint_tester,
+)
 
 # Import integration fixtures
 from tests.fixtures.integration_fixtures import (
     app,
-    client,
-    db_session,
     authenticated_client,
-    sample_client_data,
-    mock_jotform_response,
+    client,
     database_transaction_isolator,
-)
-from tests.fixtures.auth_fixtures import (
-    auth_headers_valid,
-    auth_headers_invalid,
-    auth_headers_missing,
-    protected_endpoint_tester,
-    auth_test_helper,
+    db_session,
+    mock_jotform_response,
+    sample_client_data,
 )
 
 
@@ -173,9 +174,10 @@ class TestClientControllerIntegrationComplete:
             else:
                 json_data = response_helper.assert_json_response(response, 200)
                 assert isinstance(json_data, dict)
-                assert "clients" in json_data
-                assert isinstance(json_data["clients"], list)
-                assert len(json_data["clients"]) == 1
+                assert "data" in json_data
+                assert "clients" in json_data["data"]
+                assert isinstance(json_data["data"]["clients"], list)
+                assert len(json_data["data"]["clients"]) == 1
                 mock_service.assert_called_once()
 
     def test_api_client_list_requires_authentication(self, client):

@@ -5,19 +5,19 @@ This module provides database fixtures for testing with proper isolation
 and transaction rollback capabilities.
 """
 
-import pytest
-import tempfile
 import os
+import tempfile
 from unittest.mock import Mock
 
+import pytest
 # Import after ensuring paths are set up
 from tests.config import setup_test_imports
 
 setup_test_imports()
 
 try:
-    from db.session import SessionLocal, engine
     from db.base import Base
+    from db.session import SessionLocal, engine
 
     DB_IMPORTS_AVAILABLE = True
 except ImportError as e:

@@ -7,13 +7,15 @@ This controller:
 - Can be easily extended without modification (Open/Closed)
 """
 
-from flask import Blueprint, render_template, jsonify, flash, redirect, url_for
-from flask_login import login_required, current_user
+import os
+
+from app.core.api_utils import api_response
 from app.db.session import SessionLocal
 from app.repositories.client_repo import ClientRepository
 from app.services.client_service import ClientService
 from app.services.jotform_service import JotFormService
-import os
+from flask import Blueprint, flash, jsonify, redirect, render_template, url_for
+from flask_login import current_user, login_required
 
 client_bp = Blueprint("client", __name__, url_prefix="/clients")
 
@@ -104,9 +106,11 @@ def api_client_list():
                 }
             )
 
-        return jsonify({"clients": client_data})
+        return api_response(
+            True, "Clientes recuperados com sucesso", {"clients": client_data}, 200
+        )
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return api_response(False, f"Erro: {str(e)}", None, 500)
     finally:
         db.close()

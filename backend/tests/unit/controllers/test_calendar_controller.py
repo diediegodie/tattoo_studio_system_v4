@@ -1,5 +1,6 @@
-import pytest
 from unittest.mock import Mock, patch
+
+import pytest
 
 # Ensure test imports are configured
 from tests.config import setup_test_imports
@@ -56,8 +57,9 @@ def local_client():
     if not IMPORTS_AVAILABLE:
         pytest.skip("Calendar controller not importable")
 
-    from flask import Flask
     from pathlib import Path
+
+    from flask import Flask
 
     app = Flask(__name__)
     app.secret_key = "test-secret-key"  # Required for sessions
@@ -208,7 +210,7 @@ class TestCalendarControllerEndpoints:
             assert resp.status_code == 400
             data = resp.get_json()
             assert data["success"] is False
-            assert "Invalid start date format" in data["error"]
+            assert "Formato de data inicial inválido" in data["error"]
 
     def test_api_events_end_before_start(
         self, local_client, mock_authenticated_user, mock_calendar_service
@@ -230,4 +232,4 @@ class TestCalendarControllerEndpoints:
             assert resp.status_code == 400
             data = resp.get_json()
             assert data["success"] is False
-            assert "End date must be after start date" in data["error"]
+            assert "Data final deve ser posterior à data inicial" in data["error"]

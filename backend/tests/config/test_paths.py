@@ -5,8 +5,8 @@ This module ensures that all domain modules are properly importable
 during test execution by setting up the correct Python paths.
 """
 
-import sys
 import os
+import sys
 from pathlib import Path
 
 

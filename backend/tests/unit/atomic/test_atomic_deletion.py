@@ -3,19 +3,19 @@
 Test suite for atomic historical records deletion functionality.
 """
 
-import pytest
 import logging
-from unittest.mock import Mock, MagicMock, patch
-from datetime import datetime
-
 # Add backend to path for testing
 import sys
+from datetime import datetime
 from pathlib import Path
+from unittest.mock import MagicMock, Mock, patch
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
+from app.db.base import Comissao, Gasto, Pagamento, Sessao
 from app.services.extrato_core import delete_historical_records_atomic
-from app.db.base import Pagamento, Sessao, Comissao, Gasto
 
 
 class TestHistoricalRecordsDeletion:

@@ -8,9 +8,10 @@ This service:
 - Works with domain entities, not database models
 """
 
-from typing import List, Dict
-from app.domain.interfaces import IClientRepository, IJotFormService
+from typing import Dict, List
+
 from app.domain.entities import Client as DomainClient
+from app.domain.interfaces import IClientRepository, IJotFormService
 
 
 class ClientService:

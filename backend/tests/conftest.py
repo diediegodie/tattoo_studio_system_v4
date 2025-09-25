@@ -7,12 +7,13 @@ This file provides common fixtures, test markers, and setup
 for both unit and integration tests following SOLID principles.
 """
 
-import pytest
-import sys
 import os
+import sys
 import uuid
 from pathlib import Path
 from unittest.mock import Mock
+
+import pytest
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
@@ -86,8 +87,8 @@ except Exception as e:
 
 # Import integration and auth fixtures for availability across all test modules
 try:
-    from fixtures.integration_fixtures import *
     from fixtures.auth_fixtures import *
+    from fixtures.integration_fixtures import *
 
     print("Integration and authentication fixtures loaded successfully")
 except ImportError as e:

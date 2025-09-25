@@ -52,6 +52,11 @@
                                                 class="{% if request.endpoint=='extrato' %}active{% endif %}">Extrato
                                                 Mensal</a></li>
                         </ul>
+                        {% if config.SHOW_API_DOCS %}
+                        <footer class="sidebar-footer">
+                                <a href="{{ url_for('api.api_docs') }}" class="api-link">API</a>
+                        </footer>
+                        {% endif %}
                 </nav>
         </div>
 </div>

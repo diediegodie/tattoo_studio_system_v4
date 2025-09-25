@@ -4,14 +4,14 @@ Following SOLID principles with single responsibility for backup operations.
 """
 
 import csv
-import os
 import logging
+import os
 from datetime import datetime
-from typing import List, Dict, Any, Tuple, Optional
-from sqlalchemy.orm import joinedload
+from typing import Any, Dict, List, Optional, Tuple
 
+from app.db.base import Client, Comissao, Gasto, Pagamento, Sessao, User
 from app.db.session import SessionLocal
-from app.db.base import Pagamento, Sessao, Comissao, Gasto, Client, User
+from sqlalchemy.orm import joinedload
 
 logger = logging.getLogger(__name__)
 
@@ -188,7 +188,6 @@ class BackupService:
                 "type": "sessao",
                 "id": s.id,
                 "data": s.data.isoformat() if s.data else "",
-                "hora": s.hora.isoformat() if s.hora else "",
                 "valor": float(s.valor) if s.valor else 0.0,
                 "observacoes": s.observacoes or "",
                 "status": s.status or "",

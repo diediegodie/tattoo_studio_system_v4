@@ -43,7 +43,6 @@
                                 <thead>
                                     <tr>
                                         <th>Data</th>
-                                        <th>Hora</th>
                                         <th>Cliente</th>
                                         <th>Artista</th>
                                         <th>Valor</th>
@@ -56,7 +55,6 @@
                                     {% for pagamento in pagamentos %}
                                     <tr data-id="{{ pagamento.id }}">
                                         <td>{{ pagamento.data.strftime('%d/%m/%Y') if pagamento.data else '' }}</td>
-                                        <td>{{ pagamento.hora.strftime('%H:%M') if pagamento.hora else '' }}</td>
                                         <td>{{ pagamento.cliente.name if pagamento.cliente else 'Cliente não encontrado'
                                             }}</td>
                                         <td>{{ pagamento.artista.name if pagamento.artista else 'Artista não encontrado'
@@ -91,7 +89,6 @@
         {% include 'partials/_sidebar.html' %}
     </div>
 
-    <script src="{{ url_for('static', filename='js/common.js') }}"></script>
     <script>
         window.FINANCEIRO_API_BASE = "{{ url_for('financeiro.api_list_pagamentos') }}";
     </script>

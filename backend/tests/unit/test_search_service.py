@@ -2,12 +2,12 @@
 Unit tests for SearchService.
 """
 
-import pytest
 from unittest.mock import Mock, patch
-from sqlalchemy.orm import Session
 
+import pytest
+from app.db.base import Client, Comissao, Extrato, Pagamento, Sessao, User
 from app.services.search_service import SearchService
-from app.db.base import Pagamento, Sessao, Comissao, Extrato, Client, User
+from sqlalchemy.orm import Session
 
 
 @pytest.fixture

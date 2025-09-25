@@ -5,9 +5,9 @@ These tests prefer top-level imports (no `app.` prefix). If the real modules
 aren't available in the test environment, tests will skip gracefully.
 """
 
-import pytest
 from unittest.mock import Mock
 
+import pytest
 # Ensure test path setup runs (adds backend and app directories to sys.path)
 from tests.config.test_paths import ensure_domain_imports
 

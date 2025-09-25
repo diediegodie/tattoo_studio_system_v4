@@ -9,24 +9,22 @@ Usage:
     python test_atomic_integration.py [--dry-run] [--verbose]
 """
 
+import logging
 import os
 import sys
-import logging
-import pytest
 from datetime import datetime
 from pathlib import Path
+
+import pytest
 
 # Add backend to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
-from app.services.extrato_atomic import (
-    check_and_generate_extrato_with_transaction,
-)
-from app.services.extrato_core import (
-    verify_backup_before_transfer,
-    delete_historical_records_atomic,
-)
 from app.services.backup_service import BackupService
+from app.services.extrato_atomic import \
+    check_and_generate_extrato_with_transaction
+from app.services.extrato_core import (delete_historical_records_atomic,
+                                       verify_backup_before_transfer)
 
 
 def setup_test_logging(verbose=False):
@@ -124,7 +122,8 @@ def test_deletion_function_integration(logger):
 
     try:
         from unittest.mock import Mock
-        from app.db.base import Pagamento, Sessao, Comissao, Gasto
+
+        from app.db.base import Comissao, Gasto, Pagamento, Sessao
 
         # Create mock database session
         mock_db = Mock()
@@ -167,10 +166,8 @@ def test_batch_processing_integration(logger):
     logger.info("=== Testing Batch Processing Integration ===")
 
     try:
-        from app.services.extrato_batch import (
-            get_batch_size,
-            process_records_in_batches,
-        )
+        from app.services.extrato_batch import (get_batch_size,
+                                                process_records_in_batches)
 
         # Test batch size configuration
         batch_size = get_batch_size()
@@ -219,9 +216,8 @@ def run_health_check(logger):
         logger.info("✓ Backup service is available")
 
         # Test extrato service imports
-        from app.services.extrato_atomic import (
-            generate_extrato_with_atomic_transaction,
-        )
+        from app.services.extrato_atomic import \
+            generate_extrato_with_atomic_transaction
 
         health_status["extrato_service"] = True
         logger.info("✓ Extrato service is available")

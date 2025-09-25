@@ -10,8 +10,9 @@ The script is idempotent and safe to run multiple times.
 """
 
 import logging
-from sqlalchemy import text
+
 from app.db.session import get_engine
+from sqlalchemy import text
 
 # Configure logging
 logging.basicConfig(

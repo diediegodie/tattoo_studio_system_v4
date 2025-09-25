@@ -7,19 +7,14 @@ This controller demonstrates:
 - Open/Closed: New endpoints can be added without modifying existing code
 """
 
-from flask import Blueprint, request, jsonify
 from datetime import datetime
-from typing import Dict, Any, Union, Tuple
+from typing import Any, Dict, Tuple, Union
 
+from app.schemas.dtos import (AppointmentCreateRequest, AppointmentResponse,
+                              AppointmentUpdateRequest, ErrorResponse)
 from app.services.appointment_service import AppointmentService
-from app.schemas.dtos import (
-    AppointmentCreateRequest,
-    AppointmentUpdateRequest,
-    AppointmentResponse,
-    ErrorResponse,
-)
-from flask_login import login_required, current_user
-
+from flask import Blueprint, jsonify, request
+from flask_login import current_user, login_required
 
 appointment_bp = Blueprint("appointments", __name__, url_prefix="/api/appointments")
 

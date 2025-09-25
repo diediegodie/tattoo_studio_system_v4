@@ -7,15 +7,18 @@ Covers:
 - Time zone divergence handling
 """
 
-import pytest
 import json
-from datetime import datetime, timezone, timedelta
-from unittest.mock import patch, MagicMock
-from sqlalchemy.exc import IntegrityError, OperationalError
-from app.services.extrato_atomic import generate_extrato_with_atomic_transaction
-from app.services.extrato_core import check_existing_extrato, get_previous_month
-from app.db.base import Extrato, Pagamento, Sessao, Comissao, ExtratoRunLog
+from datetime import datetime, timedelta, timezone
+from unittest.mock import MagicMock, patch
+
+import pytest
+from app.db.base import Comissao, Extrato, ExtratoRunLog, Pagamento, Sessao
 from app.db.session import SessionLocal
+from app.services.extrato_atomic import \
+    generate_extrato_with_atomic_transaction
+from app.services.extrato_core import (check_existing_extrato,
+                                       get_previous_month)
+from sqlalchemy.exc import IntegrityError, OperationalError
 
 
 class TestExtratoTransferFailureAndRollback:

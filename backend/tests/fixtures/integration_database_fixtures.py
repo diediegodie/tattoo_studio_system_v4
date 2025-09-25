@@ -5,13 +5,13 @@ This module provides database setup, session management, and transaction isolati
 fixtures for integration tests.
 """
 
-import pytest
-import tempfile
 import os
-from unittest.mock import Mock, patch
+import tempfile
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from datetime import datetime, timezone, timedelta
+from unittest.mock import Mock, patch
 
+import pytest
 # Set up test environment paths
 from tests.config.test_paths import setup_test_environment
 
@@ -20,10 +20,11 @@ setup_test_environment()
 try:
     # Quick availability check for Flask and SQLAlchemy. Do NOT import
     # application modules that may create engines at module import time.
-    import flask  # type: ignore
-    from sqlalchemy import text  # type: ignore
-    import jwt
     from datetime import datetime, timedelta, timezone
+
+    import flask  # type: ignore
+    import jwt
+    from sqlalchemy import text  # type: ignore
 
     FLASK_IMPORTS_AVAILABLE = True
 except ImportError as e:

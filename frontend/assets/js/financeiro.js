@@ -19,22 +19,25 @@
   const domHelpers = (typeof window !== 'undefined' && window.domHelpers) ? window.domHelpers : null;
 
   function getStatusHelper() {
-  return typeof window.showStatus === 'function' ? window.showStatus : function (msg, ok) { try { if (window.showToast) window.showToast(msg, ok ? 'success' : 'error', 8000); else console.log(msg); } catch(e){ console.log(msg); } };
+  return typeof window.showStatus === 'function' ? window.showStatus : function (msg, ok) { 
+    try { 
+      if (ok) {
+        if (window.notifySuccess) window.notifySuccess(msg);
+      } else {
+        if (window.notifyError) window.notifyError(msg);
+      }
+    } catch(e){ console.log(msg); } 
+  };
   }
 
   // Async confirm helper to allow promise-based usage
-  function confirmAction(message) {
-    if (typeof window.confirm === 'function') return Promise.resolve(window.confirm(message));
-    return Promise.resolve(true);
-  }
-
   // Function to handle the Finalizar button - this is the key functionality
   async function finalizarPagamento(id) {
     if (!id) return console.warn('finalizarPagamento called without id');
 
     console.log('finalizarPagamento called with id:', id);
     console.log('Button clicked with id:', id);
-    getStatusHelper()('Carregando dados do pagamento...', true);
+    getStatusHelper()('Processando...', true);
 
     // Try to obtain payment data
     let data = null;
@@ -56,7 +59,7 @@
       }
     } catch (err) {
       console.error('Could not fetch payment data:', err);
-      getStatusHelper()('Erro ao carregar dados do pagamento.', false);
+      getStatusHelper()('Não foi possível concluir a ação. Tente novamente.', false);
       return;
     }
 
@@ -89,10 +92,20 @@
   }
 
   async function deletePagamento(id, skipConfirmation = false) {
-  console.log('financeiro.deletePagamento invoked with id:', id);
+  console.log('[DEBUG] financeiro.deletePagamento called with id:', id);
   if (!id) return console.warn('deletePagamento called without id');
-  if (!skipConfirmation && !(await confirmAction('Tem certeza que deseja excluir este pagamento?'))) return;
-    getStatusHelper()('Excluindo...', true);
+
+  if (!skipConfirmation) {
+    const confirmed = await window.confirmAction('Tem certeza que deseja excluir este pagamento?');
+    console.log('[DEBUG] financeiro.deletePagamento user confirmation:', confirmed);
+    if (!confirmed) {
+      console.log('[DEBUG] financeiro.deletePagamento cancelled by user');
+      return;
+    }
+  }
+
+  console.log('[DEBUG] financeiro.deletePagamento proceeding with deletion for id:', id);
+  getStatusHelper()('Processando...', true);
 
     try {
       let payload;
@@ -105,7 +118,7 @@
         // Handle authentication redirects
         if (r.status === 302 || r.status === 401) {
           console.log('financeiro.deletePagamento: Authentication required, redirecting to login');
-          getStatusHelper()('Sessão expirada. Redirecionando para login...', false);
+          getStatusHelper()('Acesso não autorizado. Faça login e tente novamente.', false);
           window.location.href = '/auth/login';
           return;
         }
@@ -130,14 +143,15 @@
           return;
         }
 
-        getStatusHelper()(payload.message || 'Pagamento excluído.', true);
+        getStatusHelper()(payload.message || 'Ação concluída com sucesso.', true);
+        try { if (typeof closeModal === 'function') closeModal(); } catch(e) {}
       } else {
-        const msg = (payload && payload.message) || 'Erro ao excluir pagamento.';
+        const msg = (payload && payload.message) || 'Não foi possível concluir a ação. Tente novamente.';
         getStatusHelper()(msg, false);
       }
     } catch (err) {
       // handle HTML or text responses gracefully
-      const msg = (err && err.message) || 'Erro ao excluir pagamento.';
+      const msg = (err && err.message) || 'Falha de conexão. Verifique sua internet e tente novamente.';
       getStatusHelper()(msg, false);
       console.error('deletePagamento error', err);
     }
@@ -146,7 +160,7 @@
   async function editPagamento(id) {
     if (!id) return console.warn('editPagamento called without id');
 
-    getStatusHelper()('Carregando pagamento para edição...', true);
+    getStatusHelper()('Processando...', true);
 
     try {
       let res;
@@ -170,63 +184,72 @@
 
       const p = res.data;
 
-      // Build or reuse modal similar to inventory.js
-      let modal = document.getElementById('financeiro-edit-modal');
-      if (!modal) {
-        modal = document.createElement('div');
-        modal.id = 'financeiro-edit-modal';
-        modal.innerHTML = `
-          <div class="modal-overlay">
-            <div class="modal-container">
-              <div class="modal-scrollable">
-                <h2>Editar Pagamento</h2>
-                <form id="financeiro-edit-form">
-                  <label>Data:<br><input type="date" name="data" required></label><br><br>
-                  <label>Valor:<br><input type="number" step="0.01" name="valor" required></label><br><br>
-                  <label>Forma de pagamento:<br>
-                    <select name="forma_pagamento" id="financeiro-edit-forma_pagamento" required>
-                      <option value="">Selecione...</option>
-                      <option value="Dinheiro">Dinheiro</option>
-                      <option value="Pix">Pix</option>
-                      <option value="Cartão de Crédito">Crédito</option>
-                      <option value="Cartão de Débito">Débito</option>
-                      <option value="Outros">Outros</option>
-                    </select>
-                  </label><br><br>
-                  <label>Cliente:<br>
-                    <select name="cliente_id" id="financeiro-edit-cliente"></select>
-                  </label><br><br>
-                  <label>Artista:<br>
-                    <select name="artista_id" id="financeiro-edit-artista"></select>
-                  </label><br><br>
-                  <label>Observações:<br><textarea name="observacoes"></textarea></label><br><br>
-                </form>
-              </div>
-              <div class="modal-footer">
-                <button type="submit" form="financeiro-edit-form" class="button primary">Salvar</button>
-                <button type="button" id="financeiro-cancel-edit" class="button">Cancelar</button>
-              </div>
-            </div>
-          </div>
-        `;
-        document.body.appendChild(modal);
-      }
+      // Build modal content
+      const modalContent = `
+        <form id="financeiro-edit-form">
+          <label>Data:<br><input type="date" name="data" required></label><br><br>
+          <label>Valor:<br><input type="number" step="0.01" name="valor" required></label><br><br>
+          <label>Forma de pagamento:<br>
+            <select name="forma_pagamento" id="financeiro-edit-forma_pagamento" required>
+              <option value="">Selecione...</option>
+              <option value="Dinheiro">Dinheiro</option>
+              <option value="Pix">Pix</option>
+              <option value="Cartão de Crédito">Crédito</option>
+              <option value="Cartão de Débito">Débito</option>
+              <option value="Outros">Outros</option>
+            </select>
+          </label><br><br>
+          <label>Cliente:<br>
+            <select name="cliente_id" id="financeiro-edit-cliente"></select>
+          </label><br><br>
+          <label>Artista:<br>
+            <select name="artista_id" id="financeiro-edit-artista"></select>
+          </label><br><br>
+          <label>Observações:<br><textarea name="observacoes"></textarea></label><br><br>
+        </form>
+      `;
+
+      // Use unified modal system
+      openCustomModal({
+        title: 'Editar Pagamento',
+        content: modalContent,
+        showConfirm: true,
+        showCancel: true,
+        confirmText: 'Salvar',
+        cancelText: 'Cancelar',
+        onConfirm: function() {
+          console.log('[DEBUG] financeiro.js onConfirm triggered for payment edit');
+          const form = document.querySelector('#financeiro-edit-form');
+          if (form) {
+            console.log('[DEBUG] Found form, dispatching submit event');
+            const submitEvent = new Event('submit', { cancelable: true });
+            form.dispatchEvent(submitEvent);
+          } else {
+            console.error('[DEBUG] Form not found for payment edit');
+          }
+        },
+        onCancel: null,
+        closeOnConfirm: false, // Don't close on confirm, let form handler do it
+        closeOnCancel: true
+      });
+
+      // Get the form after modal is created
+      const form = document.querySelector('#financeiro-edit-form');
 
       // Fill selects from template hidden selects if present
-  const tmplCliente = document.getElementById('tmpl_cliente_select');
-  const tmplArtista = document.getElementById('tmpl_artista_select');
-  const tmplForma = document.getElementById('tmpl_forma_pagamento_select');
-  const clienteSelect = modal.querySelector('#financeiro-edit-cliente');
-  const artistaSelect = modal.querySelector('#financeiro-edit-artista');
-  const formaSelect = modal.querySelector('#financeiro-edit-forma_pagamento');
+      const tmplCliente = document.getElementById('tmpl_cliente_select');
+      const tmplArtista = document.getElementById('tmpl_artista_select');
+      const tmplForma = document.getElementById('tmpl_forma_pagamento_select');
+      const clienteSelect = form.querySelector('#financeiro-edit-cliente');
+      const artistaSelect = form.querySelector('#financeiro-edit-artista');
+      const formaSelect = form.querySelector('#financeiro-edit-forma_pagamento');
 
-  if (tmplCliente && clienteSelect) clienteSelect.innerHTML = tmplCliente.innerHTML;
-  if (tmplArtista && artistaSelect) artistaSelect.innerHTML = tmplArtista.innerHTML;
-  // Use template select if available, otherwise keep the hardcoded options
-  if (tmplForma && formaSelect) formaSelect.innerHTML = tmplForma.innerHTML;
+      if (tmplCliente && clienteSelect) clienteSelect.innerHTML = tmplCliente.innerHTML;
+      if (tmplArtista && artistaSelect) artistaSelect.innerHTML = tmplArtista.innerHTML;
+      // Use template select if available, otherwise keep the hardcoded options
+      if (tmplForma && formaSelect) formaSelect.innerHTML = tmplForma.innerHTML;
 
       // Prefill values
-      const form = modal.querySelector('#financeiro-edit-form');
       form.elements['data'].value = p.data || '';
       form.elements['valor'].value = (p.valor !== null && typeof p.valor !== 'undefined') ? p.valor : '';
       // Prefill forma_pagamento select
@@ -239,13 +262,7 @@
       if (p.artista && p.artista.id) form.elements['artista_id'].value = p.artista.id;
       form.elements['observacoes'].value = p.observacoes || '';
 
-      modal.style.display = 'block';
-
-      modal.querySelector('#financeiro-cancel-edit').onclick = function () {
-        modal.style.display = 'none';
-        modal.remove();
-      };
-
+      // Set up form submission handler
       form.onsubmit = function (e) {
         e.preventDefault();
         getStatusHelper()('Salvando...', true);
@@ -310,8 +327,7 @@
               }
 
               getStatusHelper()(updated.message || 'Pagamento atualizado.', true);
-              modal.style.display = 'none';
-              modal.remove();
+              closeModal();
             } else {
               const msg = (updated && updated.message) || 'Erro ao salvar pagamento.';
               getStatusHelper()(msg, false);

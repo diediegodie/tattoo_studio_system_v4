@@ -6,8 +6,8 @@ This version can be run outside Docker for easier development.
 Uso: python test_seed_locally.py
 """
 
-import sys
 import os
+import sys
 from pathlib import Path
 
 # Add the backend directory to Python path

@@ -1,13 +1,13 @@
-from flask import render_template, redirect, url_for
-from typing import Union
-from werkzeug.wrappers import Response
+import asyncio
+import inspect
 import logging
+from typing import Union
 
 from app.db.session import SessionLocal
-from app.services.user_service import UserService
 from app.repositories.user_repo import UserRepository
-import inspect
-import asyncio
+from app.services.user_service import UserService
+from flask import redirect, render_template, url_for
+from werkzeug.wrappers import Response
 
 # Configure logger
 logger = logging.getLogger(__name__)

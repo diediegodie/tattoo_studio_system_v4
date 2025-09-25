@@ -1,8 +1,8 @@
-from typing import Dict, Optional, List
+from typing import Dict, List, Optional
 
-from app.domain.interfaces import IUserRepository
-from app.domain.entities import User as DomainUser
 from app.core.security import hash_password, verify_password
+from app.domain.entities import User as DomainUser
+from app.domain.interfaces import IUserRepository
 
 
 class UserService:

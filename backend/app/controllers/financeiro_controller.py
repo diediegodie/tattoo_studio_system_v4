@@ -1,21 +1,22 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
-from flask_login import login_required, current_user
-from typing import Union, Dict, Any, Tuple, cast
-from werkzeug.wrappers import Response
+import asyncio
+import inspect
 import logging
 from datetime import datetime
 from decimal import Decimal
+from typing import Any, Dict, Tuple, Union, cast
 
-from sqlalchemy.orm import joinedload
+from app.core.api_utils import api_response
+from app.db.base import Client  # Import existing models from db.base
+from app.db.base import Pagamento
+from app.db.base import Pagamento as PagamentoModel
 from app.db.session import SessionLocal
-from app.db.base import Client, Pagamento  # Import existing models from db.base
+from app.repositories.pagamento_repository import PagamentoRepository
 from app.repositories.user_repo import UserRepository
 from app.services.user_service import UserService
-from app.repositories.pagamento_repository import PagamentoRepository
-from app.db.base import Pagamento as PagamentoModel
-from app.core.api_utils import api_response
-import inspect
-import asyncio
+from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
+from flask_login import current_user, login_required
+from sqlalchemy.orm import joinedload
+from werkzeug.wrappers import Response
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -23,15 +24,16 @@ logger = logging.getLogger(__name__)
 # Create blueprint FIRST (before imports to avoid circular imports)
 financeiro_bp = Blueprint("financeiro", __name__, url_prefix="/financeiro")
 
-# Import from split modules
-from app.controllers.financeiro_helpers import (
-    _safe_render,
-    _safe_redirect,
-    _get_user_service,
-    _maybe_await,
-)
 from app.controllers.financeiro_api import *
 from app.controllers.financeiro_crud import *
+
+# Import from split modules
+from app.controllers.financeiro_helpers import (
+    _get_user_service,
+    _maybe_await,
+    _safe_redirect,
+    _safe_render,
+)
 
 
 @financeiro_bp.route("/", methods=["GET"])
@@ -397,8 +399,11 @@ def registrar_pagamento() -> Union[str, Response, Tuple[str, int]]:
             except Exception:
                 logger.info("Pagamento registrado com sucesso (ids may be missing)")
 
-            flash("Pagamento registrado com sucesso!", "success")
-            return _safe_redirect("/financeiro/")
+            flash(
+                "Pagamento registrado com sucesso. Redirecionando para o Histórico.",
+                "success",
+            )
+            return redirect(url_for("historico.historico_home"))
 
     except Exception as e:
         logger.exception(f"Error in registrar_pagamento: {str(e)}")

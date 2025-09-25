@@ -4,8 +4,8 @@ Google Calendar Integration Test Script
 This script helps test the calendar integration manually before UI implementation.
 """
 
-import sys
 import os
+import sys
 
 sys.path.insert(0, "app")
 
@@ -14,10 +14,11 @@ from dotenv import load_dotenv
 
 load_dotenv("../.env")
 
-from flask import Flask
-from app.services.oauth_token_service import OAuthTokenService
-from app.services.google_calendar_service import GoogleCalendarService
 from datetime import datetime, timedelta
+
+from app.services.google_calendar_service import GoogleCalendarService
+from app.services.oauth_token_service import OAuthTokenService
+from flask import Flask
 
 
 def create_test_app():
@@ -135,7 +136,8 @@ def test_with_mock_token():
     print("=" * 50)
 
     try:
-        from app.repositories.google_calendar_repo import GoogleCalendarRepository
+        from app.repositories.google_calendar_repo import \
+            GoogleCalendarRepository
 
         # Test repository without real API calls
         repo = GoogleCalendarRepository()

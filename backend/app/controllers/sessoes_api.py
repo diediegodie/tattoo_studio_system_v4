@@ -4,17 +4,16 @@ Handles JSON API operations for sessions.
 """
 
 import logging
-from datetime import date, time, datetime
+from datetime import date, datetime, time
 from decimal import Decimal
 from typing import Union
-
-from flask import Blueprint, request, jsonify
-from flask_login import login_required
-from sqlalchemy.orm import joinedload
 
 from app.controllers.sessoes_helpers import api_response
 from app.db.base import Sessao
 from app.db.session import SessionLocal
+from flask import Blueprint, jsonify, request
+from flask_login import login_required
+from sqlalchemy.orm import joinedload
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +35,7 @@ def api_list_sessoes():
         sessoes = (
             db.query(Sessao)
             .options(joinedload(Sessao.cliente), joinedload(Sessao.artista))
-            .order_by(Sessao.data.asc(), Sessao.hora.asc())
+            .order_by(Sessao.data.asc(), Sessao.created_at.asc())
             .all()
         )
 
@@ -44,7 +43,6 @@ def api_list_sessoes():
             return {
                 "id": s.id,
                 "data": s.data.isoformat() if s.data else None,
-                "hora": s.hora.strftime("%H:%M:%S") if s.hora else None,
                 "cliente": (
                     {"id": s.cliente.id, "name": s.cliente.name} if s.cliente else None
                 ),
@@ -59,11 +57,11 @@ def api_list_sessoes():
             }
 
         return api_response(
-            True, "Sessions retrieved successfully", [to_dict(s) for s in sessoes]
+            True, "Sessões recuperadas com sucesso", [to_dict(s) for s in sessoes]
         )
     except Exception as e:
         logger.error(f"Error in api_list_sessoes: {str(e)}")
-        return jsonify([]), 500
+        return api_response(False, "Erro interno do servidor", None, 500)
     finally:
         if db:
             db.close()
@@ -84,7 +82,6 @@ def api_get_sessao(sessao_id: int):
         data = {
             "id": s.id,
             "data": s.data.isoformat() if s.data else None,
-            "hora": s.hora.strftime("%H:%M:%S") if s.hora else None,
             "cliente": (
                 {"id": s.cliente.id, "name": s.cliente.name} if s.cliente else None
             ),
@@ -100,7 +97,7 @@ def api_get_sessao(sessao_id: int):
         return api_response(True, "Sessão encontrada", data, 200)
     except Exception as e:
         logger.error(f"Error in api_get_sessao: {str(e)}")
-        return api_response(False, f"Error: {str(e)}", None, 500)
+        return api_response(False, f"Erro: {str(e)}", None, 500)
     finally:
         if db:
             db.close()
@@ -123,7 +120,7 @@ def api_update_sessao(sessao_id: int):
             return api_response(False, "Sessão não encontrada", None, 404)
 
         # Server-side validation: ensure required fields are present
-        required_fields = ["data", "hora", "cliente_id", "artista_id", "valor"]
+        required_fields = ["data", "cliente_id", "artista_id", "valor"]
         for field in required_fields:
             if (
                 field not in payload
@@ -141,12 +138,6 @@ def api_update_sessao(sessao_id: int):
                     if isinstance(payload["data"], str)
                     else payload["data"]
                 )
-            if "hora" in payload and payload["hora"]:
-                # Accept HH:MM or HH:MM:SS
-                try:
-                    s.hora = time.fromisoformat(payload["hora"])
-                except Exception:
-                    s.hora = datetime.strptime(payload["hora"], "%H:%M").time()
             if "cliente_id" in payload and payload["cliente_id"]:
                 s.cliente_id = int(payload["cliente_id"])
             if "artista_id" in payload and payload["artista_id"]:
@@ -161,12 +152,11 @@ def api_update_sessao(sessao_id: int):
             db.refresh(s)
         except Exception as e:
             db.rollback()
-            return api_response(False, f"Update failed: {str(e)}", None, 400)
+            return api_response(False, f"Falha na atualização: {str(e)}", None, 400)
 
         data = {
             "id": s.id,
             "data": s.data.isoformat() if s.data else None,
-            "hora": s.hora.strftime("%H:%M:%S") if s.hora else None,
             "cliente": (
                 {"id": s.cliente.id, "name": s.cliente.name} if s.cliente else None
             ),
@@ -203,7 +193,7 @@ def api_delete_sessao(sessao_id: int):
             db.commit()
         except Exception as e:
             db.rollback()
-            return api_response(False, f"Delete failed: {str(e)}", None, 400)
+            return api_response(False, "Falha ao excluir sessão", None, 400)
 
         return api_response(True, "Sessão excluída", None, 200)
     finally:

@@ -5,13 +5,13 @@ These tests validate core session flows around Google Calendar integration.
 They use the project's `db_session` fixture for transactional isolation.
 """
 
-import pytest
-from unittest.mock import patch, Mock
-from datetime import datetime, date, time
-from decimal import Decimal
 import uuid
+from datetime import date, datetime, time
+from decimal import Decimal
+from unittest.mock import Mock, patch
 
-from app.db.base import Sessao, Client, User
+import pytest
+from app.db.base import Client, Sessao, User
 
 
 @pytest.mark.postgres
@@ -92,7 +92,6 @@ class TestSessoesControllerGoogleIntegration:
 
                     form_data = {
                         "data": "2025-08-30",
-                        "hora": "14:00",
                         "cliente_id": str(sample_client.id),
                         "artista_id": str(sample_artist.id),
                         "valor": "100.00",
@@ -121,7 +120,6 @@ class TestSessoesControllerGoogleIntegration:
     ):
         existing = Sessao(
             data=date(2025, 8, 30),
-            hora=time(14, 0),
             valor=Decimal("100.00"),
             observacoes="Existing session",
             cliente_id=sample_client.id,
@@ -143,7 +141,6 @@ class TestSessoesControllerGoogleIntegration:
 
                 form_data = {
                     "data": "2025-08-31",
-                    "hora": "15:00",
                     "cliente_id": str(sample_client.id),
                     "artista_id": str(sample_artist.id),
                     "valor": "150.00",
@@ -180,7 +177,6 @@ class TestSessoesControllerGoogleIntegration:
 
                 form_data = {
                     "data": "2025-09-01",
-                    "hora": "16:00",
                     "cliente_id": str(sample_client.id),
                     "artista_id": str(sample_artist.id),
                     "valor": "200.00",
@@ -195,7 +191,6 @@ class TestSessoesControllerGoogleIntegration:
 
                 sess = (
                     db_session.query(Sessao)
-                    .filter_by(data=date(2025, 9, 1), hora=time(16, 0))
                     .first()
                 )
                 assert sess is not None
@@ -217,7 +212,6 @@ class TestSessoesControllerGoogleIntegration:
 
                 form_data = {
                     "data": "2025-09-02",
-                    "hora": "17:00",
                     "cliente_id": str(sample_client.id),
                     "artista_id": str(sample_artist.id),
                     "valor": "250.00",
@@ -247,7 +241,6 @@ class TestSessoesControllerGoogleIntegration:
     ):
         session = Sessao(
             data=date(2025, 9, 3),
-            hora=time(18, 0),
             valor=Decimal("300.00"),
             observacoes="API test session",
             cliente_id=sample_client.id,

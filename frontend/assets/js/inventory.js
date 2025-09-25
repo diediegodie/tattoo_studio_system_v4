@@ -87,12 +87,12 @@ function renderInventory() {
         const btnOptions = document.createElement('button');
         btnOptions.className = 'button small options-btn';
         btnOptions.textContent = 'Opções';
-        btnOptions.onclick = function(e) { e.stopPropagation(); toggleOptions(btnOptions); };
+        btnOptions.onclick = function(e) { e.stopPropagation(); window.toggleOptions(btnOptions); };
         tdOptions.appendChild(btnOptions);
 
         const spanActions = document.createElement('span');
         spanActions.className = 'options-actions';
-        spanActions.style.display = 'none';
+        // Removed inline style.display = 'none' - using CSS class instead
         const btnEdit = document.createElement('button');
         btnEdit.className = 'button small edit-item-btn';
         btnEdit.textContent = 'Editar';
@@ -101,7 +101,6 @@ function renderInventory() {
         const btnDelete = document.createElement('button');
         btnDelete.className = 'button small delete-item-btn';
         btnDelete.textContent = 'Excluir';
-        btnDelete.onclick = function(e) { e.stopPropagation(); deleteItem(item.id); };
         spanActions.appendChild(btnDelete);
         tdOptions.appendChild(spanActions);
         tr.appendChild(tdOptions);
@@ -181,39 +180,34 @@ function editItem(id) {
         if (window.showToast) window.showToast('Item não encontrado.', 'error');
         return;
     }
-    let modal = document.getElementById('edit-modal');
-    if (!modal) {
-        modal = document.createElement('div');
-        modal.id = 'edit-modal';
-        modal.innerHTML = `
-            <div style="position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.5);z-index:10000;display:flex;align-items:center;justify-content:center;">
-                <form id="edit-form" style="background:#fff;padding:2em;border-radius:8px;min-width:300px;">
-                    <h2>Editar Item</h2>
-                    <label>Nome:<br><input type="text" name="nome" value="${item.nome}" required></label><br><br>
-                    <label>Quantidade:<br><input type="number" name="quantidade" value="${item.quantidade}" required></label><br><br>
-                    <label>Observações:<br><input type="text" name="observacoes" value="${item.observacoes || ''}"></label><br><br>
-                    <button type="submit" class="button primary">Salvar</button>
-                    <button type="button" id="cancel-edit" class="button">Cancelar</button>
-                </form>
-            </div>
-        `;
-        document.body.appendChild(modal);
-    }
-    modal.style.display = 'block';
-    document.getElementById('cancel-edit').onclick = function () {
-        modal.style.display = 'none';
-        modal.remove();
-    };
-    document.getElementById('edit-form').onsubmit = function (e) {
-        e.preventDefault();
-        showStatus('Salvando...', true);
-        const formData = new FormData(e.target);
-        const payload = {
-            nome: formData.get('nome'),
-            quantidade: parseInt(formData.get('quantidade'), 10),
-            observacoes: formData.get('observacoes')
-        };
-        (async function () {
+
+    // Create form content for unified modal
+    const formContent = `
+        <form id="edit-form">
+            <label>Nome:<br><input type="text" name="nome" value="${item.nome}" required></label><br><br>
+            <label>Quantidade:<br><input type="number" name="quantidade" value="${item.quantidade}" required></label><br><br>
+            <label>Observações:<br><input type="text" name="observacoes" value="${item.observacoes || ''}"></label><br><br>
+        </form>
+    `;
+
+    // Open modal with unified system
+    openCustomModal({
+        title: 'Editar Item',
+        content: formContent,
+        confirmText: 'Salvar',
+        cancelText: 'Cancelar',
+        onConfirm: async function() {
+            const form = document.getElementById('edit-form');
+            if (!form) return;
+
+            window.notifySuccess('Salvando...');
+            const formData = new FormData(form);
+            const payload = {
+                nome: formData.get('nome'),
+                quantidade: parseInt(formData.get('quantidade'), 10),
+                observacoes: formData.get('observacoes')
+            };
+
             try {
                 let json;
                 if (inventoryClient && typeof inventoryClient.update === 'function') {
@@ -235,28 +229,39 @@ function editItem(id) {
                 if (json && json.success) {
                     Object.assign(item, json.data);
                     renderInventory();
-                    showStatus(json.message, true);
-                    modal.style.display = 'none';
-                    modal.remove();
+                    window.notifySuccess(json.message);
+                    closeModal();
                 } else {
                     const msg = (json && json.message) || 'Erro ao salvar.';
-                    showStatus(msg, false);
+                    window.notifyError(msg);
                 }
             } catch (err) {
                 const msg = (err && err.payload && err.payload.message) || 'Erro ao salvar.';
-                showStatus(msg, false);
+                window.notifyError(msg);
             }
-        })();
-    };
+        }
+    });
 }
 
 // Excluir item
-function deleteItem(id) {
-    // use async confirm helper if available
-    if (typeof window.confirm === 'function') {
-        if (!window.confirm('Tem certeza que deseja excluir este item?')) return;
+async function deleteItem(id) {
+    console.log('[DEBUG] deleteItem called with id:', id);
+    // Use unified modal system for consistency (require it)
+    if (typeof window.confirmAction === 'function') {
+        console.log('[DEBUG] inventory.deleteItem delegating to window.confirmAction with id:', id);
+        const confirmed = await window.confirmAction('Tem certeza que deseja excluir este item?');
+        console.log('[DEBUG] User confirmation result for item deletion:', confirmed);
+        if (!confirmed) {
+            console.log('[DEBUG] inventory.deleteItem cancelled by user');
+            return;
+        }
+    } else {
+        console.error('[DEBUG] window.confirmAction not available in inventory.js — refusing to proceed with deletion for id:', id);
+        return;
     }
-    showStatus('Excluindo...', true);
+
+    console.log('[DEBUG] Proceeding with item deletion, id:', id);
+    window.notifySuccess('Excluindo...');
     (async function () {
         try {
             let json;
@@ -271,6 +276,7 @@ function deleteItem(id) {
             }
 
             if (json && json.success) {
+                console.log('[DEBUG] Item deletion successful, id:', id, 'response:', json);
                 // Prefer DOM removal for minimal reflow when possible
                 const removed = domHelpers && typeof domHelpers.removeRowById === 'function'
                     ? domHelpers.removeRowById('.table-wrapper table', id)
@@ -280,32 +286,21 @@ function deleteItem(id) {
                     inventoryData = inventoryData.filter(i => i.id != id);
                     renderInventory();
                 }
-                showStatus(json.message, true);
+                    window.notifySuccess(json.message);
+                    try { if (typeof closeModal === 'function') closeModal(); } catch(e) {}
             } else {
+                console.error('[DEBUG] Item deletion failed, id:', id, 'response:', json);
                 const msg = (json && json.message) || 'Erro ao excluir.';
-                showStatus(msg, false);
+                window.notifyError(msg);
             }
         } catch (err) {
             const msg = (err && err.payload && err.payload.message) || 'Erro ao excluir.';
-            showStatus(msg, false);
+            window.notifyError(msg);
         }
     })();
 }
 
-// Status bar helper
-function showStatus(message, success = true) {
-    // Thin wrapper: delegate to the global toast. Keep minimal fallback.
-    try {
-        if (window.showToast) {
-            window.showToast(message, success ? 'success' : 'error', 8000);
-            return;
-        }
-    } catch (e) {
-        console.error('Error calling global showToast', e);
-    }
-    // Extremely minimal fallback: alert so messages are never silently lost.
-    try { alert(message); } catch (e) { console.error('Fallback alert failed', e); }
-}
+// Status bar helper - removed local function, using global window.notifySuccess/window.notifyError
 
 // ...existing code...
 
@@ -316,14 +311,7 @@ function updateLockerControls() {
     });
 }
 
-// Options toggle logic
-function toggleOptions(btn) {
-    // Only show/hide .options-actions inside the Opções column for this row
-    var actions = btn.parentElement.querySelector('.options-actions');
-    if (actions) {
-        actions.style.display = (actions.style.display === 'none' || actions.style.display === '') ? 'inline-block' : 'none';
-    }
-}
+// Options toggle logic - removed local function, using global window.toggleOptions
 
 // Locker toggle
 function toggleLockMode() {
@@ -360,7 +348,7 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault();
             e.stopPropagation();
             console.log('🔽 Botão opções clicado');
-            toggleOptions(optionsBtn);
+            window.toggleOptions(optionsBtn);
             return;
         }
         const editBtn = e.target.closest('.edit-item-btn');

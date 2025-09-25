@@ -9,10 +9,10 @@ This script provides various test execution options including:
 - Running tests with detailed output options
 """
 
-import sys
-import subprocess
 import argparse
 import os
+import subprocess
+import sys
 from pathlib import Path
 
 

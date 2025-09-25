@@ -4,12 +4,12 @@ Single Responsibility: Handle Google Calendar API operations
 """
 
 import logging
-import requests
-from typing import List, Optional, Dict
 from datetime import datetime
+from typing import Dict, List, Optional
 
-from app.domain.interfaces import IGoogleCalendarRepository
+import requests
 from app.core.exceptions import ExpiredAccessTokenError
+from app.domain.interfaces import IGoogleCalendarRepository
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +63,12 @@ class GoogleCalendarRepository(IGoogleCalendarRepository):
                 "maxResults": 250,  # Google Calendar API limit
             }
 
+            # DEBUG: Log API call details
+            logger.info(f"DEBUG: Making Google Calendar API call")
+            logger.info(f"DEBUG: URL: {self.base_url}/calendars/primary/events")
+            logger.info(f"DEBUG: Parameters: {params}")
+            logger.info(f"DEBUG: Date range: {time_min} to {time_max}")
+
             response = requests.get(
                 f"{self.base_url}/calendars/primary/events",
                 headers=headers,
@@ -70,16 +76,30 @@ class GoogleCalendarRepository(IGoogleCalendarRepository):
                 timeout=30,
             )
 
+            # DEBUG: Log API response
+            logger.info(f"DEBUG: Google API response status: {response.status_code}")
+
             if response.status_code == 200:
                 data = response.json()
+                events_count = len(data.get("items", []))
+                logger.info(f"DEBUG: Google API returned {events_count} events")
+
+                # Log sample event if any exist
+                if events_count > 0:
+                    sample_event = data.get("items", [])[0]
+                    logger.info(
+                        f"DEBUG: Sample event: {sample_event.get('summary', 'No title')} - {sample_event.get('start', {})}"
+                    )
+
                 return data.get("items", [])
             elif response.status_code == 401:
-                logger.warning("Google Calendar API: Unauthorized access token")
+                logger.warning("DEBUG: Google Calendar API: Unauthorized access token")
                 raise ExpiredAccessTokenError("Access token expired, needs refresh")
             else:
                 logger.error(
-                    f"Google Calendar API error: {response.status_code} - {response.text}"
+                    f"DEBUG: Google Calendar API error: {response.status_code}"
                 )
+                logger.error(f"DEBUG: Response text: {response.text}")
                 return []
 
         except requests.RequestException as e:
@@ -168,6 +188,9 @@ class GoogleCalendarRepository(IGoogleCalendarRepository):
                 )
                 return False
 
+        except ExpiredAccessTokenError:
+            # Re-raise the exception to be handled by the service layer
+            raise
         except requests.RequestException as e:
             logger.error(f"Request error validating token: {str(e)}")
             return False

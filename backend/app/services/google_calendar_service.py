@@ -4,14 +4,14 @@ Single Responsibility: Handle calendar business operations
 """
 
 import logging
-from typing import List, Optional
 from datetime import datetime, timedelta
+from typing import List, Optional
 
-from app.domain.interfaces import ICalendarService, IGoogleCalendarRepository
+from app.core.exceptions import ExpiredAccessTokenError
 from app.domain.entities import CalendarEvent
+from app.domain.interfaces import ICalendarService, IGoogleCalendarRepository
 from app.repositories.google_calendar_repo import GoogleCalendarRepository
 from app.services.oauth_token_service import OAuthTokenService
-from app.core.exceptions import ExpiredAccessTokenError
 
 logger = logging.getLogger(__name__)
 
@@ -48,27 +48,57 @@ class GoogleCalendarService(ICalendarService):
             List of CalendarEvent domain entities
         """
         try:
+            # DEBUG: Log service call details
+            logger.info(
+                f"DEBUG: GoogleCalendarService.get_user_events called for user {user_id}"
+            )
+            logger.info(f"DEBUG: Date range: {start_date} to {end_date}")
+
             # Get access token for user
             [REDACTED_ACCESS_TOKEN]
-            if not [REDACTED_ACCESS_TOKEN]"No access token found for user {user_id}")
+            if not [REDACTED_ACCESS_TOKEN]"DEBUG: No access token found for user {user_id}")
                 return []
+
+            # DEBUG: Log token status (safely)
+            token_preview = (
+                access_token[:20] + "..."
+                if access_token and len(access_token) > 20
+                else "None"
+            )
+            logger.info(f"DEBUG: Access token retrieved: {token_preview}")
 
             # Validate token before making API calls
             try:
                 if not self.calendar_repo.validate_token(access_token):
-                    logger.warning(f"Invalid access token for user {user_id}")
+                    logger.warning(f"DEBUG: Invalid access token for user {user_id}")
                     return []
+                logger.info(f"DEBUG: Token validation successful for user {user_id}")
             except ExpiredAccessTokenError:
-                # Token validation failed due to expiration, refresh will be handled below
-                pass
+                # Token is expired, trigger immediate refresh
+                logger.info(
+                    f"DEBUG: Token expired for user {user_id}, attempting refresh now"
+                )
+                raise  # Re-raise to trigger the refresh logic in the outer try-catch
 
             # Fetch events from Google Calendar
+            logger.info(f"DEBUG: Making Google Calendar API call for user {user_id}")
             events_data = self.calendar_repo.fetch_events(
                 access_token, start_date, end_date
             )
 
+            # DEBUG: Log raw API response
+            logger.info(
+                f"DEBUG: Google API returned {len(events_data) if events_data else 0} events"
+            )
+            if events_data and len(events_data) > 0:
+                logger.info(
+                    f"DEBUG: First event sample: {events_data[0] if events_data else 'None'}"
+                )
+
             # Convert to domain entities
-            return self._parse_events_to_domain(events_data, user_id)
+            parsed_events = self._parse_events_to_domain(events_data, user_id)
+            logger.info(f"DEBUG: Parsed {len(parsed_events)} events to domain entities")
+            return parsed_events
 
         except ExpiredAccessTokenError as e:
             logger.info(f"Access token expired for user {user_id}, attempting refresh")

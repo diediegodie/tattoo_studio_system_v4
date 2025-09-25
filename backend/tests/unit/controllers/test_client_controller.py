@@ -10,8 +10,9 @@ Tests are organized by:
 - Integration placeholders (require Flask test client)
 """
 
-import pytest
 from unittest.mock import Mock, patch
+
+import pytest
 
 # Test configuration and imports
 from tests.config.test_paths import ensure_domain_imports
@@ -115,6 +116,7 @@ class TestClientControllerStructure:
                 "url_for",
                 "datetime",
                 "os",
+                "api_response",
             ]:
                 continue
 

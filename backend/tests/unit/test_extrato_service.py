@@ -2,11 +2,12 @@
 Test for extrato service functionality.
 """
 
-import pytest
 from datetime import datetime
 from unittest.mock import patch
-from app.services.extrato_core import get_previous_month
+
+import pytest
 from app.services.extrato_automation import should_run_monthly_extrato
+from app.services.extrato_core import get_previous_month
 
 
 class TestExtratoService:

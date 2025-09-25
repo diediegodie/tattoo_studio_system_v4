@@ -8,9 +8,10 @@ This service:
 - Formats JotForm data using your existing logic
 """
 
-import requests
 import json
-from typing import List, Dict, Optional
+from typing import Dict, List, Optional
+
+import requests
 from app.domain.interfaces import IJotFormService
 from app.utils.client_utils import normalize_display_name
 

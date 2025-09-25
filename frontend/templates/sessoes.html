@@ -44,7 +44,6 @@
 								<thead>
 									<tr>
 										<th>Data</th>
-										<th>Hora</th>
 										<th>Cliente</th>
 										<th>Artista</th>
 										<th>Valor</th>
@@ -56,7 +55,6 @@
 									{% for sessao in sessoes %}
 									<tr data-id="{{ sessao.id }}">
 										<td>{{ sessao.data.strftime('%d/%m/%Y') if sessao.data else '' }}</td>
-										<td>{{ sessao.hora.strftime('%H:%M') if sessao.hora else '' }}</td>
 										<td>{{ sessao.cliente.name if sessao.cliente else 'Cliente não encontrado' }}
 										</td>
 										<td>{{ sessao.artista.name if sessao.artista else 'Artista não encontrado' }}
@@ -91,12 +89,7 @@
 					</section>
 
 					<script>
-						function toggleOptions(btn) {
-							var actions = btn.parentElement.querySelector('.options-actions');
-							if (actions) {
-								actions.style.display = (actions.style.display === 'none' || actions.style.display === '') ? 'inline-block' : 'none';
-							}
-						}
+						// toggleOptions removed - using global window.toggleOptions
 					</script>
 
 				</section>
@@ -106,7 +99,6 @@
 		{% include 'partials/_sidebar.html' %}
 	</div>
 
-	<script src="{{ url_for('static', filename='js/common.js') }}"></script>
 	{% include 'partials/_base_scripts.html' %}
 	<script src="{{ url_for('static', filename='js/sessoes.js') }}"></script>
 

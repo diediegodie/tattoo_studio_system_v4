@@ -1,13 +1,12 @@
 import pytest
-
 # Ensure test import paths are set up like other tests
 from tests.config import setup_test_imports
 
 setup_test_imports()
 
-from repositories.inventory_repository import InventoryRepository
-from domain.entities import InventoryItem
 from db.base import Inventory as InventoryModel
+from domain.entities import InventoryItem
+from repositories.inventory_repository import InventoryRepository
 
 
 def make_item(nome="Test Item", quantidade=10, observacoes="note"):

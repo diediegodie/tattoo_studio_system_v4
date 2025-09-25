@@ -2,7 +2,7 @@
 {% include 'partials/_head.html' %}
 
 <body class="is-preload">
-
+    {% include 'partials/_flash_messages.html' %}
     <!-- Wrapper -->
     <div id="wrapper">
 
@@ -23,27 +23,26 @@
 
                     <!-- Artist Registration Form -->
                     <section>
-                        <div class="box" style="max-width:400px;margin:0 auto;">
+                        <div class="box form-box-narrow">
                             <form id="cadastro-artista-form">
                                 <label for="artista">Nome do artista</label>
-                                <input type="text" id="artista" name="artista" required
-                                    style="width:100%;margin-bottom:1em;" />
+                                <input type="text" id="artista" name="artista" required class="input-full-mb" />
 
                                 <label for="email">Email (opcional)</label>
-                                <input type="email" id="email" name="email" style="width:100%;margin-bottom:1em;" />
+                                <input type="email" id="email" name="email" class="input-full-mb" />
 
-                                <ul class="actions" style="justify-content:center;">
+                                <ul class="actions actions-center">
                                     <li><button type="submit" class="button primary">Cadastrar</button></li>
                                 </ul>
                             </form>
 
-                            <!-- Success/Error messages -->
-                            <div id="message-container" style="margin-top:1em;text-align:center;"></div>
+                            <!-- Success/Error messages - Now using standard flash message system -->
+                            <div id="message-container" class="message-container" style="display: none;"></div>
                         </div>
                     </section>
 
                     <!-- Artists List Section -->
-                    <section style="margin-top: 3em;">
+                    <section class="section-mt-3">
                         <header class="main">
                             <h2>Artistas Cadastrados</h2>
                         </header>
@@ -71,8 +70,8 @@
                                             <button class="button small options-btn"
                                                 onclick="toggleOptions(this)">Opções</button>
                                             <span class="options-actions">
-                                                <button class="button small edit-artist-btn" data-id="{{ artist.id }}"
-                                                    style="margin-right:0.5em;">Editar</button>
+                                                <button class="button small edit-artist-btn btn-margin-right"
+                                                    data-id="{{ artist.id }}">Editar</button>
                                                 <button class="button small delete-artist-btn"
                                                     data-id="{{ artist.id }}">Excluir</button>
                                             </span>
@@ -88,41 +87,30 @@
                         </div>
                     </section>
 
-                    <!-- Edit Artist Modal -->
-                    <div id="edit-artist-modal"
-                        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000;">
-                        <div
-                            style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 2em; border-radius: 8px; max-width: 500px; width: 90%;">
-                            <h3>Editar Artista</h3>
-                            <form id="edit-artist-form">
-                                <input type="hidden" id="edit-artist-id" name="id">
-                                <label for="edit-artist-name">Nome do artista</label>
-                                <input type="text" id="edit-artist-name" name="name" required
-                                    style="width:100%;margin-bottom:1em;">
-
-                                <label for="edit-artist-email">Email (opcional)</label>
-                                <input type="email" id="edit-artist-email" name="email"
-                                    style="width:100%;margin-bottom:1em;">
-
-                                <div style="text-align: right; margin-top: 1em;">
-                                    <button type="button" id="cancel-edit-artist" class="button"
-                                        style="margin-right: 0.5em;">Cancelar</button>
-                                    <button type="submit" class="button primary">Salvar</button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
+                    <!-- Edit Artist Modal - Now handled by unified modal system -->
 
                     <script>
+                        // Define getStatusHelper for consistent flash message handling (matching Sessões/Financeiro)
+                        function getStatusHelper() {
+                            return typeof window.showStatus === 'function' ? window.showStatus : function (msg, ok) {
+                                try {
+                                    if (ok) {
+                                        if (window.notifySuccess) window.notifySuccess(msg);
+                                    } else {
+                                        if (window.notifyError) window.notifyError(msg);
+                                    }
+                                } catch (e) { console.log(msg); }
+                            };
+                        }
+
                         document.getElementById('cadastro-artista-form').addEventListener('submit', function (e) {
                             e.preventDefault();
 
                             const name = document.getElementById('artista').value.trim();
                             const email = document.getElementById('email').value.trim();
-                            const messageContainer = document.getElementById('message-container');
 
                             if (!name) {
-                                showMessage('Nome do artista é obrigatório.', 'error');
+                                getStatusHelper()('Nome do artista é obrigatório.', false);
                                 return;
                             }
 
@@ -149,22 +137,22 @@
                                 .then(response => response.json())
                                 .then(data => {
                                     if (data.success) {
-                                        showMessage(`Artista "${data.artist.name}" cadastrado com sucesso!`, 'success');
+                                        getStatusHelper()(`Artista "${data.artist.name}" cadastrado com sucesso!`, true);
                                         // Clear form
                                         document.getElementById('artista').value = '';
                                         document.getElementById('email').value = '';
 
-                                        // Reload page after 2 seconds to show updated table
+                                        // Use same 1-second delay as reference implementations
                                         setTimeout(() => {
                                             window.location.reload();
-                                        }, 2000);
+                                        }, 1000);
                                     } else {
-                                        showMessage(data.error || 'Erro ao cadastrar artista.', 'error');
+                                        getStatusHelper()(data.error || 'Erro ao cadastrar artista.', false);
                                     }
                                 })
                                 .catch(error => {
                                     console.error('Error:', error);
-                                    showMessage('Erro interno. Tente novamente.', 'error');
+                                    getStatusHelper()('Erro interno. Tente novamente.', false);
                                 })
                                 .finally(() => {
                                     // Reset button state
@@ -175,7 +163,8 @@
 
                         // Edit Artist Functionality
                         function editArtist(artistId) {
-                            showMessage('Carregando dados do artista...', 'success');
+                            // Use standard status helper instead of showMessage
+                            getStatusHelper()('Carregando dados do artista...', true);
 
                             fetch(`/artist/${artistId}`, {
                                 method: 'GET',
@@ -188,53 +177,133 @@
                                     if (data.success) {
                                         const artist = data.artist;
 
-                                        // Populate modal
-                                        document.getElementById('edit-artist-id').value = artist.id;
-                                        document.getElementById('edit-artist-name').value = artist.name || '';
-                                        document.getElementById('edit-artist-email').value = artist.email || '';
+                                        // Create form content for unified modal
+                                        const formContent = `
+                                            <form id="edit-artist-form">
+                                                <input type="hidden" id="edit-artist-id" name="id" value="${artist.id}">
+                                                <label for="edit-artist-name">Nome do artista</label>
+                                                <input type="text" id="edit-artist-name" name="name" required class="input-full-mb" value="${artist.name || ''}">
 
-                                        // Show modal
-                                        document.getElementById('edit-artist-modal').style.display = 'block';
+                                                <label for="edit-artist-email">Email (opcional)</label>
+                                                <input type="email" id="edit-artist-email" name="email" class="input-full-mb" value="${artist.email || ''}">
+                                            </form>
+                                        `;
+
+                                        // Open modal with standard parameters (matching Sessões/Financeiro)
+                                        openCustomModal({
+                                            title: 'Editar Artista',
+                                            content: formContent,
+                                            confirmText: 'Salvar',
+                                            cancelText: 'Cancelar',
+                                            onConfirm: async function () {
+                                                const form = document.getElementById('edit-artist-form');
+                                                if (!form) return;
+
+                                                // Use standard status helper instead of showMessage
+                                                getStatusHelper()('Salvando alterações...', true);
+
+                                                const formData = new FormData(form);
+                                                const artistId = formData.get('id');
+                                                const name = formData.get('name').trim();
+                                                const email = formData.get('email').trim();
+
+                                                if (!name) {
+                                                    getStatusHelper()('Nome do artista é obrigatório.', false);
+                                                    return;
+                                                }
+
+                                                const data = { name: name };
+                                                if (email) {
+                                                    data.email = email;
+                                                }
+
+                                                try {
+                                                    const response = await fetch(`/artist/${artistId}`, {
+                                                        method: 'PUT',
+                                                        headers: {
+                                                            'Content-Type': 'application/json',
+                                                            'Accept': 'application/json'
+                                                        },
+                                                        body: JSON.stringify(data)
+                                                    });
+
+                                                    const result = await response.json();
+
+                                                    if (result.success) {
+                                                        // Use standard success handling (matching Sessões/Financeiro)
+                                                        getStatusHelper()('Artista atualizado com sucesso!', true);
+                                                        closeModal();
+                                                        // Use same 1-second delay as reference implementations
+                                                        setTimeout(() => {
+                                                            window.location.reload();
+                                                        }, 1000);
+                                                    } else {
+                                                        getStatusHelper()(result.error || 'Erro ao atualizar artista.', false);
+                                                    }
+                                                } catch (error) {
+                                                    console.error('Error:', error);
+                                                    getStatusHelper()('Erro interno. Tente novamente.', false);
+                                                }
+                                            }
+                                        });
                                     } else {
-                                        showMessage(data.error || 'Erro ao carregar artista.', 'error');
+                                        getStatusHelper()(data.error || 'Erro ao carregar artista.', false);
                                     }
                                 })
                                 .catch(error => {
                                     console.error('Error:', error);
-                                    showMessage('Erro interno. Tente novamente.', 'error');
+                                    getStatusHelper()('Erro interno. Tente novamente.', false);
                                 });
                         }
 
                         // Delete Artist Functionality
-                        function deleteArtist(artistId) {
-                            if (!confirm('Tem certeza que deseja excluir este artista?')) {
+                        async function deleteArtist(artistId) {
+                            console.log('[DEBUG] deleteArtist called with id:', artistId);
+
+                            // Use the unified confirmation modal if available
+                            // Require the unified confirmAction; if missing, refuse to proceed
+                            if (typeof window.confirmAction === 'function') {
+                                console.log('[DEBUG] deleteArtist delegating to window.confirmAction with id:', artistId);
+                                const confirmed = await window.confirmAction('Tem certeza que deseja excluir este artista?');
+                                console.log('[DEBUG] deleteArtist user confirmation:', confirmed);
+                                if (!confirmed) {
+                                    console.log('[DEBUG] deleteArtist cancelled by user');
+                                    return;
+                                }
+                            } else {
+                                console.error('[DEBUG] window.confirmAction not available in cadastro_interno.html — refusing to delete artist', artistId);
                                 return;
                             }
 
-                            showMessage('Excluindo artista...', 'success');
+                            // Use standard status helper instead of showMessage
+                            getStatusHelper()('Excluindo artista...', true);
 
-                            fetch(`/artist/${artistId}`, {
-                                method: 'DELETE',
-                                headers: {
-                                    'Accept': 'application/json'
-                                }
-                            })
-                                .then(response => response.json())
-                                .then(data => {
-                                    if (data.success) {
-                                        showMessage('Artista excluído com sucesso!', 'success');
-                                        // Reload page after 2 seconds to show updated table
-                                        setTimeout(() => {
-                                            window.location.reload();
-                                        }, 2000);
-                                    } else {
-                                        showMessage(data.error || 'Erro ao excluir artista.', 'error');
+                            try {
+                                const response = await fetch(`/artist/${artistId}`, {
+                                    method: 'DELETE',
+                                    headers: {
+                                        'Accept': 'application/json'
                                     }
-                                })
-                                .catch(error => {
-                                    console.error('Error:', error);
-                                    showMessage('Erro interno. Tente novamente.', 'error');
                                 });
+
+                                const data = await response.json();
+
+                                if (data.success) {
+                                    console.log('[DEBUG] deleteArtist success response:', data);
+                                    getStatusHelper()('Artista excluído com sucesso!', true);
+                                    try { if (typeof closeModal === 'function') closeModal(); } catch (e) { }
+                                    // Use same 1-second delay as reference implementations
+                                    setTimeout(() => {
+                                        window.location.reload();
+                                    }, 1000);
+                                } else {
+                                    console.log('[DEBUG] deleteArtist failed response:', data);
+                                    getStatusHelper()(data.error || 'Erro ao excluir artista.', false);
+                                }
+                            } catch (error) {
+                                console.error('Error:', error);
+                                getStatusHelper()('Erro interno. Tente novamente.', false);
+                            }
                         }
 
                         // Event delegation for edit and delete buttons
@@ -260,87 +329,6 @@
                             }
                         });
 
-                        // Handle edit form submission
-                        document.getElementById('edit-artist-form').addEventListener('submit', function (e) {
-                            e.preventDefault();
-
-                            const formData = new FormData(this);
-                            const artistId = formData.get('id');
-                            const name = formData.get('name').trim();
-                            const email = formData.get('email').trim();
-
-                            if (!name) {
-                                showMessage('Nome do artista é obrigatório.', 'error');
-                                return;
-                            }
-
-                            const data = { name: name };
-                            if (email) {
-                                data.email = email;
-                            }
-
-                            showMessage('Salvando alterações...', 'success');
-
-                            fetch(`/artist/${artistId}`, {
-                                method: 'PUT',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'Accept': 'application/json'
-                                },
-                                body: JSON.stringify(data)
-                            })
-                                .then(response => response.json())
-                                .then(data => {
-                                    if (data.success) {
-                                        showMessage('Artista atualizado com sucesso!', 'success');
-                                        document.getElementById('edit-artist-modal').style.display = 'none';
-
-                                        // Reload page after 2 seconds to show updated table
-                                        setTimeout(() => {
-                                            window.location.reload();
-                                        }, 2000);
-                                    } else {
-                                        showMessage(data.error || 'Erro ao atualizar artista.', 'error');
-                                    }
-                                })
-                                .catch(error => {
-                                    console.error('Error:', error);
-                                    showMessage('Erro interno. Tente novamente.', 'error');
-                                });
-                        });
-
-                        // Handle modal cancel
-                        document.getElementById('cancel-edit-artist').addEventListener('click', function () {
-                            document.getElementById('edit-artist-modal').style.display = 'none';
-                        });
-
-                        function showMessage(text, type) {
-                            const container = document.getElementById('message-container');
-                            const messageClass = type === 'success' ? 'success' : 'error';
-                            const backgroundColor = type === 'success' ? '#d4edda' : '#f8d7da';
-                            const textColor = type === 'success' ? '#155724' : '#721c24';
-
-                            container.innerHTML = `
-                                <div style="
-                                    padding: 0.75rem 1.25rem;
-                                    margin-bottom: 1rem;
-                                    border: 1px solid transparent;
-                                    border-radius: 0.25rem;
-                                    background-color: ${backgroundColor};
-                                    color: ${textColor};
-                                ">
-                                    ${text}
-                                </div>
-                            `;
-
-                            // Auto-hide success messages after 5 seconds
-                            if (type === 'success') {
-                                setTimeout(() => {
-                                    container.innerHTML = '';
-                                }, 5000);
-                            }
-                        }
-
                     </script>
 
                 </section>
@@ -351,7 +339,6 @@
         {% include 'partials/_sidebar.html' %}
     </div>
 
-    <script src="{{ url_for('static', filename='js/common.js') }}"></script>
     {% include 'partials/_base_scripts.html' %}
 
 </body>

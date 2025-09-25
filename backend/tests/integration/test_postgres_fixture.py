@@ -2,16 +2,17 @@
 Simple test to verify postgres_db fixture works correctly.
 """
 
-import pytest
 from datetime import date, time
 from decimal import Decimal
+
+import pytest
 
 
 @pytest.mark.postgres
 def test_postgres_fixture_works(postgres_db):
     """Test that the postgres_db fixture creates a working database connection."""
     # Import models
-    from db.base import Sessao, Client, User
+    from db.base import Client, Sessao, User
 
     # Create test data
     client = Client(
@@ -32,7 +33,6 @@ def test_postgres_fixture_works(postgres_db):
     # Create session with google_event_id
     session = Sessao(
         data=date(2025, 8, 30),
-        hora=time(14, 0),
         valor=Decimal("100.00"),
         observacoes="Fixture test session",
         cliente_id=client.id,
@@ -56,7 +56,7 @@ def test_postgres_fixture_works(postgres_db):
 @pytest.mark.postgres
 def test_postgres_unique_constraint_on_google_event_id(postgres_db):
     """Test that the unique constraint on google_event_id works in PostgreSQL."""
-    from db.base import Sessao, Client, User
+    from db.base import Client, Sessao, User
     from sqlalchemy.exc import IntegrityError
 
     # Create test data
@@ -78,7 +78,6 @@ def test_postgres_unique_constraint_on_google_event_id(postgres_db):
     # Create first session with google_event_id
     session1 = Sessao(
         data=date(2025, 8, 30),
-        hora=time(14, 0),
         valor=Decimal("100.00"),
         observacoes="First session",
         cliente_id=client.id,
@@ -91,7 +90,6 @@ def test_postgres_unique_constraint_on_google_event_id(postgres_db):
     # Try to create second session with same google_event_id - should fail
     session2 = Sessao(
         data=date(2025, 8, 31),
-        hora=time(15, 0),
         valor=Decimal("150.00"),
         observacoes="Second session (should fail)",
         cliente_id=client.id,

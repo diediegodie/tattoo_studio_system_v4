@@ -11,11 +11,12 @@ Notes:
   converts token auth into a Flask-Login user before request handling.
 """
 
-from typing import Any, Optional
-from flask import g, request, jsonify
-from flask_login import current_user
 from functools import wraps
+from typing import Any, Optional
+
 from app.core.security import decode_access_token, get_user_from_token
+from flask import g, jsonify, request
+from flask_login import current_user
 
 
 def get_current_user() -> Any:

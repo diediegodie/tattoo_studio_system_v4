@@ -3,8 +3,8 @@
 Simple Google Calendar Integration Test
 """
 
-import sys
 import os
+import sys
 
 sys.path.insert(0, "app")
 
@@ -33,10 +33,10 @@ def test_basic_integration():
     # Test 2: Import Check
     print("\n2. Testing imports...")
     try:
+        from app.controllers.calendar_controller import calendar_bp
+        from app.services.google_calendar_service import GoogleCalendarService
         from domain.entities import CalendarEvent
         from domain.interfaces import ICalendarService
-        from app.services.google_calendar_service import GoogleCalendarService
-        from app.controllers.calendar_controller import calendar_bp
 
         print("✅ All calendar modules import successfully")
     except Exception as e:

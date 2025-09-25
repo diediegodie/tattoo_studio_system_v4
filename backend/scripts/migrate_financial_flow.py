@@ -8,14 +8,14 @@ This migration adds:
 - sessao_id field to pagamentos table (FK to sessoes)
 """
 
-import sys
 import os
+import sys
 
 # Add the backend directory to the Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "backend", "app"))
 
-from sqlalchemy import create_engine, text
 from app.db.session import DATABASE_URL
+from sqlalchemy import create_engine, text
 
 
 def run_migration():
@@ -80,4 +80,3 @@ def run_migration():
 
 if __name__ == "__main__":
     run_migration()
-    

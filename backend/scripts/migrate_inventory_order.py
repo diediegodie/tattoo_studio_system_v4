@@ -4,8 +4,8 @@ Migration script to make the 'order' column nullable in the inventory table.
 This script modifies the SQLite database schema to allow NULL values in the 'order' column.
 """
 
-import sqlite3
 import os
+import sqlite3
 import sys
 from pathlib import Path
 

@@ -6,10 +6,11 @@ including JWT token generation, user session management, and
 authentication state mocking for different test scenarios.
 """
 
-import pytest
-import jwt
 from datetime import datetime, timedelta, timezone
 from unittest.mock import Mock, patch
+
+import jwt
+import pytest
 from tests.config.test_paths import setup_test_environment
 
 setup_test_environment()

@@ -1,13 +1,15 @@
-from flask import Blueprint, render_template, flash, jsonify, request
-from flask_login import login_required, current_user
-from app.db.session import SessionLocal
-from app.db.base import Pagamento, Comissao, Sessao, Gasto
-from sqlalchemy.orm import joinedload
 import logging
-from app.repositories.user_repo import UserRepository
-from app.services.user_service import UserService
+import os
+
 from app.core.api_utils import api_response
+from app.db.base import Comissao, Gasto, Pagamento, Sessao
+from app.db.session import SessionLocal
+from app.repositories.user_repo import UserRepository
 from app.services.gastos_service import get_gastos_for_month, serialize_gastos
+from app.services.user_service import UserService
+from flask import Blueprint, flash, jsonify, render_template, request
+from flask_login import current_user, login_required
+from sqlalchemy.orm import joinedload
 
 logger = logging.getLogger(__name__)
 
@@ -88,25 +90,36 @@ def historico_home():
         gastos = get_gastos_for_month(db, start_date, end_date)
         gastos_json = serialize_gastos(gastos)
 
+        # Apply consistent date filtering for current month to all entities
+        # This ensures the display matches the calculation logic from get_current_month_totals
         pagamentos = (
             db.query(Pagamento)
             .options(joinedload(Pagamento.cliente), joinedload(Pagamento.artista))
+            .filter(Pagamento.data >= start_date, Pagamento.data < end_date)
             .order_by(Pagamento.data.desc())
+            .distinct()
             .all()
         )
 
         comissoes = (
             db.query(Comissao)
             .options(joinedload(Comissao.pagamento), joinedload(Comissao.artista))
+            .filter(Comissao.created_at >= start_date, Comissao.created_at < end_date)
             .order_by(Comissao.created_at.desc())
+            .distinct()
             .all()
         )
 
+        # RESTORED: Only show sessions that are completed or paid (not just scheduled/active)
+        # Sessions should only appear in Historico after payment confirmation or finalization
+        # This restores correct flow logic while preserving recent deduplication improvements
         sessoes = (
             db.query(Sessao)
             .options(joinedload(Sessao.cliente), joinedload(Sessao.artista))
+            .filter(Sessao.data >= start_date, Sessao.data < end_date)
             .filter(Sessao.status.in_(["completed", "paid"]))
-            .order_by(Sessao.data.desc(), Sessao.hora.desc())
+            .order_by(Sessao.data.desc(), Sessao.created_at.desc())
+            .distinct()
             .all()
         )
 
@@ -144,8 +157,41 @@ def historico_home():
                 len(sessoes),
                 len(gastos_json),
             )
-        except Exception:
-            pass
+
+            # Debug logging for IDs and artists
+            if os.getenv("HISTORICO_DEBUG", "").lower() in ("1", "true", "yes"):
+                payment_ids = [p.id for p in pagamentos]
+                session_ids = [s.id for s in sessoes]
+                commission_artists = list(
+                    set(c.artista.name for c in comissoes if c.artista)
+                )
+                session_artists = list(
+                    set(s.artista.name for s in sessoes if s.artista)
+                )
+                payment_artists = list(
+                    set(p.artista.name for p in pagamentos if p.artista)
+                )
+
+                session_statuses = [(s.id, s.status) for s in sessoes]
+
+                logger.info(f"HISTORICO_DEBUG: Payment IDs: {payment_ids}")
+                logger.info(f"HISTORICO_DEBUG: Session IDs: {session_ids}")
+                logger.info(
+                    f"HISTORICO_DEBUG: Session statuses (id, status): {session_statuses}"
+                )
+                logger.info(
+                    f"HISTORICO_DEBUG: Sessions filtered by status: completed/paid only"
+                )
+                logger.info(
+                    f"HISTORICO_DEBUG: Commission artists: {commission_artists}"
+                )
+                logger.info(f"HISTORICO_DEBUG: Session artists: {session_artists}")
+                logger.info(f"HISTORICO_DEBUG: Payment artists: {payment_artists}")
+                logger.info(
+                    f"HISTORICO_DEBUG: All included artists: {list(set(commission_artists + session_artists + payment_artists))}"
+                )
+        except Exception as e:
+            logger.warning(f"Debug logging failed: {e}")
 
         return render_template(
             "historico.html",

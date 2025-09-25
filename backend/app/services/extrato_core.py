@@ -13,8 +13,16 @@ from datetime import datetime, timedelta
 from logging.handlers import RotatingFileHandler
 from typing import Any, List, Optional, Tuple
 
-from app.db.base import (Client, Comissao, Extrato, ExtratoRunLog, Gasto,
-                         Pagamento, Sessao, User)
+from app.db.base import (
+    Client,
+    Comissao,
+    Extrato,
+    ExtratoRunLog,
+    Gasto,
+    Pagamento,
+    Sessao,
+    User,
+)
 from app.db.session import SessionLocal
 from app.services.backup_service import BackupService
 from app.services.undo_service import UndoService
@@ -86,11 +94,12 @@ def query_data(db, mes, ano):
         .all()
     )
 
-    # Query Sessoes
+    # Query Sessoes - only include completed or paid sessions for financial calculations
     sessoes = (
         db.query(Sessao)
         .options(joinedload(Sessao.cliente), joinedload(Sessao.artista))
         .filter(Sessao.data >= start_date, Sessao.data < end_date)
+        .filter(Sessao.status.in_(["completed", "paid"]))
         .all()
     )
 
@@ -123,12 +132,14 @@ def serialize_data(pagamentos, sessoes, comissoes, gastos):
     for p in pagamentos:
         pagamentos_data.append(
             {
+                "id": p.id,  # Include payment ID for debugging
                 "data": p.data.isoformat() if p.data else None,
                 "cliente_name": p.cliente.name if p.cliente else None,
                 "artista_name": p.artista.name if p.artista else None,
                 "valor": float(p.valor),
                 "forma_pagamento": p.forma_pagamento,
                 "observacoes": p.observacoes,
+                "sessao_id": p.sessao_id,  # Use session ID for proper linking
                 "sessao_data": (
                     p.sessao.data.isoformat() if p.sessao and p.sessao.data else None
                 ),
@@ -139,8 +150,9 @@ def serialize_data(pagamentos, sessoes, comissoes, gastos):
     for s in sessoes:
         sessoes_data.append(
             {
+                "id": s.id,  # Include session ID for proper linking
                 "data": s.data.isoformat() if s.data else None,
-                "hora": s.hora.isoformat() if s.hora else None,
+                "created_at": s.created_at.isoformat() if s.created_at else None,
                 "cliente_name": s.cliente.name if s.cliente else None,
                 "artista_name": s.artista.name if s.artista else None,
                 "valor": float(s.valor),
@@ -251,6 +263,10 @@ def calculate_totals(pagamentos_data, sessoes_data, comissoes_data, gastos_data=
         logger.info(
             f"HISTORICO_DEBUG: Input data counts - payments:{len(pagamentos_data)} sessions:{len(sessoes_data)} commissions:{len(comissoes_data)}"
         )
+        payment_ids = [p.get("id") for p in pagamentos_data]
+        session_ids = [s.get("id") for s in sessoes_data]
+        logger.info(f"HISTORICO_DEBUG: Payment IDs: {payment_ids}")
+        logger.info(f"HISTORICO_DEBUG: Session IDs: {session_ids}")
 
     # ...existing code...
 
@@ -260,8 +276,12 @@ def calculate_totals(pagamentos_data, sessoes_data, comissoes_data, gastos_data=
     # First, collect sessions that have linked payments to avoid double counting
     sessions_with_payments = set()
     for p in pagamentos_data:
-        if p.get("sessao_data"):  # Payment is linked to a session
-            sessions_with_payments.add(p["sessao_data"])
+        if p.get("sessao_id"):  # Payment is linked to a session
+            sessions_with_payments.add(p["sessao_id"])
+            if os.getenv("HISTORICO_DEBUG", "").lower() in ("1", "true", "yes"):
+                logger.info(
+                    f"HISTORICO_DEBUG: Payment {p.get('id', 'unknown')} linked to session {p['sessao_id']}"
+                )
 
     # Collect active artists (those with payments, unpaid sessions, or commissions)
     active_artists = set()
@@ -273,12 +293,20 @@ def calculate_totals(pagamentos_data, sessoes_data, comissoes_data, gastos_data=
 
     # Artists with unpaid sessions (sessions not linked to payments)
     for s in sessoes_data:
-        if s["artista_name"] and s["data"] not in sessions_with_payments:
+        if s["artista_name"] and s["id"] not in sessions_with_payments:
             active_artists.add(s["artista_name"])
+            if os.getenv("HISTORICO_DEBUG", "").lower() in ("1", "true", "yes"):
+                logger.info(
+                    f"HISTORICO_DEBUG: Session {s['id']} is unpaid, including artist {s['artista_name']}"
+                )
 
-    # Artists with commissions
+    # Artists with commissions (only if they have actual payments/sessions)
+    payment_artists = {p["artista_name"] for p in pagamentos_data if p["artista_name"]}
+    session_artists = {s["artista_name"] for s in sessoes_data if s["artista_name"]}
+    artists_with_actual_work = payment_artists | session_artists
+
     for c in comissoes_data:
-        if c["artista_name"]:
+        if c["artista_name"] and c["artista_name"] in artists_with_actual_work:
             active_artists.add(c["artista_name"])
 
     # Initialize active artists with zero values
@@ -298,9 +326,13 @@ def calculate_totals(pagamentos_data, sessoes_data, comissoes_data, gastos_data=
         if (
             artista
             and artista in active_artists
-            and s["data"] not in sessions_with_payments
+            and s["id"] not in sessions_with_payments
         ):
             artistas[artista]["receita"] += s["valor"]
+            if os.getenv("HISTORICO_DEBUG", "").lower() in ("1", "true", "yes"):
+                logger.info(
+                    f"HISTORICO_DEBUG: Adding unpaid session {s['id']} revenue R${s['valor']} to artist {artista}"
+                )
 
     # Calculate commissions for active artists
     for c in comissoes_data:
@@ -317,9 +349,15 @@ def calculate_totals(pagamentos_data, sessoes_data, comissoes_data, gastos_data=
     if os.getenv("HISTORICO_DEBUG", "").lower() in ("1", "true", "yes"):
         logger.info(f"HISTORICO_DEBUG: Active artists found: {active_artists}")
         logger.info(
-            f"HISTORICO_DEBUG: Sessions with payments: {sessions_with_payments}"
+            f"HISTORICO_DEBUG: Sessions with payments (IDs): {sessions_with_payments}"
+        )
+        logger.info(
+            f"HISTORICO_DEBUG: Total artists in por_artista: {len(por_artista)}"
         )
         for artist_data in por_artista:
+            logger.info(
+                f"HISTORICO_DEBUG: Artist {artist_data['artista']}: Receita R${artist_data['receita']}, Comissão R${artist_data['comissao']}"
+            )
             logger.info(
                 f"HISTORICO_DEBUG: Artist {artist_data['artista']}: Receita R${artist_data['receita']}, Comissão R${artist_data['comissao']}"
             )

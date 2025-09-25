@@ -5,9 +5,10 @@ These tests validate basic model functionality and field behavior
 without relying on database constraints.
 """
 
-import pytest
-from datetime import date, time, datetime
+from datetime import date, datetime, time
 from decimal import Decimal
+
+import pytest
 
 
 @pytest.mark.unit
@@ -29,7 +30,6 @@ class TestSessaoModel:
             # Test instantiation with google_event_id
             sessao_with_google = Sessao(
                 data=date(2025, 8, 30),
-                hora=time(14, 0),
                 valor=Decimal("100.00"),
                 observacoes="Test session with Google event",
                 cliente_id=1,
@@ -38,7 +38,6 @@ class TestSessaoModel:
             )
 
             assert sessao_with_google.data == date(2025, 8, 30)
-            assert sessao_with_google.hora == time(14, 0)
             assert sessao_with_google.valor == Decimal("100.00")
             assert sessao_with_google.observacoes == "Test session with Google event"
             assert sessao_with_google.cliente_id == 1
@@ -48,7 +47,6 @@ class TestSessaoModel:
             # Test instantiation without google_event_id (should be None)
             sessao_without_google = Sessao(
                 data=date(2025, 8, 31),
-                hora=time(15, 0),
                 valor=Decimal("150.00"),
                 observacoes="Manual test session",
                 cliente_id=2,
@@ -57,7 +55,6 @@ class TestSessaoModel:
             )
 
             assert sessao_without_google.data == date(2025, 8, 31)
-            assert sessao_without_google.hora == time(15, 0)
             assert sessao_without_google.valor == Decimal("150.00")
             assert sessao_without_google.observacoes == "Manual test session"
             assert sessao_without_google.cliente_id == 2
@@ -81,7 +78,6 @@ class TestSessaoModel:
             sessao = Sessao(
                 id=123,
                 data=date(2025, 8, 30),
-                hora=time(14, 0),
                 valor=Decimal("100.00"),
                 observacoes="Test session",
                 cliente_id=1,
@@ -122,8 +118,6 @@ class TestSessaoModel:
             assert isinstance(sessao.data, date)
 
             # Test time field
-            sessao.hora = time(23, 59, 59)
-            assert isinstance(sessao.hora, time)
 
             # Test decimal field
             sessao.valor = Decimal("999.99")
@@ -214,7 +208,6 @@ class TestSessaoModel:
             # Test minimal valid session (only required fields)
             sessao = Sessao(
                 data=date(2025, 1, 1),
-                hora=time(12, 0),
                 valor=Decimal("50.00"),
                 cliente_id=1,
                 artista_id=1,

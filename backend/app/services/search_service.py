@@ -1,18 +1,19 @@
-from typing import List, Dict, Any, Tuple, Optional
-from sqlalchemy import or_, text, desc, and_, extract
-from sqlalchemy.orm import Session
+import re
+from datetime import datetime
+from typing import Any, Dict, List, Optional, Tuple
+
 from app.db.base import (
-    Pagamento,
-    Sessao,
+    Client,
     Comissao,
     Extrato,
-    Client,
-    User,
     Gasto,
     Inventory,
+    Pagamento,
+    Sessao,
+    User,
 )
-from datetime import datetime
-import re
+from sqlalchemy import and_, desc, extract, or_, text
+from sqlalchemy.orm import Session
 
 
 class SearchService:
@@ -330,7 +331,7 @@ class SearchService:
             if numeric_fields:
                 for field in numeric_fields:
                     # Cast numeric field to string and search
-                    from sqlalchemy import cast, String
+                    from sqlalchemy import String, cast
 
                     token_filters.append(cast(field, String).ilike(f"%{token}%"))
 
@@ -456,7 +457,6 @@ class SearchService:
             {
                 "id": s.id,
                 "data": s.data.isoformat() if s.data else None,  # type: ignore
-                "hora": str(s.hora) if s.hora else "",  # type: ignore
                 "valor": float(s.valor) if s.valor else 0,  # type: ignore
                 "observacoes": s.observacoes,
                 "status": s.status,

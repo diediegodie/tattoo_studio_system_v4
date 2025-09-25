@@ -22,9 +22,10 @@ Requirements:
 import argparse
 import json
 from datetime import datetime, timedelta
-from sqlalchemy.orm import joinedload
+
+from app.db.base import Client, Comissao, Extrato, Gasto, Pagamento, Sessao, User
 from app.db.session import SessionLocal
-from app.db.base import Pagamento, Sessao, Comissao, Extrato, Client, User, Gasto
+from sqlalchemy.orm import joinedload
 
 
 def get_previous_month():
@@ -126,7 +127,6 @@ def serialize_data(pagamentos, sessoes, comissoes, gastos):
         sessoes_data.append(
             {
                 "data": s.data.isoformat() if s.data else None,
-                "hora": s.hora.isoformat() if s.hora else None,
                 "cliente_name": s.cliente.name if s.cliente else None,
                 "artista_name": s.artista.name if s.artista else None,
                 "valor": float(s.valor),
@@ -178,7 +178,7 @@ def calculate_totals(pagamentos_data, sessoes_data, comissoes_data, gastos_data=
     gastos_data = gastos_data or []
     despesas_total = sum(g["valor"] for g in gastos_data)
 
-    # Por artista
+    # Por artista - FIXED: Include artists with commissions even if they have no payments
     artistas = {}
     for p in pagamentos_data:
         artista = p["artista_name"]
@@ -189,7 +189,9 @@ def calculate_totals(pagamentos_data, sessoes_data, comissoes_data, gastos_data=
 
     for c in comissoes_data:
         artista = c["artista_name"]
-        if artista and artista in artistas:
+        if artista:
+            if artista not in artistas:
+                artistas[artista] = {"receita": 0, "comissao": 0}
             artistas[artista]["comissao"] += c["valor"]
 
     por_artista = [

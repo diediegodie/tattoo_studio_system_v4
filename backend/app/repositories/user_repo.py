@@ -1,8 +1,8 @@
-from typing import Optional, List
+from typing import List, Optional
 
-from app.domain.interfaces import IUserRepository
-from app.domain.entities import User as DomainUser
 from app.db.base import User as DbUser
+from app.domain.entities import User as DomainUser
+from app.domain.interfaces import IUserRepository
 
 
 class UserRepository(IUserRepository):

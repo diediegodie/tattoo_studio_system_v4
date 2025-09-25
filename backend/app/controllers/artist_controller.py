@@ -7,13 +7,13 @@ Following SOLID principles:
 - Dependency Inversion: Depends on service abstractions, not concrete implementations
 """
 
-from flask import Blueprint, request, jsonify, Response
-from typing import Dict, Any, Tuple, Union
 import logging
+from typing import Any, Dict, Tuple, Union
 
-from app.services.user_service import UserService
-from app.repositories.user_repo import UserRepository
 from app.db.session import SessionLocal
+from app.repositories.user_repo import UserRepository
+from app.services.user_service import UserService
+from flask import Blueprint, Response, jsonify, request
 
 # Configure logging
 logger = logging.getLogger(__name__)
