@@ -5,8 +5,8 @@ This module provides mock factories for repository interfaces, ensuring
 tests only depend on the specific interfaces they need.
 """
 
-from unittest.mock import Mock, MagicMock
-from typing import Optional, List
+from typing import List, Optional
+from unittest.mock import MagicMock, Mock
 
 # Import after ensuring paths are set up
 from tests.config import setup_test_imports
@@ -14,22 +14,13 @@ from tests.config import setup_test_imports
 setup_test_imports()
 
 try:
-    from domain.interfaces import (
-        IUserReader,
-        IUserWriter,
-        IUserRepository,
-        IAppointmentReader,
-        IAppointmentWriter,
-        IAppointmentRepository,
-        IInventoryReader,
-        IInventoryWriter,
-        IInventoryRepository,
-        IClientReader,
-        IClientWriter,
-        IClientRepository,
-        IJotFormService,
-    )
-    from domain.entities import User, Appointment, InventoryItem, Client
+    from domain.entities import Appointment, Client, InventoryItem, User
+    from domain.interfaces import (IAppointmentReader, IAppointmentRepository,
+                                   IAppointmentWriter, IClientReader,
+                                   IClientRepository, IClientWriter,
+                                   IInventoryReader, IInventoryRepository,
+                                   IInventoryWriter, IJotFormService,
+                                   IUserReader, IUserRepository, IUserWriter)
 
     IMPORTS_AVAILABLE = True
 except ImportError as e:

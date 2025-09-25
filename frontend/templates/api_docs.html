@@ -1,0 +1,58 @@
+{% set page_title = 'API Documentation' %}
+{% include 'partials/_head.html' %}
+
+<body class="is-preload">
+
+    <!-- Wrapper -->
+    <div id="wrapper">
+
+        <!-- Main -->
+        <div id="main">
+            <div class="inner">
+
+                <!-- Header -->
+                <header id="header">
+                    <a href="#" class="logo"><strong>API</strong> Documentation</a>
+                </header>
+
+                <!-- Content -->
+                <section>
+                    <header class="main">
+                        <h1>API Documentation</h1>
+                    </header>
+
+                    <p>This is the API documentation for the Tattoo Studio System.</p>
+
+                    <h2>Authentication</h2>
+                    <p>All API endpoints require authentication. Use JWT tokens or session cookies.</p>
+
+                    <h2>Example Endpoints</h2>
+                    <ul>
+                        <li><code>GET /api/profile</code> - Get user profile</li>
+                        <li><code>POST /api/logout</code> - Logout</li>
+                        <li><code>GET /api/dashboard</code> - Dashboard data</li>
+                        <li><code>GET /api/health</code> - Health check</li>
+                    </ul>
+
+                    <h2>Usage Examples</h2>
+                    <pre><code># Get user profile
+curl -H "Authorization: Bearer &lt;token&gt;" http://localhost:5000/api/profile
+
+# Health check
+curl http://localhost:5000/api/health</code></pre>
+
+                </section>
+
+            </div>
+        </div>
+
+        {% include 'partials/_sidebar.html' %}
+
+    </div>
+
+    <script src="{{ url_for('static', filename='js/common.js') }}"></script>
+    {% include 'partials/_base_scripts.html' %}
+
+</body>
+
+</html>

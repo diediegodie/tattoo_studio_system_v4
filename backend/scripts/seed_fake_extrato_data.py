@@ -6,16 +6,16 @@ Cria dados de sessões, pagamentos e comissões para o mês anterior.
 Uso: python backend/scripts/seed_fake_extrato_data.py
 """
 
-import sys
 import os
+import sys
 from datetime import datetime, timedelta
 from decimal import Decimal
 
 # Add the backend directory to Python path
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
+from app.db.base import Client, Comissao, Pagamento, Sessao, User
 from app.db.session import SessionLocal
-from app.db.base import User, Client, Sessao, Pagamento, Comissao
 
 
 def get_previous_month():

@@ -6,16 +6,16 @@ Tests use the repository mock factories and domain fixtures where possible.
 
 import sys
 from pathlib import Path
-import pytest
 from unittest.mock import Mock
 
+import pytest
 from tests.config import setup_test_imports
 
 setup_test_imports()
 
 from app.services.inventory_service import InventoryService
-from tests.factories.repository_factories import InventoryRepositoryFactory
 from domain.entities import InventoryItem as DomainInventoryItem
+from tests.factories.repository_factories import InventoryRepositoryFactory
 
 
 @pytest.fixture

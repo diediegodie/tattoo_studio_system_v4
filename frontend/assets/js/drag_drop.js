@@ -73,10 +73,10 @@ function initializeDragDrop() {
                         window.location.href = data.redirect_url;
                     });
             } else {
-                if (window.showToast) window.showToast('Erro ao aplicar ordem.', 'error');
+                if (window.notifyError) window.notifyError('Erro ao aplicar ordem.');
             }
         })
-        .catch((err) => { console.error('Drag-drop submit error', err); if (window.showToast) window.showToast('Erro na requisição.', 'error'); });
+        .catch((err) => { console.error('Drag-drop submit error', err); if (window.notifyError) window.notifyError('Falha de conexão. Verifique sua internet e tente novamente.'); });
     });
 }
 

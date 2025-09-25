@@ -11,18 +11,11 @@ Following SOLID principles:
 - Dependency Inversion: Interfaces define contracts
 """
 
-from .entities import User, Appointment, InventoryItem
-from .interfaces import (
-    IUserRepository,
-    IAppointmentRepository,
-    IInventoryRepository,
-    IUserReader,
-    IUserWriter,
-    IAppointmentReader,
-    IAppointmentWriter,
-    IInventoryReader,
-    IInventoryWriter,
-)
+from .entities import Appointment, InventoryItem, User
+from .interfaces import (IAppointmentReader, IAppointmentRepository,
+                         IAppointmentWriter, IInventoryReader,
+                         IInventoryRepository, IInventoryWriter, IUserReader,
+                         IUserRepository, IUserWriter)
 
 __all__ = [
     # Domain entities

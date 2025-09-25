@@ -1,6 +1,6 @@
-import pytest
 from unittest.mock import patch
 
+import pytest
 # Ensure test imports are configured
 from tests.config import setup_test_imports
 

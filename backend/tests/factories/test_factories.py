@@ -5,7 +5,7 @@ These factories provide convenient ways to create test data
 following SOLID principles and supporting the P0 test scenarios.
 """
 
-from datetime import date, time, datetime
+from datetime import date, datetime, time
 from decimal import Decimal
 from unittest.mock import Mock
 
@@ -26,7 +26,6 @@ class SessaoFactory:
         """
         defaults = {
             "data": date(2025, 8, 30),
-            "hora": time(14, 0),
             "valor": Decimal("100.00"),
             "observacoes": "Test session",
             "cliente_id": 1,
@@ -251,7 +250,6 @@ class FormDataFactory:
         """
         defaults = {
             "data": "2025-08-30",
-            "hora": "14:00",
             "cliente_id": "1",
             "artista_id": "1",
             "valor": "100.00",
@@ -306,7 +304,7 @@ def create_test_session_with_google(db_session, google_event_id="TEST_GOOGLE_ID"
         Sessao: Created session object
     """
     try:
-        from db.base import Sessao, Client, User
+        from db.base import Client, Sessao, User
 
         # Create client and artist if they don't exist
         client = Client(**ClientFactory.create_client_data())
@@ -344,7 +342,7 @@ def create_test_manual_session(db_session):
         Sessao: Created session object
     """
     try:
-        from db.base import Sessao, Client, User
+        from db.base import Client, Sessao, User
 
         # Create client and artist if they don't exist
         client = Client(**ClientFactory.create_client_data(name="Manual Client"))

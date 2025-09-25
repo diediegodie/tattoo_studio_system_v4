@@ -6,29 +6,19 @@ Following SOLID principles:
 - Dependency Inversion: Uses services instead of direct database access
 """
 
-from flask import (
-    Blueprint,
-    render_template,
-    request,
-    redirect,
-    url_for,
-    flash,
-    jsonify,
-)
-from werkzeug.wrappers.response import Response
-from flask_login import login_required, current_user
-from typing import Union
 import logging
+from datetime import date, datetime, time
+from decimal import Decimal
+from typing import Union
 
 from app.db.base import Client, Sessao
-from decimal import Decimal
-from datetime import datetime, date, time
-from app.services.user_service import UserService
 from app.repositories.user_repo import UserRepository
-from app.db.base import Client, Sessao
-from decimal import Decimal
-from datetime import datetime, date, time
+from app.services.user_service import UserService
+from flask import (Blueprint, flash, jsonify, redirect, render_template,
+                   request, url_for)
+from flask_login import current_user, login_required
 from sqlalchemy.exc import IntegrityError
+from werkzeug.wrappers.response import Response
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -36,8 +26,8 @@ logger = logging.getLogger(__name__)
 # Create Blueprint FIRST (before imports to avoid circular imports)
 sessoes_bp = Blueprint("sessoes", __name__, url_prefix="/sessoes")
 
-# Import from split modules
-from app.controllers.sessoes_helpers import api_response, _get_user_service
-from app.controllers.sessoes_routes import *
 from app.controllers.sessoes_api import *
+# Import from split modules
+from app.controllers.sessoes_helpers import _get_user_service, api_response
 from app.controllers.sessoes_legacy import *
+from app.controllers.sessoes_routes import *

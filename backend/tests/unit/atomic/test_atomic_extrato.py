@@ -22,13 +22,10 @@ sys.path.insert(
     0, "/home/diego/documentos/github/projetos/tattoo_studio_system_v4/backend"
 )
 
-from app.services.extrato_atomic import (
-    check_and_generate_extrato_with_transaction,
-)
-from app.services.extrato_core import (
-    verify_backup_before_transfer,
-    delete_historical_records_atomic,
-)
+from app.services.extrato_atomic import \
+    check_and_generate_extrato_with_transaction
+from app.services.extrato_core import (delete_historical_records_atomic,
+                                       verify_backup_before_transfer)
 
 
 def get_previous_month():
@@ -147,7 +144,8 @@ def test_deletion_function():
 
     try:
         from unittest.mock import Mock
-        from app.db.base import Pagamento, Sessao, Comissao, Gasto
+
+        from app.db.base import Comissao, Gasto, Pagamento, Sessao
 
         # Create mock database session
         mock_db = Mock()

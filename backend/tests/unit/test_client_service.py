@@ -8,8 +8,9 @@ This module tests the ClientService business logic with comprehensive coverage:
 - Error handling and edge cases
 """
 
-import pytest
 from unittest.mock import Mock
+
+import pytest
 
 # Test configuration and imports
 from tests.config.test_paths import ensure_domain_imports
@@ -17,12 +18,12 @@ from tests.config.test_paths import ensure_domain_imports
 ensure_domain_imports()
 
 try:
+    from domain.entities import Client as DomainClient
     from services.client_service import ClientService
     from tests.factories.repository_factories import (
         ClientRepositoryFactory,
         JotFormServiceFactory,
     )
-    from domain.entities import Client as DomainClient
 
     IMPORTS_AVAILABLE = True
 except ImportError as e:
@@ -171,12 +172,15 @@ class TestClientServiceJotFormSync:
             id=1, nome="João", sobrenome="Silva", jotform_submission_id="123"
         )
         mock_client_repo.get_by_jotform_id.return_value = existing_client
+        mock_client_repo.update.return_value = existing_client
 
         result = service.sync_clients_from_jotform()
 
-        assert len(result) == 0  # No new clients created
+        assert len(result) == 1  # Existing client was updated
+        assert result[0] == existing_client
         mock_jotform_service.fetch_submissions.assert_called_once()
         mock_client_repo.create.assert_not_called()
+        mock_client_repo.update.assert_called_once()
 
     def test_sync_clients_from_jotform_with_name_parsing(
         self, service, mock_client_repo, mock_jotform_service

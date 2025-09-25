@@ -3,12 +3,12 @@ Demonstration script showing backup system functionality with mock data.
 This demonstrates the backup system without requiring database connectivity.
 """
 
-import sys
-import os
 import csv
 import logging
+import os
+import sys
 from datetime import datetime
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 
 # Add the app directory to the Python path
 sys.path.insert(

@@ -8,12 +8,10 @@ Usage:
 It will import models to register them and then create the required table(s).
 """
 
-from sqlalchemy import inspect
-
-from app.db.session import get_engine, Base
-
 # Import models so SQLAlchemy is aware of them
 import app.db.base  # noqa: F401
+from app.db.session import Base, get_engine
+from sqlalchemy import inspect
 
 
 def create_gastos_table():

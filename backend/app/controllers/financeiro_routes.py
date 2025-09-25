@@ -1,20 +1,17 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash
-from flask_login import login_required, current_user
-from typing import Union, Tuple
-from werkzeug.wrappers import Response
 import logging
 from datetime import datetime
 from decimal import Decimal
+from typing import Tuple, Union
 
-from sqlalchemy.orm import joinedload
+from app.controllers.financeiro_helpers import (_get_user_service,
+                                                _maybe_await, _safe_redirect,
+                                                _safe_render)
+from app.db.base import Client, Comissao, Pagamento, Sessao
 from app.db.session import SessionLocal
-from app.db.base import Client, Pagamento, Comissao, Sessao
-from app.controllers.financeiro_helpers import (
-    _safe_render,
-    _safe_redirect,
-    _get_user_service,
-    _maybe_await,
-)
+from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask_login import current_user, login_required
+from sqlalchemy.orm import joinedload
+from werkzeug.wrappers import Response
 
 # Configure logger
 logger = logging.getLogger(__name__)

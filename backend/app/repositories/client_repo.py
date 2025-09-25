@@ -5,10 +5,11 @@ display names are normalized before storage so UI dropdowns remain
 consistent with the /clients page.
 """
 
-from typing import Optional, List
-from app.domain.interfaces import IClientRepository
-from app.domain.entities import Client as DomainClient
+from typing import List, Optional
+
 from app.db.base import Client as DbClient
+from app.domain.entities import Client as DomainClient
+from app.domain.interfaces import IClientRepository
 from app.utils.client_utils import normalize_display_name
 
 

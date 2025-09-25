@@ -23,11 +23,6 @@
                                         %}>
                                 </div>
                                 <div class="flex-form-field">
-                                    <label for="hora">Hora</label>
-                                    <input type="time" name="hora" id="hora" required class="full-width" {% if event and
-                                        event.start_time %}value="{{ event.start_time.strftime('%H:%M') }}" {% endif %}>
-                                </div>
-                                <div class="flex-form-field">
                                     <label for="cliente_id">Cliente</label>
                                     <select name="cliente_id" id="cliente_id" required class="full-width">
                                         <option value="">Selecione...</option>
@@ -73,7 +68,6 @@
         </div>
         {% include 'partials/_sidebar.html' %}
     </div>
-    <script src="{{ url_for('static', filename='js/common.js') }}"></script>
     {% include 'partials/_base_scripts.html' %}
 </body>
 

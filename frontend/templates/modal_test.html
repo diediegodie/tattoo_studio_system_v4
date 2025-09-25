@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modal System Test</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+
+<body>
+    <div class="container">
+        <h1>Modal System Test Page</h1>
+        <p>Use this page to test the modal confirmation buttons and verify they work correctly.</p>
+
+        <div class="test-section">
+            <h2>Test Cases</h2>
+
+            <button onclick="testBasicModal()" class="button">Test Basic Modal (with onConfirm)</button>
+            <p>Tests a simple modal with onConfirm callback</p>
+
+            <button onclick="testModalWithoutCallback()" class="button">Test Modal without onConfirm</button>
+            <p>Tests modal that should auto-submit forms or just close</p>
+
+            <button onclick="testCustomModal()" class="button">Test Custom Modal</button>
+            <p>Tests openCustomModal with custom content</p>
+
+            <button onclick="testMultipleModals()" class="button">Test Multiple Modal Calls</button>
+            <p>Tests that only one modal is open at a time</p>
+        </div>
+
+        <div class="debug-section">
+            <h2>Debug Output</h2>
+            <p>Open browser console (F12) to see debug logs from modal interactions.</p>
+            <div id="debug-output"></div>
+        </div>
+    </div>
+
+    <!-- Include modal system -->
+    <script src="/static/js/modal.js"></script>
+
+    <!-- Test functions -->
+    <script>
+        function testBasicModal() {
+            console.log('=== TESTING BASIC MODAL ===');
+            openModal({
+                title: 'Basic Modal Test',
+                body: '<p>This is a basic modal test. Click confirm to see the callback execute.</p>',
+                onConfirm: function () {
+                    console.log('✅ Basic modal onConfirm executed');
+                    alert('Basic modal confirmed!');
+                },
+                onCancel: function () {
+                    console.log('✅ Basic modal onCancel executed');
+                }
+            });
+        }
+
+        function testModalWithoutCallback() {
+            console.log('=== TESTING MODAL WITHOUT CALLBACK ===');
+            openModal({
+                title: 'Modal without Callback',
+                body: '<p>This modal has no onConfirm callback. It should just close when confirmed.</p>',
+                onConfirm: null
+            });
+        }
+
+        function testCustomModal() {
+            console.log('=== TESTING CUSTOM MODAL ===');
+            openCustomModal({
+                title: 'Custom Modal Test',
+                content: '<div><p>This is custom modal content.</p><input type="text" placeholder="Test input"></div>',
+                onConfirm: function () {
+                    console.log('✅ Custom modal onConfirm executed');
+                    alert('Custom modal confirmed!');
+                }
+            });
+        }
+
+        function testMultipleModals() {
+            console.log('=== TESTING MULTIPLE MODALS ===');
+            // Open first modal
+            openModal({
+                title: 'First Modal',
+                body: '<p>This is the first modal. Opening second modal...</p>',
+                onConfirm: function () {
+                    console.log('✅ First modal confirmed');
+                }
+            });
+
+            // After a delay, try to open another modal
+            setTimeout(function () {
+                console.log('Attempting to open second modal...');
+                openModal({
+                    title: 'Second Modal',
+                    body: '<p>This should replace the first modal.</p>',
+                    onConfirm: function () {
+                        console.log('✅ Second modal confirmed');
+                    }
+                });
+            }, 1000);
+        }
+
+        // Override console.log to also show in debug output
+        const originalLog = console.log;
+        console.log = function (...args) {
+            originalLog.apply(console, args);
+            const debugOutput = document.getElementById('debug-output');
+            if (debugOutput) {
+                const message = args.join(' ');
+                debugOutput.innerHTML += '<div>' + new Date().toLocaleTimeString() + ': ' + message + '</div>';
+                debugOutput.scrollTop = debugOutput.scrollHeight;
+            }
+        };
+    </script>
+</body>
+
+</html>

@@ -1,8 +1,8 @@
 import os
 import sqlite3
-import tempfile
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 import pytest

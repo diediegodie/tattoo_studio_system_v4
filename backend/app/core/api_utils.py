@@ -2,8 +2,9 @@
 Common API utilities for consistent response formatting across all controllers.
 """
 
-from flask import jsonify
 from typing import Any, Optional
+
+from flask import jsonify
 
 
 def api_response(

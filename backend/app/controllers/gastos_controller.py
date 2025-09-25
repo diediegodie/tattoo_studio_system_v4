@@ -1,14 +1,15 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
-from flask_login import login_required, current_user
-from sqlalchemy.orm import joinedload
+import logging
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
-import logging
 
-from app.db.session import SessionLocal
-from app.db.base import Gasto
-from app.services.gastos_service import get_gastos_for_month, serialize_gastos
 from app.core.api_utils import api_response
+from app.db.base import Gasto
+from app.db.session import SessionLocal
+from app.services.gastos_service import get_gastos_for_month, serialize_gastos
+from flask import (Blueprint, flash, jsonify, redirect, render_template,
+                   request, url_for)
+from flask_login import current_user, login_required
+from sqlalchemy.orm import joinedload
 
 logger = logging.getLogger(__name__)
 
@@ -165,11 +166,11 @@ def api_get_gasto(gasto_id):
         gasto = db.query(Gasto).get(gasto_id)
 
         if not gasto:
-            return jsonify({"success": False, "message": "Gasto não encontrado"}), 404
+            return api_response(False, "Gasto não encontrado", None, 404)
 
         # Check if user owns this gasto
         if gasto.created_by != current_user.id:
-            return jsonify({"success": False, "message": "Acesso negado"}), 403
+            return api_response(False, "Acesso negado", None, 403)
 
         data = {
             "id": gasto.id,
@@ -180,13 +181,10 @@ def api_get_gasto(gasto_id):
             "created_at": gasto.created_at.isoformat() if gasto.created_at else None,
         }
 
-        return (
-            jsonify({"success": True, "message": "Gasto encontrado", "data": data}),
-            200,
-        )
+        return api_response(True, "Gasto encontrado", data, 200)
     except Exception as e:
         logger.exception("Error in api_get_gasto: %s", e)
-        return jsonify({"success": False, "message": f"Erro: {str(e)}"}), 500
+        return api_response(False, f"Erro: {str(e)}", None, 500)
     finally:
         if db:
             db.close()
@@ -201,11 +199,11 @@ def api_update_gasto(gasto_id):
         db = SessionLocal()
         gasto = db.query(Gasto).get(gasto_id)
         if not gasto:
-            return jsonify({"success": False, "message": "Gasto não encontrado"}), 404
+            return api_response(False, "Gasto não encontrado", None, 404)
 
         # Check if user owns this gasto
         if gasto.created_by != current_user.id:
-            return jsonify({"success": False, "message": "Acesso negado"}), 403
+            return api_response(False, "Acesso negado", None, 403)
 
         payload = request.get_json(force=True, silent=True) or {}
 
@@ -236,7 +234,7 @@ def api_update_gasto(gasto_id):
                 errors.append("Forma de pagamento é obrigatória")
 
         if errors:
-            return jsonify({"success": False, "message": "; ".join(errors)}), 400
+            return api_response(False, "; ".join(errors), None, 400)
 
         db.commit()
 
@@ -249,15 +247,12 @@ def api_update_gasto(gasto_id):
             "created_at": gasto.created_at.isoformat() if gasto.created_at else None,
         }
 
-        return (
-            jsonify({"success": True, "message": "Gasto atualizado", "data": data}),
-            200,
-        )
+        return api_response(True, "Gasto atualizado", data, 200)
     except Exception as e:
         logger.exception("Error updating gasto: %s", e)
         if db:
             db.rollback()
-        return jsonify({"success": False, "message": f"Erro interno: {str(e)}"}), 500
+        return api_response(False, f"Erro interno: {str(e)}", None, 500)
     finally:
         if db:
             db.close()
@@ -272,21 +267,21 @@ def api_delete_gasto(gasto_id):
         db = SessionLocal()
         gasto = db.query(Gasto).get(gasto_id)
         if not gasto:
-            return jsonify({"success": False, "message": "Gasto não encontrado"}), 404
+            return api_response(False, "Gasto não encontrado", None, 404)
 
         # Check if user owns this gasto
         if gasto.created_by != current_user.id:
-            return jsonify({"success": False, "message": "Acesso negado"}), 403
+            return api_response(False, "Acesso negado", None, 403)
 
         db.delete(gasto)
         db.commit()
 
-        return jsonify({"success": True, "message": "Gasto excluído"}), 200
+        return api_response(True, "Gasto excluído", None, 200)
     except Exception as e:
         logger.exception("Error deleting gasto: %s", e)
         if db:
             db.rollback()
-        return jsonify({"success": False, "message": f"Erro interno: {str(e)}"}), 500
+        return api_response(False, "Erro interno", None, 500)
     finally:
         if db:
             db.close()

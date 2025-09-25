@@ -5,8 +5,8 @@ This module handles all import path setup for tests, ensuring consistent
 import behavior across the entire test suite.
 """
 
-import sys
 import os
+import sys
 import tempfile
 from pathlib import Path
 from typing import Optional
@@ -70,11 +70,11 @@ class TestImportManager:
             # Try non-'app' package imports first (controllers, services, domain),
             # fall back to 'app.*' for compatibility with legacy tests.
             try:
+                import app.repositories.user_repo as _
+                import app.schemas.dtos as _
+                import app.services.user_service as _
                 import domain.entities as _
                 import domain.interfaces as _
-                import app.repositories.user_repo as _
-                import app.services.user_service as _
-                import app.schemas.dtos as _
 
                 return True
             except ImportError:
@@ -83,8 +83,8 @@ class TestImportManager:
                     import app.domain.entities as _
                     import app.domain.interfaces as _
                     import app.repositories.user_repo as _
-                    import app.services.user_service as _
                     import app.schemas.dtos as _
+                    import app.services.user_service as _
 
                     return True
                 except Exception:

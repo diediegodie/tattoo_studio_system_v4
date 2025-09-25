@@ -1,7 +1,7 @@
-from flask import Blueprint, request, jsonify, render_template
-from flask_login import login_required
-from app.services.search_service import SearchService
 from app.db.session import SessionLocal
+from app.services.search_service import SearchService
+from flask import Blueprint, jsonify, render_template, request
+from flask_login import login_required
 
 # Create blueprint for search routes
 search_bp = Blueprint("search", __name__, url_prefix="/search")
@@ -18,11 +18,11 @@ def search_api():
     query = request.args.get("q", "").strip()
 
     if not query:
-        return jsonify({"error": 'Query parameter "q" is required'}), 400
+        return jsonify({"error": 'Parâmetro de consulta "q" é obrigatório'}), 400
 
     # Limit query length for security
     if len(query) > 100:
-        return jsonify({"error": "Query too long (max 100 characters)"}), 400
+        return jsonify({"error": "Consulta muito longa (máximo 100 caracteres)"}), 400
 
     db = SessionLocal()
     try:
@@ -43,7 +43,7 @@ def search_api():
             }
         )
     except Exception as e:
-        return jsonify({"error": f"Search failed: {str(e)}"}), 500
+        return jsonify({"error": f"Pesquisa falhou: {str(e)}"}), 500
     finally:
         db.close()
 
@@ -64,7 +64,7 @@ def search_results_page():
             search_query="",
             results={},
             total_results=0,
-            error='Query parameter "q" is required',
+            error='Parâmetro de consulta "q" é obrigatório',
         )
 
     # Limit query length for security
@@ -74,7 +74,7 @@ def search_results_page():
             search_query=query,
             results={},
             total_results=0,
-            error="Query too long (max 100 characters)",
+            error="Consulta muito longa (máximo 100 caracteres)",
         )
 
     db = SessionLocal()
@@ -101,7 +101,7 @@ def search_results_page():
             search_query=query,
             results={},
             total_results=0,
-            error=f"Search failed: {str(e)}",
+            error=f"Pesquisa falhou: {str(e)}",
         )
     finally:
         db.close()

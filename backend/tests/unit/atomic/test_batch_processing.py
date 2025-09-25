@@ -3,28 +3,24 @@
 Test suite for batch processing functionality in atomic extrato generation.
 """
 
-import pytest
-import os
 import json
-from unittest.mock import Mock, patch
-from datetime import datetime
-
+import os
 # Add backend to path for testing
 import sys
+from datetime import datetime
 from pathlib import Path
+from unittest.mock import Mock, patch
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
-from app.services.extrato_batch import (
-    get_batch_size,
-    process_records_in_batches,
-    serialize_data_batch,
-    calculate_totals_batch,
-)
-from app.services.extrato_atomic import (
-    generate_extrato_with_atomic_transaction,
-)
-from app.db.base import Pagamento, Sessao, Comissao, Gasto
+from app.db.base import Comissao, Gasto, Pagamento, Sessao
+from app.services.extrato_atomic import \
+    generate_extrato_with_atomic_transaction
+from app.services.extrato_batch import (calculate_totals_batch, get_batch_size,
+                                        process_records_in_batches,
+                                        serialize_data_batch)
 
 
 class TestBatchProcessing:
@@ -43,7 +39,6 @@ class TestBatchProcessing:
             mock_pagamento = Mock(spec=Pagamento)
             mock_pagamento.id = i + 1
             mock_pagamento.data = datetime(2025, 9, i + 1)
-            mock_pagamento.hora = datetime(2025, 9, i + 1, 10, 0)
             mock_pagamento.valor = 100.0 * (i + 1)
             mock_pagamento.forma_pagamento = "credit_card"
             mock_pagamento.observacoes = f"Test payment {i + 1}"
@@ -61,7 +56,6 @@ class TestBatchProcessing:
             mock_sessao = Mock(spec=Sessao)
             mock_sessao.id = i + 1
             mock_sessao.data = datetime(2025, 9, i + 1)
-            mock_sessao.hora = datetime(2025, 9, i + 1, 10, 0)
             mock_sessao.valor = 80.0 * (i + 1)
             mock_sessao.status = "completed"
             mock_sessao.observacoes = f"Test session {i + 1}"
@@ -145,7 +139,6 @@ class TestBatchProcessing:
         # Verify payment data structure
         payment = pagamentos_data[0]
         assert "data" in payment
-        assert "hora" in payment
         assert "cliente_name" in payment
         assert "artista_name" in payment
         assert "valor" in payment
@@ -155,7 +148,6 @@ class TestBatchProcessing:
         # Verify session data structure
         session = sessoes_data[0]
         assert "data" in session
-        assert "hora" in session
         assert "cliente_name" in session
         assert "artista_name" in session
         assert "valor" in session

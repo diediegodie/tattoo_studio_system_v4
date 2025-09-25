@@ -1,6 +1,6 @@
-import pytest
 from unittest.mock import Mock, patch
 
+import pytest
 # Ensure test imports are configured
 from tests.config import setup_test_imports
 
@@ -75,7 +75,8 @@ class TestInventoryControllerEndpoints:
             pytest.skip("Inventory controller not importable")
 
         # Mock the _get_user function to avoid database authentication
-        from unittest.mock import patch, MagicMock
+        from unittest.mock import MagicMock, patch
+
         from app.db.base import User
 
         mock_user = User(
@@ -106,7 +107,8 @@ class TestInventoryControllerEndpoints:
             pytest.skip("Inventory controller not importable")
 
         # Mock the _get_user function to avoid database authentication
-        from unittest.mock import patch, MagicMock
+        from unittest.mock import MagicMock, patch
+
         from db.base import User
 
         mock_user = User(
@@ -146,7 +148,7 @@ class TestInventoryControllerEndpoints:
             pytest.skip("Inventory controller not importable")
 
         # Mock the load_user function to avoid database authentication
-        from unittest.mock import patch, MagicMock
+        from unittest.mock import MagicMock, patch
 
         mock_user = MagicMock()
         mock_user.id = 1
@@ -191,7 +193,7 @@ class TestInventoryControllerEndpoints:
             pytest.skip("Inventory controller not importable")
 
         # Mock the load_user function to avoid database authentication
-        from unittest.mock import patch, MagicMock
+        from unittest.mock import MagicMock, patch
 
         mock_user = MagicMock()
         mock_user.id = 1
@@ -233,7 +235,7 @@ class TestInventoryControllerEndpoints:
             pytest.skip("Inventory controller not importable")
 
         # Mock the load_user function to avoid database authentication
-        from unittest.mock import patch, MagicMock
+        from unittest.mock import MagicMock, patch
 
         mock_user = MagicMock()
         mock_user.id = 1

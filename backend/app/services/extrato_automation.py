@@ -5,14 +5,15 @@ This module contains the automation logic for monthly extrato generation,
 background processing, and scheduling.
 """
 
+import logging
 import os
 import threading
-import logging
 from datetime import datetime
-from app.db.session import SessionLocal
+
 from app.db.base import ExtratoRunLog
-from app.services.extrato_generation import check_and_generate_extrato
+from app.db.session import SessionLocal
 from app.services.extrato_core import _log_extrato_run
+from app.services.extrato_generation import check_and_generate_extrato
 
 # Configure logging
 logger = logging.getLogger(__name__)

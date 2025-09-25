@@ -10,9 +10,9 @@ Tests are organized by:
 - Integration placeholders (require Flask test client)
 """
 
-import pytest
 from unittest.mock import Mock, patch
 
+import pytest
 # Test configuration and imports
 from tests.config.test_paths import ensure_domain_imports
 
@@ -20,8 +20,8 @@ ensure_domain_imports()
 
 try:
     from app.controllers import auth_controller
-    from app.services.user_service import UserService
     from app.core.security import create_access_token, verify_token
+    from app.services.user_service import UserService
 
     IMPORTS_AVAILABLE = True
 except ImportError as e:

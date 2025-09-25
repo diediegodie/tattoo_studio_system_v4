@@ -109,14 +109,7 @@
                         </form>
                     </section>
                     <script>
-                        function toggleOptions(btn) {
-                            var actions = btn.nextElementSibling;
-                            if (actions.style.display === "none" || actions.style.display === "") {
-                                actions.style.display = "inline-block";
-                            } else {
-                                actions.style.display = "none";
-                            }
-                        }
+                        // toggleOptions removed - using global window.toggleOptions
                     </script>
 
                 </section>
@@ -126,7 +119,6 @@
 
 
         {% include 'partials/_sidebar.html' %}
-        <script src="{{ url_for('static', filename='js/common.js') }}"></script>
         {% include 'partials/_base_scripts.html' %}
 
 </body>

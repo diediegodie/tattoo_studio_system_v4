@@ -8,99 +8,90 @@ const domHelpers = (typeof window !== 'undefined' && window.domHelpers) ? window
 function getStatusHelper() {
   return typeof window.showStatus === 'function' ? window.showStatus : function (msg, ok) {
     try {
-      if (window.showToast) window.showToast(msg, ok ? 'success' : 'error', 8000);
-      else console.log(msg);
+      if (ok) {
+        if (window.notifySuccess) window.notifySuccess(msg);
+      } else {
+        if (window.notifyError) window.notifyError(msg);
+      }
     } catch(e){ console.log(msg); }
   };
 }
 
 // Async confirm helper
-function confirmAction(message) {
-  if (typeof window.confirm === 'function') return Promise.resolve(window.confirm(message));
-  return Promise.resolve(true);
-}
-
-// Options toggle logic - use CSS classes instead of inline styles for consistency
-function toggleOptions(btn) {
-  // Only show/hide .options-actions inside the Opções column for this row
-  var actions = btn.parentElement.querySelector('.options-actions');
-  if (actions) {
-    actions.classList.toggle('visible');
-  }
-}
+// Options toggle logic - removed local function, using global window.toggleOptions
 
 // Edit gasto modal
 async function editGasto(id) {
   if (!id) return console.warn('editGasto called without id');
 
-  getStatusHelper()('Carregando gasto para edição...', true);
+  getStatusHelper()('Processando...', true);
 
   try {
     const r = await fetch(`/gastos/api/${id}`, { headers: { 'Accept': 'application/json' } });
     const res = await r.json();
 
     if (!res || !res.success) {
-      const msg = (res && res.message) || 'Erro ao carregar gasto.';
+      const msg = (res && res.message) || 'Não foi possível concluir a ação. Tente novamente.';
       getStatusHelper()(msg, false);
       return;
     }
 
     const g = res.data;
 
-    // Build modal
-    let modal = document.getElementById('gastos-edit-modal');
-    if (!modal) {
-      modal = document.createElement('div');
-      modal.id = 'gastos-edit-modal';
-      modal.innerHTML = `
-        <div class="modal-overlay">
-          <div class="modal-container">
-            <div class="modal-scrollable">
-              <h2>Editar Gasto</h2>
-              <form id="gastos-edit-form">
-                <label>Data:<br><input type="date" name="data" required></label><br><br>
-                <label>Valor (R$):<br><input type="number" step="0.01" name="valor" required></label><br><br>
-                <label>Descrição:<br><input type="text" name="descricao" required></label><br><br>
-                <label>Forma de pagamento:<br>
-                  <select name="forma_pagamento" id="gastos-edit-forma_pagamento" required>
-                    <option value="">Selecione...</option>
-                    <option value="Dinheiro">Dinheiro</option>
-                    <option value="Pix">Pix</option>
-                    <option value="Cartão de Crédito">Cartão de Crédito</option>
-                    <option value="Cartão de Débito">Cartão de Débito</option>
-                    <option value="Cheque">Cheque</option>
-                    <option value="Transferência">Transferência</option>
-                  </select>
-                </label><br><br>
-              </form>
-            </div>
-            <div class="modal-footer">
-              <button type="submit" form="gastos-edit-form" class="button primary">Salvar</button>
-              <button type="button" id="gastos-cancel-edit" class="button">Cancelar</button>
-            </div>
-          </div>
-        </div>
-      `;
-      document.body.appendChild(modal);
-    }
+    // Build modal content
+    const modalContent = `
+      <form id="gastos-edit-form">
+        <label>Data:<br><input type="date" name="data" required></label><br><br>
+        <label>Valor (R$):<br><input type="number" step="0.01" name="valor" required></label><br><br>
+        <label>Descrição:<br><input type="text" name="descricao" required></label><br><br>
+        <label>Forma de pagamento:<br>
+          <select name="forma_pagamento" id="gastos-edit-forma_pagamento" required>
+            <option value="">Selecione...</option>
+            <option value="Dinheiro">Dinheiro</option>
+            <option value="Pix">Pix</option>
+            <option value="Cartão de Crédito">Cartão de Crédito</option>
+            <option value="Cartão de Débito">Cartão de Débito</option>
+            <option value="Cheque">Cheque</option>
+            <option value="Transferência">Transferência</option>
+          </select>
+        </label><br><br>
+      </form>
+    `;
 
-    // Prefill values
-    const form = modal.querySelector('#gastos-edit-form');
+    // Use unified modal system
+    openCustomModal({
+      title: 'Editar Gasto',
+      content: modalContent,
+      showConfirm: true,
+      showCancel: true,
+      confirmText: 'Salvar',
+      cancelText: 'Cancelar',
+      onConfirm: function() {
+        console.log('[DEBUG] gastos.js onConfirm triggered for expense edit');
+        const form = document.querySelector('#gastos-edit-form');
+        if (form) {
+          console.log('[DEBUG] Found form, dispatching submit event');
+          const submitEvent = new Event('submit', { cancelable: true });
+          form.dispatchEvent(submitEvent);
+        } else {
+          console.error('[DEBUG] Form not found for expense edit');
+        }
+      },
+      onCancel: null,
+      closeOnConfirm: false, // Don't close on confirm, let form handler do it
+      closeOnCancel: true
+    });
+
+    // Get the form after modal is created and prefill values
+    const form = document.querySelector('#gastos-edit-form');
     form.elements['data'].value = g.data || '';
     form.elements['valor'].value = g.valor || '';
     form.elements['descricao'].value = g.descricao || '';
     form.elements['forma_pagamento'].value = g.forma_pagamento || '';
 
-    modal.style.display = 'block';
-
-    modal.querySelector('#gastos-cancel-edit').onclick = function () {
-      modal.style.display = 'none';
-      modal.remove();
-    };
-
     form.onsubmit = async function (e) {
       e.preventDefault();
-      getStatusHelper()('Salvando...', true);
+      getStatusHelper()('Processando...', true);
 
       const formData = new FormData(form);
       const payload = {
@@ -130,21 +121,20 @@ async function editGasto(id) {
               cols[3].textContent = payload.forma_pagamento;
             }
           }
-          getStatusHelper()('Gasto atualizado com sucesso.', true);
-          modal.style.display = 'none';
-          modal.remove();
+          getStatusHelper()('Ação concluída com sucesso.', true);
+          closeModal();
         } else {
-          getStatusHelper()((updated && updated.message) || 'Erro ao atualizar gasto.', false);
+          getStatusHelper()((updated && updated.message) || 'Não foi possível concluir a ação. Tente novamente.', false);
         }
       } catch (err) {
         console.error('editGasto save error', err);
-        getStatusHelper()('Erro ao salvar gasto.', false);
+        getStatusHelper()('Falha de conexão. Verifique sua internet e tente novamente.', false);
       }
     };
 
   } catch (err) {
     console.error('editGasto error', err);
-    getStatusHelper()('Erro ao carregar gasto.', false);
+    getStatusHelper()('Não foi possível concluir a ação. Tente novamente.', false);
   }
 }
 
@@ -152,9 +142,14 @@ async function editGasto(id) {
 async function deleteGasto(id) {
   if (!id) return console.warn('deleteGasto called without id');
 
-  if (!(await confirmAction('Tem certeza que deseja excluir este gasto?'))) return;
+  console.log('[DEBUG] deleteGasto called with id:', id);
+  if (!(await window.confirmAction('Tem certeza que deseja excluir este gasto?'))) {
+    console.log('[DEBUG] deleteGasto cancelled by user');
+    return;
+  }
 
-  getStatusHelper()('Excluindo...', true);
+  console.log('[DEBUG] deleteGasto proceeding with deletion for id:', id);
+  getStatusHelper()('Processando...', true);
 
   try {
     const r = await fetch(`/gastos/api/${id}`, {
@@ -169,13 +164,14 @@ async function deleteGasto(id) {
       if (row) {
         row.remove();
       }
-      getStatusHelper()('Gasto excluído com sucesso.', true);
+      getStatusHelper()('Ação concluída com sucesso.', true);
+      try { if (typeof closeModal === 'function') closeModal(); } catch(e) {}
     } else {
-      getStatusHelper()((res && res.message) || 'Erro ao excluir gasto.', false);
+      getStatusHelper()((res && res.message) || 'Não foi possível concluir a ação. Tente novamente.', false);
     }
   } catch (err) {
     console.error('deleteGasto error', err);
-    getStatusHelper()('Erro ao excluir gasto.', false);
+    getStatusHelper()('Falha de conexão. Verifique sua internet e tente novamente.', false);
   }
 }
 

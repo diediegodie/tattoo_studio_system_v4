@@ -19,21 +19,31 @@
   const domHelpers = (typeof window !== 'undefined' && window.domHelpers) ? window.domHelpers : null;
 
   function getStatusHelper() {
-  return typeof window.showStatus === 'function' ? window.showStatus : function (msg, ok) { try { if (window.showToast) window.showToast(msg, ok ? 'success' : 'error', 8000); else console.log(msg); } catch(e){ console.log(msg); } };
+  return typeof window.showStatus === 'function' ? window.showStatus : function (msg, ok) { 
+    try { 
+      if (ok) {
+        if (window.notifySuccess) window.notifySuccess(msg);
+      } else {
+        if (window.notifyError) window.notifyError(msg);
+      }
+    } catch(e){ console.log(msg); } 
+  };
   }
 
   // Async confirm helper to allow promise-based usage
-  function confirmAction(message) {
-    if (typeof window.confirm === 'function') return Promise.resolve(window.confirm(message));
-    return Promise.resolve(true);
+  async function deleteSessao(id) {
+  console.log('[DEBUG] sessoes.deleteSessao called with id:', id);
+  if (!id) return console.warn('deleteSessao called without id');
+
+  const confirmed = await window.confirmAction('Tem certeza que deseja excluir esta sessão?');
+  console.log('[DEBUG] sessoes.deleteSessao user confirmation:', confirmed);
+  if (!confirmed) {
+    console.log('[DEBUG] sessoes.deleteSessao cancelled by user');
+    return;
   }
 
-  async function deleteSessao(id) {
-  console.log('sessoes.deleteSessao invoked with id:', id);
-  if (!id) return console.warn('deleteSessao called without id');
-    if (!(await confirmAction('Tem certeza que deseja excluir esta sessão?'))) return;
-
-    getStatusHelper()('Excluindo...', true);
+  console.log('[DEBUG] sessoes.deleteSessao proceeding with deletion for id:', id);
+  getStatusHelper()('Processando...', true);
 
     try {
       let res;
@@ -57,13 +67,15 @@
           return;
         }
 
-        getStatusHelper()(res.message || 'Sessão excluída.', true);
+        getStatusHelper()(res.message || 'Ação concluída com sucesso.', true);
+        // Close the unified modal
+        try { if (typeof closeModal === 'function') closeModal(); } catch(e) {}
       } else {
-        const msg = (res && res.message) || 'Erro ao excluir sessão.';
+        const msg = (res && res.message) || 'Não foi possível concluir a ação. Tente novamente.';
         getStatusHelper()(msg, false);
       }
     } catch (err) {
-      const msg = (err && err.message) || 'Erro ao excluir sessão.';
+      const msg = (err && err.message) || 'Falha de conexão. Verifique sua internet e tente novamente.';
       getStatusHelper()(msg, false);
       console.error('deleteSessao error', err);
     }
@@ -73,7 +85,7 @@
     if (!id) return console.warn('editSessao called without id');
 
     console.log('editSessao called with id:', id);
-    getStatusHelper()('Carregando dados da sessão...', true);
+    getStatusHelper()('Processando...', true);
 
     // Try to obtain session data
     let data = null;
@@ -95,7 +107,7 @@
       }
     } catch (err) {
       console.error('Could not fetch session data:', err);
-      getStatusHelper()('Erro ao carregar dados da sessão.', false);
+      getStatusHelper()('Não foi possível concluir a ação. Tente novamente.', false);
       return;
     }
 
@@ -109,144 +121,67 @@
     const sessionData = data.data || data; // Handle both wrapped and unwrapped responses
     console.log('[DEBUG] Session data loaded successfully:', sessionData);
 
-    // Build or reuse a modal
-    let modal = document.getElementById('sessoes-edit-modal');
-    if (!modal) {
-      modal = document.createElement('div');
-      modal.id = 'sessoes-edit-modal';
-      modal.innerHTML = `
-        <div class="modal-overlay">
-          <div class="modal-container">
-            <div class="modal-scrollable">
-              <h2>Editar Sessão</h2>
-              <form id="sessoes-edit-form">
-                <label>Data:<br><input type="date" name="data" required></label><br><br>
-                <label>Hora:<br><input type="time" name="hora" required></label><br><br>
-                <label>Cliente:<br><select name="cliente_id" id="modal_cliente_id" required></select></label><br><br>
-                <label>Artista:<br><select name="artista_id" id="modal_artista_id" required></select></label><br><br>
-                <label>Valor:<br><input type="number" step="0.01" name="valor" required></label><br><br>
-                <label>Observações:<br><textarea name="observacoes"></textarea></label><br><br>
-              </form>
-            </div>
-            <div class="modal-footer">
-              <button type="submit" form="sessoes-edit-form" class="button primary">Salvar</button>
-              <button type="button" id="sessoes-cancel-edit" class="button">Cancelar</button>
-            </div>
-          </div>
-        </div>
-      `;
-      document.body.appendChild(modal);
-    }
+        // Build or reuse a modal using unified modal system
+    const formContent = `
+      <form id="sessoes-edit-form">
+        <label>Data:<br><input type="date" name="data" required></label><br><br>
+        <label>Cliente:<br><select name="cliente_id" id="modal_cliente_id" required></select></label><br><br>
+        <label>Artista:<br><select name="artista_id" id="modal_artista_id" required></select></label><br><br>
+        <label>Valor:<br><input type="number" step="0.01" name="valor" required></label><br><br>
+        <label>Observações:<br><textarea name="observacoes"></textarea></label><br><br>
+      </form>
+    `;
 
-    // Populate form using server-rendered select templates so names are shown
-    const form = modal.querySelector('#sessoes-edit-form');
-    console.log('Form element found:', form);
-    
-    try {
-      // Clone server-rendered select options into modal selects
-      const tmplCliente = document.getElementById('tmpl_cliente_select');
-      const tmplArtista = document.getElementById('tmpl_artista_select');
-      const modalCliente = form.querySelector('#modal_cliente_id');
-      const modalArtista = form.querySelector('#modal_artista_id');
-      
-      console.log('Template elements:', { tmplCliente, tmplArtista });
-      console.log('Modal elements:', { modalCliente, modalArtista });
-      
-      if (tmplCliente && modalCliente) {
-        modalCliente.innerHTML = tmplCliente.innerHTML;
-        console.log('Cliente options cloned');
-      } else {
-        console.warn('Missing cliente template or modal element');
-      }
-      
-      if (tmplArtista && modalArtista) {
-        modalArtista.innerHTML = tmplArtista.innerHTML;
-        console.log('Artista options cloned');
-      } else {
-        console.warn('Missing artista template or modal element');
-      }
+    // Open modal with custom content
+    openCustomModal({
+      title: 'Editar Sessão',
+      content: formContent,
+      confirmText: 'Salvar',
+      cancelText: 'Cancelar',
+      onConfirm: async function() {
+        const form = document.getElementById('sessoes-edit-form');
+        if (!form) return;
 
-            // Populate form fields with fetched data
-      console.log('[DEBUG] Populating form fields with data:', sessionData);
-      
-      const dateField = form.querySelector('[name="data"]');
-      const timeField = form.querySelector('[name="hora"]');
-      const valueField = form.querySelector('[name="valor"]');
-      const obsField = form.querySelector('[name="observacoes"]');      console.log('[DEBUG] Form fields found:', { dateField, timeField, valueField, obsField });
-      
-      if (dateField) dateField.value = sessionData.data || '';
-      if (timeField) timeField.value = sessionData.hora || '';
-      if (valueField) valueField.value = sessionData.valor || '';
-      if (obsField) obsField.value = sessionData.observacoes || '';
-
-      // Set dropdown selections
-      // sessionData.cliente and sessionData.artista may be objects with id/name
-      const clientId = sessionData.cliente ? sessionData.cliente.id : (sessionData.cliente_id || '');
-      const artistId = sessionData.artista ? sessionData.artista.id : (sessionData.artista_id || '');
-      
-      console.log('[DEBUG] Setting dropdown values:', { clientId, artistId });
-      
-      if (clientId && modalCliente) {
-        modalCliente.value = clientId;
-        console.log('[DEBUG] Set cliente_id to:', clientId, 'actual value:', modalCliente.value);
-      }
-      if (artistId && modalArtista) {
-        modalArtista.value = artistId;
-        console.log('[DEBUG] Set artista_id to:', artistId, 'actual value:', modalArtista.value);
-      }
-      
-    } catch (e) {
-      console.error('Failed to populate modal selects', e);
-      getStatusHelper()('Erro ao popular campos do formulário.', false);
-    }
-
-    // Focus management: show and focus first input
-    const firstInput = modal.querySelector('input, textarea, select, button');
-    setTimeout(() => { if (firstInput) firstInput.focus(); }, 100);
-    
-    const cancelBtn = modal.querySelector('#sessoes-cancel-edit');
-    cancelBtn.onclick = function () { modal.remove(); };
-
-    form.onsubmit = function (e) {
-      e.preventDefault();
-      getStatusHelper()('Salvando alterações...', true);
-      const data = new FormData(form);
-      // Client-side validation: ensure required fields are present
-      const requiredFields = ['data', 'hora', 'cliente_id', 'artista_id', 'valor'];
-      for (const fieldName of requiredFields) {
-        const fieldEl = form.querySelector(`[name="${fieldName}"]`);
-        if (fieldEl && (!data.get(fieldName) || data.get(fieldName).trim() === '')) {
-          getStatusHelper()(`Campo ${fieldName} é obrigatório.`, false);
-          if (fieldEl) {
-            fieldEl.classList.add('modal-error');
-            const err = document.createElement('span'); err.className = 'field-error-msg'; err.textContent = `Campo ${fieldName} é obrigatório.`; fieldEl.parentNode.appendChild(err);
-            fieldEl.focus();
+        getStatusHelper()('Salvando alterações...', true);
+        const data = new FormData(form);
+        
+        // Client-side validation: ensure required fields are present
+        const requiredFields = ['data', 'cliente_id', 'artista_id', 'valor'];
+        for (const fieldName of requiredFields) {
+          const fieldEl = form.querySelector(`[name="${fieldName}"]`);
+          if (fieldEl && (!data.get(fieldName) || data.get(fieldName).trim() === '')) {
+            getStatusHelper()(`Campo ${fieldName} é obrigatório.`, false);
+            if (fieldEl) {
+              fieldEl.classList.add('modal-error');
+              const err = document.createElement('span'); 
+              err.className = 'field-error-msg'; 
+              err.textContent = `Campo ${fieldName} é obrigatório.`; 
+              fieldEl.parentNode.appendChild(err);
+              fieldEl.focus();
+            }
+            return;
           }
-          return;
         }
-      }
 
-      const params = new URLSearchParams();
-      for (const [k, v] of data.entries()) params.append(k, v);
+        const params = new URLSearchParams();
+        for (const [k, v] of data.entries()) params.append(k, v);
 
-      // Build payload for PUT
-      const fd = data;
-      const payload = {
-        data: fd.get('data'),
-        hora: fd.get('hora'),
-        cliente_id: parseInt(fd.get('cliente_id'), 10) || null,
-        artista_id: parseInt(fd.get('artista_id'), 10) || null,
-        valor: parseFloat(fd.get('valor')) || 0,
-        observacoes: fd.get('observacoes') || ''
-      };
+        // Build payload for PUT
+        const fd = data;
+        const payload = {
+          data: fd.get('data'),
+          cliente_id: parseInt(fd.get('cliente_id'), 10) || null,
+          artista_id: parseInt(fd.get('artista_id'), 10) || null,
+          valor: parseFloat(fd.get('valor')) || 0,
+          observacoes: fd.get('observacoes') || ''
+        };
 
-      console.log('[DEBUG] Submitting payload:', payload);
+        console.log('[DEBUG] Submitting payload:', payload);
 
-      // Debug: Log the actual request details
-      console.log('[DEBUG] Sending PUT request to:', `/sessoes/api/${id}`);
-      console.log('[DEBUG] Payload keys:', Object.keys(payload));
+        // Debug: Log the actual request details
+        console.log('[DEBUG] Sending PUT request to:', `/sessoes/api/${id}`);
+        console.log('[DEBUG] Payload keys:', Object.keys(payload));
 
-      (async function () {
         try {
           let res;
           if (sessoesClient && typeof sessoesClient.update === 'function') {
@@ -269,7 +204,7 @@
 
           if (res && res.success) {
             getStatusHelper()(res.message || 'Sessão atualizada com sucesso.', true);
-            modal.remove();
+            closeModal();
             // reload page to reflect changes
             setTimeout(() => window.location.reload(), 1000);
           } else {
@@ -281,9 +216,83 @@
           getStatusHelper()(msg, false);
           console.error('editSessao error', err);
         }
-      })();
-    };
-  }
+      },
+      onCancel: function() {
+        // Clear any error states
+        const form = document.getElementById('sessoes-edit-form');
+        if (form) {
+          form.querySelectorAll('.modal-error').forEach(el => el.classList.remove('modal-error'));
+          form.querySelectorAll('.field-error-msg').forEach(el => el.remove());
+        }
+      }
+    });
+
+    // Wait for modal to be rendered, then populate form
+    setTimeout(() => {
+      const form = document.getElementById('sessoes-edit-form');
+      if (!form) return;
+
+      console.log('Form element found:', form);
+      
+      try {
+        // Clone server-rendered select options into modal selects
+        const tmplCliente = document.getElementById('tmpl_cliente_select');
+        const tmplArtista = document.getElementById('tmpl_artista_select');
+        const modalCliente = form.querySelector('#modal_cliente_id');
+        const modalArtista = form.querySelector('#modal_artista_id');
+        
+        console.log('Template elements:', { tmplCliente, tmplArtista });
+        console.log('Modal elements:', { modalCliente, modalArtista });
+        
+        if (tmplCliente && modalCliente) {
+          modalCliente.innerHTML = tmplCliente.innerHTML;
+          console.log('Cliente options cloned');
+        } else {
+          console.warn('Missing cliente template or modal element');
+        }
+        
+        if (tmplArtista && modalArtista) {
+          modalArtista.innerHTML = tmplArtista.innerHTML;
+          console.log('Artista options cloned');
+        } else {
+          console.warn('Missing artista template or modal element');
+        }
+
+        // Populate form fields with fetched data
+        console.log('[DEBUG] Populating form fields with data:', sessionData);
+        
+        const dateField = form.querySelector('[name="data"]');
+        const valueField = form.querySelector('[name="valor"]');
+        const obsField = form.querySelector('[name="observacoes"]');
+        
+        console.log('[DEBUG] Form fields found:', { dateField, valueField, obsField });
+        
+        if (dateField) dateField.value = sessionData.data || '';
+        if (valueField) valueField.value = sessionData.valor || '';
+        if (obsField) obsField.value = sessionData.observacoes || '';
+
+        // Set dropdown selections
+        // sessionData.cliente and sessionData.artista may be objects with id/name
+        const clientId = sessionData.cliente ? sessionData.cliente.id : (sessionData.cliente_id || '');
+        const artistId = sessionData.artista ? sessionData.artista.id : (sessionData.artista_id || '');
+        
+        console.log('[DEBUG] Setting dropdown values:', { clientId, artistId });
+        
+        if (clientId && modalCliente) {
+          modalCliente.value = clientId;
+          console.log('[DEBUG] Set cliente_id to:', clientId, 'actual value:', modalCliente.value);
+        }
+        if (artistId && modalArtista) {
+          modalArtista.value = artistId;
+          console.log('[DEBUG] Set artista_id to:', artistId, 'actual value:', modalArtista.value);
+        }
+        
+      } catch (e) {
+        console.error('Failed to populate modal selects', e);
+        getStatusHelper()('Erro ao popular campos do formulário.', false);
+      }
+    }, 100);
+}
 
   // Function to handle the Finalizar button - call server to finalize, then follow server redirect
   async function finalizarSessao(button) {

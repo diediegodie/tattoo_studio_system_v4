@@ -6,11 +6,11 @@ optional serializers for frontend-facing payloads.
 
 from __future__ import annotations
 
-from typing import List, Dict, Any
 from datetime import datetime
-from sqlalchemy.orm import Session, joinedload
+from typing import Any, Dict, List
 
 from app.db.base import Gasto
+from sqlalchemy.orm import Session, joinedload
 
 
 def get_gastos_for_month(

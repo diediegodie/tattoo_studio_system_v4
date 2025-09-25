@@ -6,7 +6,6 @@ from unittest.mock import MagicMock
 
 import pytest
 
-
 SCRIPT_PATH = "backend/scripts/migrate_inventory_order.py"
 
 

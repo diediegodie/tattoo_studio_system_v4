@@ -10,12 +10,12 @@ Provides functionality to:
 
 import json
 import logging
-from datetime import datetime, timedelta
-from typing import Dict, Any, List, Optional
 import uuid
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional
 
+from app.db.base import Extrato, ExtratoSnapshot
 from app.db.session import SessionLocal
-from app.db.base import ExtratoSnapshot, Extrato
 
 logger = logging.getLogger(__name__)
 

@@ -6,11 +6,12 @@ Usage:
     python -m backend.scripts.add_google_event_id_column
 """
 
+import logging
+import os
+import sys
+
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import SQLAlchemyError
-import logging
-import sys
-import os
 
 # Set up logging
 logging.basicConfig(

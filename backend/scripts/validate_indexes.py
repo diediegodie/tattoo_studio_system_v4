@@ -9,8 +9,9 @@ operations and generates a validation report.
 import logging
 import os
 from datetime import datetime
-from sqlalchemy import text
+
 from app.db.session import get_engine
+from sqlalchemy import text
 
 # Configure logging
 logging.basicConfig(

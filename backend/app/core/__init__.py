@@ -2,10 +2,7 @@
 # This file makes the core directory a Python package
 # and allows importing core modules
 
-from . import auth_decorators
-from . import exceptions
-from . import security
-from . import interfaces
+from . import auth_decorators, exceptions, interfaces, security
 
 __all__ = [
     "auth_decorators",

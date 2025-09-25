@@ -24,9 +24,9 @@ def test_extrato_page_load():
     with app.test_client() as client:
         # Simulate login (this would normally be done through Flask-Login)
         with client.application.test_request_context():
-            from flask_login import login_user
             from app.db.session import SessionLocal
             from app.repositories.user_repo import UserRepository
+            from flask_login import login_user
 
             db = SessionLocal()
             try:

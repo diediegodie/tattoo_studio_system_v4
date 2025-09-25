@@ -9,20 +9,20 @@ This module tests the UserService business logic with comprehensive coverage:
 - Error handling and edge cases
 """
 
-import pytest
-from unittest.mock import Mock, patch
 from typing import Dict, Optional
+from unittest.mock import Mock, patch
 
+import pytest
 # Test configuration and imports
 from tests.config.test_paths import ensure_domain_imports
 
 ensure_domain_imports()
 
 try:
+    from app.core.security import hash_password, verify_password
+    from app.domain.entities import User as DomainUser
     from app.services.user_service import UserService
     from tests.factories.repository_factories import UserRepositoryFactory
-    from app.domain.entities import User as DomainUser
-    from app.core.security import hash_password, verify_password
 
     IMPORTS_AVAILABLE = True
 except ImportError as e:
@@ -44,10 +44,10 @@ def service(mock_repo) -> Optional["UserService"]:
     return UserService(mock_repo)
 
 
+from .test_user_service_artist import *
+from .test_user_service_auth import *
 # Import from split modules
 from .test_user_service_google_oauth import *
-from .test_user_service_password import *
-from .test_user_service_auth import *
-from .test_user_service_retrieval import *
 from .test_user_service_management import *
-from .test_user_service_artist import *
+from .test_user_service_password import *
+from .test_user_service_retrieval import *

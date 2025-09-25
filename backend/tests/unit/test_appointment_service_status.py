@@ -7,27 +7,24 @@ This module tests appointment status change functionality:
 - Error handling for invalid status transitions
 """
 
-import pytest
-from unittest.mock import Mock
 from datetime import datetime, timedelta
+from unittest.mock import Mock
 
+import pytest
 # Test configuration and imports
 from tests.config.test_paths import ensure_domain_imports
 
 ensure_domain_imports()
 
 try:
+    from app.domain.entities import Appointment as DomainAppointment
+    from app.domain.entities import User
+    from app.schemas.dtos import (AppointmentCreateRequest,
+                                  AppointmentResponse,
+                                  AppointmentUpdateRequest)
     from app.services.appointment_service import AppointmentService
     from tests.factories.repository_factories import (
-        AppointmentRepositoryFactory,
-        UserRepositoryFactory,
-    )
-    from app.domain.entities import Appointment as DomainAppointment, User
-    from app.schemas.dtos import (
-        AppointmentCreateRequest,
-        AppointmentUpdateRequest,
-        AppointmentResponse,
-    )
+        AppointmentRepositoryFactory, UserRepositoryFactory)
 
     IMPORTS_AVAILABLE = True
 except ImportError as e:

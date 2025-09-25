@@ -8,19 +8,19 @@ This module tests artist registration and management operations:
 - Listing all artists
 """
 
-import pytest
-from unittest.mock import Mock
 from typing import Optional
+from unittest.mock import Mock
 
+import pytest
 # Test configuration and imports
 from tests.config.test_paths import ensure_domain_imports
 
 ensure_domain_imports()
 
 try:
+    from app.domain.entities import User as DomainUser
     from app.services.user_service import UserService
     from tests.factories.repository_factories import UserRepositoryFactory
-    from app.domain.entities import User as DomainUser
 
     IMPORTS_AVAILABLE = True
 except ImportError as e:

@@ -8,7 +8,8 @@ This controller:
 """
 
 from typing import Optional
-from flask import Blueprint, request, jsonify
+
+from flask import Blueprint, jsonify, request
 
 
 def api_response(
@@ -17,11 +18,11 @@ def api_response(
     return jsonify({"success": success, "message": message, "data": data}), status_code
 
 
-from flask_login import login_required, current_user
 from app.db.session import SessionLocal
+from app.domain.entities import InventoryItem
 from app.repositories.inventory_repository import InventoryRepository
 from app.services.inventory_service import InventoryService
-from app.domain.entities import InventoryItem
+from flask_login import current_user, login_required
 
 inventory_bp = Blueprint("inventory", __name__, url_prefix="/inventory")
 
@@ -125,7 +126,7 @@ def update_inventory(item_id):
 
         existing = service.get_item(item_id)
         if not existing:
-            return api_response(False, "Item not found", None, 404)
+            return api_response(False, "Item não encontrado", None, 404)
 
         updated_item = InventoryItem(
             id=item_id,
@@ -137,7 +138,7 @@ def update_inventory(item_id):
         try:
             updated = service.update_item(updated_item)
         except Exception as e:
-            return api_response(False, f"Update failed: {str(e)}", None, 400)
+            return api_response(False, f"Falha na atualização: {str(e)}", None, 400)
 
         item_data = {
             "id": updated.id,
@@ -151,7 +152,7 @@ def update_inventory(item_id):
                 updated.updated_at.isoformat() if updated.updated_at else None
             ),
         }
-        return api_response(True, "Item updated successfully", item_data, 200)
+        return api_response(True, "Item atualizado com sucesso", item_data, 200)
     finally:
         db.close()
 
@@ -167,14 +168,14 @@ def delete_inventory(item_id):
 
         existing = service.get_item(item_id)
         if not existing:
-            return api_response(False, "Item not found", None, 404)
+            return api_response(False, "Item não encontrado", None, 404)
 
         try:
             service.delete_item(item_id)
         except Exception as e:
-            return api_response(False, f"Delete failed: {str(e)}", None, 400)
+            return api_response(False, f"Falha na exclusão: {str(e)}", None, 400)
 
-        return api_response(True, "Item deleted", None, 200)
+        return api_response(True, "Item excluído", None, 200)
     finally:
         db.close()
 
@@ -192,7 +193,7 @@ def change_quantity(item_id):
 
         updated = service.change_quantity(item_id, delta)
         if not updated:
-            return jsonify({"error": "Item not found"}), 404
+            return jsonify({"error": "Item não encontrado"}), 404
 
         return (
             jsonify(

@@ -6,29 +6,21 @@ backup verification and transaction safety.
 """
 
 import json
-import uuid
 import logging
+import uuid
 from datetime import datetime
-from sqlalchemy.orm import joinedload
-from sqlalchemy.exc import SQLAlchemyError
+
+from app.db.base import Comissao, Extrato, Gasto, Pagamento, Sessao
 from app.db.session import SessionLocal
-from app.db.base import (
-    Pagamento,
-    Sessao,
-    Comissao,
-    Extrato,
-    Gasto,
-)
-from app.services.extrato_core import (
-    check_existing_extrato,
-    query_data,
-    serialize_data,
-    calculate_totals,
-    verify_backup_before_transfer,
-    delete_historical_records_atomic,
-)
-from app.services.undo_service import UndoService
 from app.services.extrato_automation import _log_extrato_run
+from app.services.extrato_core import (calculate_totals,
+                                       check_existing_extrato,
+                                       delete_historical_records_atomic,
+                                       query_data, serialize_data,
+                                       verify_backup_before_transfer)
+from app.services.undo_service import UndoService
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import joinedload
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -244,8 +236,9 @@ def check_and_generate_extrato_with_transaction(mes=None, ano=None, force=False)
     Enhanced version with atomic transactions and backup verification.
     """
     import logging
-    from app.services.extrato_core import get_previous_month
+
     from app.services.extrato_automation import should_run_monthly_extrato
+    from app.services.extrato_core import get_previous_month
 
     logger = logging.getLogger(__name__)
 

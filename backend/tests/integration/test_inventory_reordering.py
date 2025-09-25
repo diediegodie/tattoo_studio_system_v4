@@ -1,14 +1,13 @@
 import pytest
-
 # Ensure import paths are configured like other tests
 from tests.config import setup_test_imports
 
 setup_test_imports()
 
+from app.db.base import Inventory as InventoryModel
+from app.domain.entities import InventoryItem
 from app.repositories.inventory_repository import InventoryRepository
 from app.services.inventory_service import InventoryService
-from app.domain.entities import InventoryItem
-from app.db.base import Inventory as InventoryModel
 from sqlalchemy.orm import sessionmaker
 
 

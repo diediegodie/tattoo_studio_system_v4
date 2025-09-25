@@ -7,12 +7,13 @@ These tests patch the controller's SessionLocal to return mocked DB/session obje
 so the login_required decorator and request context are exercised via the client.
 """
 
-import pytest
-import sys
-from unittest.mock import Mock, patch
-from datetime import datetime, date, time
-from decimal import Decimal
 import importlib
+import sys
+from datetime import date, datetime, time
+from decimal import Decimal
+from unittest.mock import Mock, patch
+
+import pytest
 
 
 @pytest.mark.unit
@@ -38,7 +39,6 @@ class TestSessionsAPI:
             s1 = Mock()
             s1.id = 1
             s1.data = date(2025, 8, 30)
-            s1.hora = time(14, 0)
             s1.valor = Decimal("200.00")
             s1.observacoes = "Test session with Google ID"
             s1.google_event_id = "GOOGLE123"
@@ -56,7 +56,6 @@ class TestSessionsAPI:
             s2 = Mock()
             s2.id = 2
             s2.data = date(2025, 8, 31)
-            s2.hora = time(15, 0)
             s2.valor = Decimal("150.00")
             s2.observacoes = "Manual session"
             s2.google_event_id = None
@@ -104,7 +103,6 @@ class TestSessionsAPI:
         s = Mock()
         s.id = 1
         s.data = date(2025, 8, 30)
-        s.hora = time(14, 0)
         s.valor = Decimal("100.00")
         s.observacoes = "Test session detail"
         s.google_event_id = "DETAIL123"
@@ -144,7 +142,6 @@ class TestSessionsAPI:
         s = Mock()
         s.id = 1
         s.data = date(2025, 8, 30)
-        s.hora = time(14, 0)
         s.valor = Decimal("100.00")
         s.observacoes = "Original session"
         s.google_event_id = "UPDATE123"

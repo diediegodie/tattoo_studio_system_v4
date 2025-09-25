@@ -5,8 +5,8 @@ normalized across the app so dropdowns and the /clients/ page always show
 the same values.
 """
 
-from typing import Optional
 import unicodedata
+from typing import Optional
 
 
 def normalize_display_name(name: Optional[str]) -> str:

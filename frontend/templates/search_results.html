@@ -39,8 +39,7 @@
     <div class="search-result">
         <h4>{{ result.entity_type }} #{{ result.id }}</h4>
         {% if result.data %}
-        <p><strong>Data:</strong> {{ result.data }}
-            {% if result.hora %} às {{ result.hora }}{% endif %}</p>
+        <p><strong>Data:</strong> {{ result.data }}</p>
         {% endif %}
         {% if result.cliente_name %}
         <p><strong>Cliente:</strong> {{ result.cliente_name }}</p>
@@ -121,7 +120,7 @@
     {% for sessao in results.sessoes %}
     <div class="search-result">
         <h4>Sessão #{{ sessao.id }}</h4>
-        <p><strong>Data:</strong> {{ sessao.data }} às {{ sessao.hora }}</p>
+        <p><strong>Data:</strong> {{ sessao.data }}</p>
         <p><strong>Cliente:</strong> {{ sessao.cliente_name }}</p>
         <p><strong>Artista:</strong> {{ sessao.artista_name }}</p>
         <p><strong>Valor:</strong> R$ {{ "%.2f"|format(sessao.valor) }}</p>
@@ -230,7 +229,6 @@
 
 </div>
 
-<script src="{{ url_for('static', filename='js/common.js') }}"></script>
 {% include 'partials/_base_scripts.html' %}
 
 <!-- Search Highlighting Script -->

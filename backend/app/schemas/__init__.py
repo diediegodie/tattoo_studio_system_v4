@@ -5,19 +5,11 @@ This package contains DTOs that define the API contracts
 and handle validation following SOLID principles.
 """
 
-from .dtos import (
-    UserCreateRequest,
-    UserUpdateRequest,
-    UserResponse,
-    AppointmentCreateRequest,
-    AppointmentUpdateRequest,
-    AppointmentResponse,
-    InventoryItemCreateRequest,
-    InventoryItemUpdateRequest,
-    InventoryItemResponse,
-    AuthTokenResponse,
-    ErrorResponse,
-)
+from .dtos import (AppointmentCreateRequest, AppointmentResponse,
+                   AppointmentUpdateRequest, AuthTokenResponse, ErrorResponse,
+                   InventoryItemCreateRequest, InventoryItemResponse,
+                   InventoryItemUpdateRequest, UserCreateRequest, UserResponse,
+                   UserUpdateRequest)
 
 __all__ = [
     # User DTOs

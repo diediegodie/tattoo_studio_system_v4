@@ -10,10 +10,9 @@ Usage:
 The script reads DATABASE_URL from the environment (same as the app).
 """
 
-from app.db.session import engine, Base
-
 # Import all models to register them with Base
 import app.db.base
+from app.db.session import Base, engine
 
 
 def main():

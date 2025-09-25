@@ -5,9 +5,9 @@ This module provides helper classes and utilities for testing Flask responses
 and other testing infrastructure.
 """
 
-import pytest
 from datetime import datetime, timezone
 
+import pytest
 # Set up test environment paths
 from tests.config.test_paths import setup_test_environment
 
@@ -16,10 +16,11 @@ setup_test_environment()
 try:
     # Quick availability check for Flask and SQLAlchemy. Do NOT import
     # application modules that may create engines at module import time.
-    import flask  # type: ignore
-    from sqlalchemy import text  # type: ignore
-    import jwt
     from datetime import datetime, timedelta, timezone
+
+    import flask  # type: ignore
+    import jwt
+    from sqlalchemy import text  # type: ignore
 
     FLASK_IMPORTS_AVAILABLE = True
 except ImportError as e:

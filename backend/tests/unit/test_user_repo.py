@@ -9,19 +9,19 @@ This module tests the UserRepository data access logic with comprehensive covera
 - Error handling and edge cases
 """
 
-import pytest
-from unittest.mock import Mock, MagicMock, patch
 from typing import Optional
+from unittest.mock import MagicMock, Mock, patch
 
+import pytest
 # Test configuration and imports
 from tests.config.test_paths import ensure_domain_imports
 
 ensure_domain_imports()
 
 try:
-    from app.repositories.user_repo import UserRepository
-    from app.domain.entities import User as DomainUser
     from app.db.base import User as DbUser
+    from app.domain.entities import User as DomainUser
+    from app.repositories.user_repo import UserRepository
 
     IMPORTS_AVAILABLE = True
 except ImportError as e:
@@ -43,10 +43,10 @@ def repo(mock_db_session) -> Optional["UserRepository"]:
     return UserRepository(mock_db_session)
 
 
+from .test_user_repo_creation import *
+from .test_user_repo_deletion import *
+from .test_user_repo_mapping import *
+from .test_user_repo_password import *
 # Import from split modules
 from .test_user_repo_retrieval import *
-from .test_user_repo_creation import *
 from .test_user_repo_updates import *
-from .test_user_repo_deletion import *
-from .test_user_repo_password import *
-from .test_user_repo_mapping import *

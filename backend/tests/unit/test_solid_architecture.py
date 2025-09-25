@@ -7,17 +7,17 @@ This test file demonstrates proper testing with the new:
 - Service implementations
 """
 
-import pytest
-from unittest.mock import Mock, patch
 from datetime import datetime
-from typing import cast, Any
+from typing import Any, cast
+from unittest.mock import Mock, patch
 
+import pytest
 # Import the new architecture components
 from app.domain.entities import User as DomainUser
 from app.domain.interfaces import IUserRepository
-from app.services.user_service import UserService
-from app.schemas.dtos import UserCreateRequest, UserResponse
 from app.repositories.user_repo import UserRepository
+from app.schemas.dtos import UserCreateRequest, UserResponse
+from app.services.user_service import UserService
 
 
 class TestDomainEntities:

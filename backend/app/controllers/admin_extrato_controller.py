@@ -7,22 +7,19 @@ Provides admin-only endpoints for:
 - Reverting last transfer
 """
 
-from flask import Blueprint, jsonify, request, current_app
-from flask_login import login_required, current_user
-from sqlalchemy.exc import SQLAlchemyError
-from datetime import datetime
 import logging
 import uuid
+from datetime import datetime
 
+from app.db.base import Extrato, ExtratoRunLog
 from app.db.session import SessionLocal
-from app.db.base import ExtratoRunLog, Extrato
-from app.services.extrato_atomic import (
-    generate_extrato_with_atomic_transaction,
-)
-from app.services.extrato_core import (
-    get_previous_month,
-)
+from app.services.extrato_atomic import \
+    generate_extrato_with_atomic_transaction
+from app.services.extrato_core import get_previous_month
 from app.services.undo_service import UndoService
+from flask import Blueprint, current_app, jsonify, request
+from flask_login import current_user, login_required
+from sqlalchemy.exc import SQLAlchemyError
 
 logger = logging.getLogger(__name__)
 
@@ -177,7 +174,7 @@ def trigger_manual_transfer():
                 jsonify(
                     {
                         "success": False,
-                        "message": f"Extrato transfer failed for {mes}/{ano}",
+                        "message": f"Transferência de extrato falhou para {mes}/{ano}",
                     }
                 ),
                 500,
@@ -187,7 +184,10 @@ def trigger_manual_transfer():
         logger.error(f"Error in manual transfer: {str(e)}")
         return (
             jsonify(
-                {"success": False, "message": "Internal server error during transfer"}
+                {
+                    "success": False,
+                    "message": "Erro interno do servidor durante transferência",
+                }
             ),
             500,
         )
@@ -239,7 +239,7 @@ def revert_last_transfer():
                     jsonify(
                         {
                             "success": False,
-                            "message": f"Failed to revert to snapshot {snapshot_id}",
+                            "message": f"Falha ao reverter para snapshot {snapshot_id}",
                         }
                     ),
                     500,
@@ -285,7 +285,7 @@ def revert_last_transfer():
                     jsonify(
                         {
                             "success": False,
-                            "message": f"Failed to revert to snapshot {latest_snapshot['snapshot_id']}",
+                            "message": f"Falha ao reverter para snapshot {latest_snapshot['snapshot_id']}",
                         }
                     ),
                     500,

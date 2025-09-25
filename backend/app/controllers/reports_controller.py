@@ -8,17 +8,17 @@ Provides endpoints for:
 - Chart generation for frontend
 """
 
-from flask import Blueprint, jsonify, request, current_app
-from flask_login import login_required, current_user
+import base64
+import io
 import logging
 from datetime import datetime, timedelta
-import matplotlib.pyplot as plt
-import io
-import base64
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 
-from app.db.session import SessionLocal
+import matplotlib.pyplot as plt
 from app.db.base import Extrato, ExtratoRunLog
+from app.db.session import SessionLocal
+from flask import Blueprint, current_app, jsonify, request
+from flask_login import current_user, login_required
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +32,12 @@ def require_admin():
         or not hasattr(current_user, "role")
         or current_user.role != "admin"
     ):
-        return jsonify({"success": False, "message": "Admin access required"}), 403
+        return (
+            jsonify(
+                {"success": False, "message": "Acesso de administrador necessário"}
+            ),
+            403,
+        )
     return None
 
 
@@ -150,7 +155,7 @@ def get_extrato_comparison():
         logger.error(f"Error generating extrato comparison: {str(e)}")
         return (
             jsonify(
-                {"success": False, "message": "Error generating comparison report"}
+                {"success": False, "message": "Erro ao gerar relatório de comparação"}
             ),
             500,
         )
@@ -282,7 +287,9 @@ def get_revenue_trends():
     except Exception as e:
         logger.error(f"Error generating revenue trends: {str(e)}")
         return (
-            jsonify({"success": False, "message": "Error generating revenue trends"}),
+            jsonify(
+                {"success": False, "message": "Erro ao gerar tendências de receita"}
+            ),
             500,
         )
 
@@ -439,6 +446,6 @@ def get_extrato_summary():
     except Exception as e:
         logger.error(f"Error generating extrato summary: {str(e)}")
         return (
-            jsonify({"success": False, "message": "Error generating summary report"}),
+            jsonify({"success": False, "message": "Erro ao gerar relatório de resumo"}),
             500,
         )

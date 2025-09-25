@@ -1,8 +1,9 @@
-import pytest
-from unittest.mock import Mock, patch
+import importlib
 from datetime import date, datetime
 from decimal import Decimal
-import importlib
+from unittest.mock import Mock, patch
+
+import pytest
 
 
 @pytest.mark.unit
@@ -96,8 +97,8 @@ class TestFormaPagamentoValidation:
                 mock_session_local.return_value = mock_db
                 mock_sessao = Mock()
                 mock_sessao.id = 5
-                from decimal import Decimal
                 from datetime import datetime
+                from decimal import Decimal
 
                 mock_sessao.valor = Decimal("0.00")
                 mock_sessao.created_at = datetime.now()
@@ -126,8 +127,8 @@ class TestFormaPagamentoValidation:
                 mock_session_local.return_value = mock_db
                 mock_sessao = Mock()
                 mock_sessao.id = 6
-                from decimal import Decimal
                 from datetime import datetime
+                from decimal import Decimal
 
                 mock_sessao.valor = Decimal("0.00")
                 mock_sessao.created_at = datetime.now()
@@ -150,7 +151,6 @@ class TestFormaPagamentoValidation:
         payload = {
             "forma_pagamento": "Dinheiro",
             "data": "2025-08-29",
-            "hora": "10:00",
             "cliente_id": 1,
             "artista_id": 1,
             "valor": "100.00",
@@ -161,8 +161,8 @@ class TestFormaPagamentoValidation:
                 mock_session_local.return_value = mock_db
                 mock_sessao = Mock()
                 mock_sessao.id = 7
-                from decimal import Decimal
                 from datetime import datetime
+                from decimal import Decimal
 
                 mock_sessao.valor = Decimal("100.00")
                 mock_sessao.created_at = datetime.now()

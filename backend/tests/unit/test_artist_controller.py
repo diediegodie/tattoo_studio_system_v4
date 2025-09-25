@@ -4,12 +4,12 @@ Uses the Flask `client` fixture and patches the controller's service factory
 so tests run inside request/app context and avoid 'Working outside of request context' errors.
 """
 
-import pytest
 import json
 from dataclasses import dataclass
-from unittest.mock import Mock, patch
 from typing import Any
+from unittest.mock import Mock, patch
 
+import pytest
 from tests.config.test_paths import ensure_domain_imports
 
 ensure_domain_imports()

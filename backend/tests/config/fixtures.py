@@ -9,10 +9,11 @@ service mocks that require more extensive configuration.
 All fixtures follow SOLID principles and are designed for interface-based testing.
 """
 
-import pytest
 import os
 import uuid
 from unittest.mock import Mock
+
+import pytest
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 

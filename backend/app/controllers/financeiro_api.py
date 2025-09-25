@@ -5,14 +5,14 @@ Handles JSON API operations for payments.
 
 import logging
 from datetime import datetime
+
+from app.core.api_utils import api_response
+from app.db.base import Pagamento
+from app.db.session import SessionLocal
+from app.repositories.pagamento_repository import PagamentoRepository
 from flask import Blueprint, jsonify, request
 from flask_login import login_required
 from sqlalchemy.orm import joinedload
-
-from app.db.session import SessionLocal
-from app.db.base import Pagamento
-from app.repositories.pagamento_repository import PagamentoRepository
-from app.core.api_utils import api_response
 
 logger = logging.getLogger(__name__)
 
@@ -67,10 +67,15 @@ def api_list_pagamentos():
                 ),
             }
 
-        return jsonify([to_dict(p) for p in pagamentos]), 200
+        return api_response(
+            True,
+            "Pagamentos recuperados com sucesso",
+            [to_dict(p) for p in pagamentos],
+            200,
+        )
     except Exception as e:
         logger.error(f"Error in api_list_pagamentos: {str(e)}")
-        return jsonify([]), 500
+        return api_response(False, "Erro interno do servidor", None, 500)
     finally:
         if db:
             db.close()
@@ -90,10 +95,7 @@ def api_get_pagamento(pagamento_id: int):
         )
 
         if not p:
-            return (
-                jsonify({"success": False, "message": "Pagamento não encontrado"}),
-                404,
-            )
+            return api_response(False, "Pagamento não encontrado", None, 404)
 
         data = {
             "id": p.id,
@@ -126,13 +128,10 @@ def api_get_pagamento(pagamento_id: int):
             ),
         }
 
-        return (
-            jsonify({"success": True, "message": "Pagamento encontrado", "data": data}),
-            200,
-        )
+        return api_response(True, "Pagamento encontrado", data, 200)
     except Exception as e:
         logger.error(f"Error in api_get_pagamento: {str(e)}")
-        return jsonify({"success": False, "message": f"Error: {str(e)}"}), 500
+        return api_response(False, f"Erro: {str(e)}", None, 500)
     finally:
         if db:
             db.close()

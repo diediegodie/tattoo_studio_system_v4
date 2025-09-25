@@ -5,13 +5,13 @@ This module provides fixtures for creating domain entities used in tests,
 ensuring consistent entity creation across the test suite.
 """
 
-import pytest
+import os
+# Import after ensuring paths are set up
+import sys
 from datetime import datetime, timedelta
 from typing import Optional
 
-# Import after ensuring paths are set up
-import sys
-import os
+import pytest
 
 # Add the backend app directory to Python path
 backend_path = os.path.join(os.path.dirname(__file__), "..", "..", "app")
@@ -26,7 +26,7 @@ except ImportError:
     pass
 
 try:
-    from domain.entities import User, Appointment, InventoryItem
+    from domain.entities import Appointment, InventoryItem, User
 
     IMPORTS_AVAILABLE = True
 except ImportError as e:

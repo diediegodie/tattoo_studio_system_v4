@@ -4,18 +4,18 @@ Unit tests for sessoes_controller.py
 Tests cover session listing, creation, validation, and authorization.
 """
 
-import pytest
 from dataclasses import dataclass
 from unittest.mock import Mock, patch
-from flask import Flask
 
+import pytest
+from flask import Flask
 from tests.config.test_paths import ensure_domain_imports
 
 ensure_domain_imports()
 
 try:
     from app.controllers import sessoes_controller
-    from app.db.base import Sessao, Client
+    from app.db.base import Client, Sessao
     from app.services.user_service import UserService
 
     IMPORTS_AVAILABLE = True
@@ -32,7 +32,6 @@ except ImportError as e:
 class MockSessao:
     id: int
     data: str
-    hora: str
     cliente_id: int
     artista_id: int
     valor: float
@@ -71,7 +70,6 @@ class TestSessoesController:
             MockSessao(
                 id=1,
                 data="2024-01-15",
-                hora="10:00",
                 cliente_id=1,
                 artista_id=1,
                 valor=150.0,
@@ -86,7 +84,6 @@ class TestSessoesController:
             MockSessao(
                 id=2,
                 data="2024-01-16",
-                hora="14:00",
                 cliente_id=2,
                 artista_id=2,
                 valor=200.0,
@@ -114,23 +111,28 @@ class TestSessoesController:
             mock_db = Mock()
             mock_session_local.return_value = mock_db
 
-            # Mock the query chain
-            mock_query = Mock()
-            mock_db.query.return_value = mock_query
-            mock_query.options.return_value = mock_query
-            mock_query.filter.return_value = mock_query
-            mock_query.order_by.return_value = mock_query
-            mock_query.all.return_value = mock_sessoes
+            # Mock the query method to return different mocks based on the model
+            def mock_query_side_effect(model):
+                if model.__name__ == "Sessao":
+                    mock_sessao_query = Mock()
+                    mock_sessao_query.options.return_value = mock_sessao_query
+                    mock_sessao_query.filter.return_value = mock_sessao_query
+                    mock_sessao_query.order_by.return_value = mock_sessao_query
+                    mock_sessao_query.all.return_value = mock_sessoes
+                    return mock_sessao_query
+                elif model.__name__ == "Client":
+                    mock_client_query = Mock()
+                    mock_client_query.order_by.return_value = mock_client_query
+                    mock_client_query.all.return_value = mock_clients
+                    return mock_client_query
+                else:
+                    return Mock()
 
-            # Mock clients query
-            mock_clients_query = Mock()
-            mock_db.query.return_value = mock_clients_query
-            mock_clients_query.order_by.return_value = mock_clients_query
-            mock_clients_query.all.return_value = mock_clients
+            mock_db.query.side_effect = mock_query_side_effect
 
             # Mock user service for artists
             with patch(
-                "app.controllers.sessoes_controller._get_user_service"
+                "app.controllers.sessoes_routes._get_user_service"
             ) as mock_get_service:
                 mock_service = Mock()
                 mock_get_service.return_value = mock_service
@@ -138,7 +140,7 @@ class TestSessoesController:
 
                 # Mock template rendering
                 with patch(
-                    "app.controllers.sessoes_controller.render_template"
+                    "app.controllers.sessoes_routes.render_template"
                 ) as mock_render:
                     mock_render.return_value = "<html>Sessions list</html>"
 
@@ -161,29 +163,34 @@ class TestSessoesController:
             mock_db = Mock()
             mock_session_local.return_value = mock_db
 
-            # Mock empty results
-            mock_query = Mock()
-            mock_db.query.return_value = mock_query
-            mock_query.options.return_value = mock_query
-            mock_query.filter.return_value = mock_query
-            mock_query.order_by.return_value = mock_query
-            mock_query.all.return_value = []
+            # Mock the query method to return different mocks based on the model
+            def mock_query_side_effect(model):
+                if model.__name__ == "Sessao":
+                    mock_sessao_query = Mock()
+                    mock_sessao_query.options.return_value = mock_sessao_query
+                    mock_sessao_query.filter.return_value = mock_sessao_query
+                    mock_sessao_query.order_by.return_value = mock_sessao_query
+                    mock_sessao_query.all.return_value = []
+                    return mock_sessao_query
+                elif model.__name__ == "Client":
+                    mock_client_query = Mock()
+                    mock_client_query.order_by.return_value = mock_client_query
+                    mock_client_query.all.return_value = []
+                    return mock_client_query
+                else:
+                    return Mock()
 
-            # Mock clients and artists
-            mock_clients_query = Mock()
-            mock_db.query.return_value = mock_clients_query
-            mock_clients_query.order_by.return_value = mock_clients_query
-            mock_clients_query.all.return_value = []
+            mock_db.query.side_effect = mock_query_side_effect
 
             with patch(
-                "app.controllers.sessoes_controller._get_user_service"
+                "app.controllers.sessoes_routes._get_user_service"
             ) as mock_get_service:
                 mock_service = Mock()
                 mock_get_service.return_value = mock_service
                 mock_service.list_artists.return_value = []
 
                 with patch(
-                    "app.controllers.sessoes_controller.render_template"
+                    "app.controllers.sessoes_routes.render_template"
                 ) as mock_render:
                     mock_render.return_value = "<html>No sessions</html>"
 
@@ -204,9 +211,9 @@ class TestSessoesController:
             # Mock database error
             mock_db.query.side_effect = Exception("Database connection failed")
 
-            with patch("app.controllers.sessoes_controller.flash") as mock_flash:
+            with patch("app.controllers.sessoes_routes.flash") as mock_flash:
                 with patch(
-                    "app.controllers.sessoes_controller.render_template"
+                    "app.controllers.sessoes_routes.render_template"
                 ) as mock_render:
                     mock_render.return_value = "<html>Error page</html>"
 
@@ -257,7 +264,6 @@ class TestSessoesController:
             MockSessao(
                 id=1,
                 data="2024-01-15",
-                hora="10:00",
                 cliente_id=1,
                 artista_id=1,
                 valor=150.0,
@@ -267,7 +273,6 @@ class TestSessoesController:
             MockSessao(
                 id=2,
                 data="2024-01-14",
-                hora="10:00",
                 cliente_id=1,
                 artista_id=1,
                 valor=150.0,
@@ -332,7 +337,6 @@ class TestSessoesControllerWorkflow:
         # Test invalid date format
         invalid_data = {
             "data": "invalid-date",
-            "hora": "10:00",
             "cliente_id": 1,
             "artista_id": 1,
             "valor": 100.0,
@@ -387,7 +391,6 @@ class TestSessoesControllerWorkflow:
             MockSessao(
                 id=1,
                 data="2024-01-15",
-                hora="10:00",
                 cliente_id=1,
                 artista_id=1,
                 valor=150.0,
@@ -397,7 +400,6 @@ class TestSessoesControllerWorkflow:
             MockSessao(
                 id=2,
                 data="2024-01-14",
-                hora="10:00",
                 cliente_id=1,
                 artista_id=1,
                 valor=150.0,
@@ -462,7 +464,6 @@ class TestSessoesControllerIntegration:
         # Test invalid date format
         invalid_data = {
             "data": "invalid-date",
-            "hora": "10:00",
             "cliente_id": 1,
             "artista_id": 1,
             "valor": 100.0,

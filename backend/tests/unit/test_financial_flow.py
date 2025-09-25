@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from app.controllers.sessoes_controller import finalizar_sessao
+
 # Remove direct import of registrar_pagamento to avoid blueprint registration issues
 # from controllers.financeiro_controller import registrar_pagamento
 from app.db.base import Pagamento, Sessao
@@ -40,7 +41,6 @@ class TestSessionFinalization:
         return Sessao(
             id=1,
             data=date.today(),
-            hora=time(10, 0),
             valor=Decimal("100.00"),
             cliente_id=1,
             artista_id=1,

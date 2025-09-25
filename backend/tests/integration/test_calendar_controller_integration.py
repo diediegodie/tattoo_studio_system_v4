@@ -4,13 +4,13 @@ Integration tests for Calendar Controller with Google Calendar integration.
 These tests validate calendar page behavior with session marking logic.
 """
 
-import pytest
-from unittest.mock import patch, Mock
-from datetime import datetime, date, time
+from datetime import date, datetime, time
 from decimal import Decimal
+from unittest.mock import Mock, patch
 from uuid import uuid4
 
-from db.base import Sessao, Client, User
+import pytest
+from db.base import Client, Sessao, User
 
 
 @pytest.fixture
@@ -100,7 +100,6 @@ class TestCalendarControllerGoogleIntegration:
         # Create a session that corresponds to one Google event (E2)
         existing_session = Sessao(
             data=date(2025, 8, 30),
-            hora=time(14, 0),
             valor=Decimal("150.00"),
             observacoes="Existing session for E2",
             cliente_id=sample_client.id,
@@ -241,7 +240,6 @@ class TestCalendarControllerGoogleIntegration:
         for i in range(5):
             session = Sessao(
                 data=date(2025, 8, 30),
-                hora=time(10 + i, 0),
                 valor=Decimal("100.00"),
                 observacoes=f"Session {i}",
                 cliente_id=sample_client.id,

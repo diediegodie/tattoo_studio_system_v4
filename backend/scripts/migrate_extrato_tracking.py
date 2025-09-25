@@ -4,15 +4,16 @@ Database migration script to add ExtratoRunLog table.
 Run this script to create the new table for tracking extrato generation runs.
 """
 
-import sys
 import os
+import sys
+
 from sqlalchemy import create_engine, text
 
 # Add the backend directory to the path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from app.db.session import engine
 from app.db.base import Base
+from app.db.session import engine
 
 
 def create_extrato_run_log_table():
