@@ -501,6 +501,61 @@ class TestHistoricoEndpoint:
             "R$ 100.00" not in table_content
         ), "Scheduled session value should NOT appear"
 
+    def test_payments_without_client_appear_correctly(
+        self, db_session, authenticated_client
+    ):
+        """Test that payments without clients appear correctly in Historico."""
+        from decimal import Decimal
+
+        # Create a payment without a client (cliente_id = None)
+        payment_without_client = Pagamento(
+            data=date.today(),
+            valor=Decimal("150.00"),
+            forma_pagamento="Pix",
+            observacoes="Payment without client",
+            cliente_id=None,  # No client specified
+            artista_id=self.test_artist.id,
+        )
+
+        # Create a payment with a client for comparison
+        payment_with_client = Pagamento(
+            data=date.today(),
+            valor=Decimal("250.00"),
+            forma_pagamento="Dinheiro",
+            observacoes="Payment with client",
+            cliente_id=self.test_client.id,
+            artista_id=self.test_artist.id,
+        )
+
+        db_session.add(payment_without_client)
+        db_session.add(payment_with_client)
+        db_session.commit()
+
+        # Request historico page
+        response = authenticated_client.get("/historico/")
+        assert response.status_code == 200
+
+        content = response.get_data(as_text=True)
+
+        # Verify both payments appear
+        assert "R$ 150.00" in content, "Payment without client should appear"
+        assert "R$ 250.00" in content, "Payment with client should appear"
+
+        # Verify client name handling
+        assert (
+            "Test Client" in content
+        ), "Client name should appear for payment with client"
+        # The template should show empty string or 'Cliente não encontrado' for payments without clients
+        # We don't check for specific text since the template might handle this differently
+
+        # Verify payment details are present
+        assert (
+            "Payment without client" in content
+        ), "Payment without client notes should appear"
+        assert (
+            "Payment with client" in content
+        ), "Payment with client notes should appear"
+
     @pytest.mark.regression
     def test_extrato_navigation_still_works(self, authenticated_client):
         """Regression test: ensure /extrato endpoint still works."""

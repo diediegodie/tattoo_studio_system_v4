@@ -234,8 +234,97 @@ class GoogleEventFactory:
         return events
 
 
+class PagamentoFactory:
+    """Factory for creating Pagamento test objects."""
+
+    @staticmethod
+    def create_payment_data(**kwargs):
+        """
+        Create payment data dictionary with sensible defaults.
+
+        Args:
+            **kwargs: Override any default values. Use cliente_id=None for payments without clients.
+
+        Returns:
+            dict: Payment data ready for model instantiation or form submission
+        """
+        defaults = {
+            "data": "2024-01-15",
+            "valor": "100.00",
+            "forma_pagamento": "Dinheiro",
+            "cliente_id": "1",  # Default to having a client
+            "artista_id": "1",
+            "observacoes": "Test payment",
+            "sessao_id": None,  # Optional session linkage
+        }
+        defaults.update(kwargs)
+        return defaults
+
+    @staticmethod
+    def create_payment_data_without_client(**kwargs):
+        """
+        Create payment data for payments without a client.
+
+        Args:
+            **kwargs: Override any default values
+
+        Returns:
+            dict: Payment data without cliente_id
+        """
+        base_data = PagamentoFactory.create_payment_data(**kwargs)
+        base_data["cliente_id"] = None  # No client
+        return base_data
+
+    @staticmethod
+    def create_mock_payment(**kwargs):
+        """
+        Create a Mock Pagamento object for unit tests.
+
+        Args:
+            **kwargs: Override any default values
+
+        Returns:
+            Mock: Mock Pagamento object
+        """
+        from decimal import Decimal
+        from datetime import date
+
+        defaults = {
+            "id": 1,
+            "data": date(2024, 1, 15),
+            "valor": Decimal("100.00"),
+            "forma_pagamento": "Dinheiro",
+            "observacoes": "Test payment",
+            "cliente_id": 1,
+            "artista_id": 1,
+            "sessao_id": None,
+        }
+        defaults.update(kwargs)
+
+        mock_payment = Mock()
+        for key, value in defaults.items():
+            setattr(mock_payment, key, value)
+
+        # Add client relationship mock
+        if defaults.get("cliente_id"):
+            mock_client = Mock()
+            mock_client.id = defaults["cliente_id"]
+            mock_client.name = f"Test Client {defaults['cliente_id']}"
+            mock_payment.cliente = mock_client
+        else:
+            mock_payment.cliente = None
+
+        # Add artist relationship mock
+        mock_artist = Mock()
+        mock_artist.id = defaults["artista_id"]
+        mock_artist.name = f"Test Artist {defaults['artista_id']}"
+        mock_payment.artista = mock_artist
+
+        return mock_payment
+
+
 class FormDataFactory:
-    """Factory for creating form data for HTTP requests."""
+    """Factory for creating form data for testing."""
 
     @staticmethod
     def create_sessao_form_data(**kwargs):
