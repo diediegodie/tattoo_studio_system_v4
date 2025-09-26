@@ -139,7 +139,11 @@ def registrar_pagamento() -> Union[str, Response, Tuple[str, int]]:
                 return s
 
             forma_pagamento = _maybe_await(request.form.get("forma_pagamento"))
-            cliente_id = _maybe_await(request.form.get("cliente_id"))
+            # Cliente is now optional - treat empty string as None
+            cliente_id_raw = _maybe_await(request.form.get("cliente_id"))
+            cliente_id = (
+                cliente_id_raw if cliente_id_raw and cliente_id_raw.strip() else None
+            )
             artista_id = _maybe_await(request.form.get("artista_id"))
             observacoes = _maybe_await(request.form.get("observacoes"))
             sessao_id = _maybe_await(
@@ -159,8 +163,8 @@ def registrar_pagamento() -> Union[str, Response, Tuple[str, int]]:
                 # Ensure logging never raises
                 logger.debug("Could not log registrar_pagamento context")
 
-            # Validate required fields
-            if not all([data_str, valor, forma_pagamento, cliente_id, artista_id]):
+            # Validate required fields (cliente_id is now optional)
+            if not all([data_str, valor, forma_pagamento, artista_id]):
                 logger.error(
                     "Validation error on registrar_pagamento: missing required fields - user_id=%s sessao_id=%s data=%s valor=%s forma_pagamento=%s cliente_id=%s artista_id=%s",
                     getattr(current_user, "id", None),
@@ -171,7 +175,10 @@ def registrar_pagamento() -> Union[str, Response, Tuple[str, int]]:
                     cliente_id,
                     artista_id,
                 )
-                flash("Todos os campos obrigatórios devem ser preenchidos.", "error")
+                flash(
+                    "Campos obrigatórios: Data, Valor, Forma de Pagamento e Artista devem ser preenchidos.",
+                    "error",
+                )
                 return (
                     _safe_render(
                         "registrar_pagamento.html",

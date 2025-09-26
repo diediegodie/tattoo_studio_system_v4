@@ -377,7 +377,6 @@ class SearchService:
 
         # Build filters for text and numeric fields
         text_fields = [
-            Client.name,
             User.name,
             Pagamento.observacoes,
             Pagamento.forma_pagamento,
@@ -387,6 +386,15 @@ class SearchService:
         combined_filters = self._build_combined_filters(
             tokens, text_fields, numeric_fields, logic
         )
+
+        # Add client name filters with NULL safety - match client name OR allow NULL clients
+        for token in tokens:
+            # This filter will match payments where:
+            # 1. The client name contains the token, OR
+            # 2. There is no client (cliente_id is NULL)
+            # This way we don't exclude payments without clients from search results
+            client_filter = or_(Client.name.ilike(f"%{token}%"), Client.name.is_(None))
+            combined_filters.append(client_filter)
 
         date_filters = self._build_date_filters(exact_date, day_month, Pagamento.data)
 
@@ -398,7 +406,7 @@ class SearchService:
 
         pagamentos = (
             self.db.query(Pagamento)
-            .join(Client, Pagamento.cliente_id == Client.id)
+            .outerjoin(Client, Pagamento.cliente_id == Client.id)
             .join(User, Pagamento.artista_id == User.id)
             .filter(and_(*all_filters))
             .order_by(desc(Pagamento.data))

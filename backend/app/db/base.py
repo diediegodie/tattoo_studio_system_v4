@@ -188,7 +188,9 @@ class Pagamento(Base):
     forma_pagamento = Column(String(50), nullable=False, index=True)
     observacoes = Column(String(255), nullable=True)
     comissao = Column(Numeric(10, 2), nullable=True)  # For future implementation
-    cliente_id = Column(Integer, ForeignKey("clients.id"), nullable=False, index=True)
+    cliente_id = Column(
+        Integer, ForeignKey("clients.id"), nullable=True, index=True
+    )  # Made optional
     artista_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     sessao_id = Column(
         Integer, ForeignKey("sessoes.id"), nullable=True, index=True
