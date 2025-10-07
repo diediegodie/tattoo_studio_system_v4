@@ -15,6 +15,7 @@ from unittest.mock import Mock
 
 import pytest
 from sqlalchemy import create_engine, text
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import sessionmaker
 
 # =====================================================
@@ -37,34 +38,74 @@ def authenticated_client(app, mock_user, valid_jwt_token):
                     # If login_user fails, just continue - some tests don't need it
                     pass
 
+                # Ensure downstream tests see an authenticated user reference
+                mock_user.is_authenticated = True
+                mock_user.get_id = lambda: str(mock_user.id)
+                client.mock_user = mock_user
+
                 # Add JWT authentication methods
                 auth_headers = {
                     "Authorization": f"Bearer {valid_jwt_token}",
                     "Content-Type": "application/json",
                 }
 
+                def _ensure_session():
+                    try:
+                        with client.session_transaction() as sess:
+                            sess["user_id"] = mock_user.id
+                            sess["_user_id"] = str(mock_user.id)
+                            sess["user_email"] = mock_user.email
+                    except Exception:
+                        pass
+
+                def _apply_headers(kwargs: dict):
+                    headers = kwargs.setdefault("headers", {})
+                    headers.setdefault("Authorization", auth_headers["Authorization"])
+
+                    if "json" in kwargs:
+                        headers.setdefault("Content-Type", auth_headers["Content-Type"])
+                    elif "data" in kwargs and "Content-Type" not in headers:
+                        headers["Content-Type"] = "application/x-www-form-urlencoded"
+                    else:
+                        headers.setdefault("Content-Type", auth_headers["Content-Type"])
+
                 def authenticated_get(url, **kwargs):
-                    kwargs.setdefault("headers", {}).update(auth_headers)
+                    _ensure_session()
+                    _apply_headers(kwargs)
                     return client.get(url, **kwargs)
 
                 def authenticated_post(url, **kwargs):
-                    kwargs.setdefault("headers", {}).update(auth_headers)
+                    _ensure_session()
+                    _apply_headers(kwargs)
                     return client.post(url, **kwargs)
 
                 def authenticated_put(url, **kwargs):
-                    kwargs.setdefault("headers", {}).update(auth_headers)
+                    _ensure_session()
+                    _apply_headers(kwargs)
                     return client.put(url, **kwargs)
 
+                def authenticated_patch(url, **kwargs):
+                    _ensure_session()
+                    _apply_headers(kwargs)
+                    return client.patch(url, **kwargs)
+
                 def authenticated_delete(url, **kwargs):
-                    kwargs.setdefault("headers", {}).update(auth_headers)
+                    _ensure_session()
+                    _apply_headers(kwargs)
                     return client.delete(url, **kwargs)
 
                 client.authenticated_get = authenticated_get
                 client.authenticated_post = authenticated_post
                 client.authenticated_put = authenticated_put
+                client.authenticated_patch = authenticated_patch
                 client.authenticated_delete = authenticated_delete
+                # Preserve backwards compatible attribute naming expected by older tests
+                client.user = mock_user
 
-                yield client
+                from unittest.mock import patch
+
+                with patch("flask_login.utils._get_user", return_value=mock_user):
+                    yield client
     else:
         # Mock client for when app is mocked
         mock_client = Mock()
@@ -73,6 +114,16 @@ def authenticated_client(app, mock_user, valid_jwt_token):
         mock_response.get_json.return_value = {"success": True}
         mock_client.post.return_value = mock_response
         mock_client.get.return_value = mock_response
+        mock_client.put.return_value = mock_response
+        mock_client.delete.return_value = mock_response
+        mock_client.patch.return_value = mock_response
+        mock_client.mock_user = mock_user
+        mock_client.user = mock_user
+        mock_client.authenticated_get = mock_client.get
+        mock_client.authenticated_post = mock_client.post
+        mock_client.authenticated_put = mock_client.put
+        mock_client.authenticated_patch = mock_client.patch
+        mock_client.authenticated_delete = mock_client.delete
         yield mock_client
 
 
@@ -318,10 +369,24 @@ def postgres_db():
     # Create engine for the main database
     main_engine = create_engine(main_db_url, isolation_level="AUTOCOMMIT")
 
+    # Track resources for cleanup
+    created_test_db = False
+    test_engine = None
+    session = None
+
+    # Ensure PostgreSQL is reachable before proceeding
+    try:
+        with main_engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+    except OperationalError as exc:
+        main_engine.dispose()
+        pytest.skip(f"Skipping PostgreSQL integration tests: {exc}")
+
     try:
         # Create the temporary test database
         with main_engine.connect() as conn:
             conn.execute(text(f"CREATE DATABASE {test_db_name}"))
+        created_test_db = True
 
         # Connection URL for the test database
         test_db_url = (
@@ -349,32 +414,35 @@ def postgres_db():
 
         # Create and yield a session
         session = TestSessionLocal()
-        try:
-            yield session
-        finally:
-            session.close()
-            test_engine.dispose()
+        yield session
+
+    except OperationalError as exc:
+        pytest.skip(f"Skipping PostgreSQL integration tests: {exc}")
 
     finally:
-        # Clean up: drop the temporary database
-        try:
-            with main_engine.connect() as conn:
-                # Terminate any active connections to the test database
-                conn.execute(
-                    text(
-                        f"""
-                    SELECT pg_terminate_backend(pid)
-                    FROM pg_stat_activity
-                    WHERE datname = '{test_db_name}' AND pid <> pg_backend_pid()
-                """
+        if session is not None:
+            session.close()
+        if test_engine is not None:
+            test_engine.dispose()
+
+        if created_test_db:
+            try:
+                with main_engine.connect() as conn:
+                    # Terminate any active connections to the test database
+                    conn.execute(
+                        text(
+                            f"""
+                        SELECT pg_terminate_backend(pid)
+                        FROM pg_stat_activity
+                        WHERE datname = '{test_db_name}' AND pid <> pg_backend_pid()
+                    """
+                        )
                     )
-                )
-                # Drop the database
-                conn.execute(text(f"DROP DATABASE IF EXISTS {test_db_name}"))
-        except Exception as e:
-            print(f"Warning: Could not drop test database {test_db_name}: {e}")
-        finally:
-            main_engine.dispose()
+                    # Drop the database
+                    conn.execute(text(f"DROP DATABASE IF EXISTS {test_db_name}"))
+            except OperationalError as exc:
+                print(f"Warning: Could not drop test database {test_db_name}: {exc}")
+        main_engine.dispose()
 
 
 # =====================================================
@@ -519,7 +587,7 @@ def jwt_client(app, valid_jwt_token):
 
                     def put(self, *args, **kwargs):
                         kwargs.setdefault("headers", {}).update(self.auth_headers)
-                        return self.client.put(url, **kwargs)
+                        return self.client.put(*args, **kwargs)
 
                     def patch(self, *args, **kwargs):
                         kwargs.setdefault("headers", {}).update(self.auth_headers)

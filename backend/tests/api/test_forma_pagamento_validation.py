@@ -6,6 +6,51 @@ from unittest.mock import Mock, patch
 import pytest
 
 
+class QueryStub:
+    """Simplified query chain that mimics SQLAlchemy `options().get()`."""
+
+    def __init__(self, result):
+        self._result = result
+
+    def options(self, *args, **kwargs):
+        return self
+
+    def get(self, _id):
+        return self._result
+
+
+class SessaoStub:
+    """Lightweight session object used to avoid leaking Mock instances into JSON."""
+
+    def __init__(self, sessao_id: int, valor: Decimal = Decimal("0.00")):
+        now = datetime.now()
+        self.id = sessao_id
+        self.data = None
+        self.cliente_id = None
+        self.artista_id = None
+        self.valor = Decimal(str(valor))
+        self.observacoes = ""
+        self.google_event_id = None
+        self.created_at = now
+        self.updated_at = now
+        self.cliente = None
+        self.artista = None
+
+
+def _setup_session(mock_session_local, sessao_stub: SessaoStub):
+    """Configure SessionLocal patch to return a DB stub with deterministic query chain."""
+
+    mock_db = Mock()
+    mock_db.query = Mock(return_value=QueryStub(sessao_stub))
+    mock_db.add = Mock()
+    mock_db.commit = Mock()
+    mock_db.refresh = Mock()
+    mock_db.rollback = Mock()
+    mock_db.close = Mock()
+    mock_session_local.return_value = mock_db
+    return mock_db
+
+
 @pytest.mark.unit
 @pytest.mark.api
 class TestFormaPagamentoValidation:
@@ -93,20 +138,8 @@ class TestFormaPagamentoValidation:
         payload = {}
         with app.test_request_context(json=payload):
             with patch("app.db.session.SessionLocal") as mock_session_local:
-                mock_db = Mock()
-                mock_session_local.return_value = mock_db
-                mock_sessao = Mock()
-                mock_sessao.id = 5
-                from datetime import datetime
-                from decimal import Decimal
-
-                mock_sessao.valor = Decimal("0.00")
-                mock_sessao.created_at = datetime.now()
-                mock_sessao.updated_at = datetime.now()
-                mock_sessao.google_event_id = None
-                mock_sessao.cliente = None
-                mock_sessao.artista = None
-                mock_db.query.return_value.get.return_value = mock_sessao
+                sessao_stub = SessaoStub(5)
+                _setup_session(mock_session_local, sessao_stub)
 
                 resp = mod.api_update_sessao.__wrapped__(5)
                 assert isinstance(resp, tuple)
@@ -123,20 +156,8 @@ class TestFormaPagamentoValidation:
         payload = {"forma_pagamento": ""}
         with app.test_request_context(json=payload):
             with patch("app.db.session.SessionLocal") as mock_session_local:
-                mock_db = Mock()
-                mock_session_local.return_value = mock_db
-                mock_sessao = Mock()
-                mock_sessao.id = 6
-                from datetime import datetime
-                from decimal import Decimal
-
-                mock_sessao.valor = Decimal("0.00")
-                mock_sessao.created_at = datetime.now()
-                mock_sessao.updated_at = datetime.now()
-                mock_sessao.google_event_id = None
-                mock_sessao.cliente = None
-                mock_sessao.artista = None
-                mock_db.query.return_value.get.return_value = mock_sessao
+                sessao_stub = SessaoStub(6)
+                _setup_session(mock_session_local, sessao_stub)
 
                 resp = mod.api_update_sessao.__wrapped__(6)
                 assert isinstance(resp, tuple)
@@ -157,24 +178,9 @@ class TestFormaPagamentoValidation:
         }
         with app.test_request_context(json=payload):
             with patch("app.db.session.SessionLocal") as mock_session_local:
-                mock_db = Mock()
-                mock_session_local.return_value = mock_db
-                mock_sessao = Mock()
-                mock_sessao.id = 7
-                from datetime import datetime
-                from decimal import Decimal
-
-                mock_sessao.valor = Decimal("100.00")
-                mock_sessao.created_at = datetime.now()
-                mock_sessao.updated_at = datetime.now()
-                mock_sessao.google_event_id = None
-                mock_sessao.cliente = None
-                mock_sessao.artista = None
-                mock_sessao.observacoes = ""
-                mock_db.query.return_value.get.return_value = mock_sessao
-                mock_db.add = Mock()
-                mock_db.commit = Mock()
-                mock_db.refresh = Mock()
+                sessao_stub = SessaoStub(7)
+                sessao_stub.observacoes = ""
+                mock_db = _setup_session(mock_session_local, sessao_stub)
 
                 resp = mod.api_update_sessao.__wrapped__(7)
                 assert isinstance(resp, tuple)
@@ -182,3 +188,6 @@ class TestFormaPagamentoValidation:
                 assert status == 200
                 data = body.get_json() if hasattr(body, "get_json") else body
                 assert data["success"] is True
+                assert sessao_stub.valor == Decimal("100.00")
+                assert sessao_stub.cliente_id == 1
+                assert sessao_stub.artista_id == 1

@@ -1,0 +1,250 @@
+{% set extrato = extrato or {} %}
+{% set pagamentos = extrato.pagamentos or [] %}
+{% set comissoes = extrato.comissoes or [] %}
+{% set sessoes = extrato.sessoes or [] %}
+{% set gastos = extrato.gastos or [] %}
+{% set totais = extrato.totais or {} %}
+
+<section class="extrato-section extrato-section--pagamentos">
+    <header class="major">
+        <h2>Pagamentos</h2>
+    </header>
+    {% if pagamentos %}
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Cliente</th>
+                    <th>Artista</th>
+                    <th>Valor</th>
+                    <th>Forma de pagamento</th>
+                    <th>Observações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for pagamento in pagamentos %}
+                <tr>
+                    <td>{{ pagamento.data[:10] if pagamento.data else '' }}</td>
+                    <td>{{ pagamento.cliente_name or '' }}</td>
+                    <td>{{ pagamento.artista_name or '' }}</td>
+                    <td>
+                        {% if pagamento.valor is not none %}
+                        R$ {{ '%.2f' % pagamento.valor }}
+                        {% endif %}
+                    </td>
+                    <td>{{ pagamento.forma_pagamento or '' }}</td>
+                    <td>{{ pagamento.observacoes or '' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="extrato-empty">Nenhum pagamento encontrado.</p>
+    {% endif %}
+</section>
+
+<section class="extrato-section extrato-section--comissoes">
+    <header class="major">
+        <h2>Comissões</h2>
+    </header>
+    {% if comissoes %}
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Artista</th>
+                    <th>Cliente</th>
+                    <th>Valor total</th>
+                    <th>Comissão</th>
+                    <th>Observações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for comissao in comissoes %}
+                <tr>
+                    <td>{{ comissao.created_at[:10] if comissao.created_at else '' }}</td>
+                    <td>{{ comissao.artista_name or '' }}</td>
+                    <td>{{ comissao.cliente_name or '' }}</td>
+                    <td>
+                        {% if comissao.pagamento_valor is not none %}
+                        R$ {{ '%.2f' % comissao.pagamento_valor }}
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if comissao.valor is not none %}
+                        R$ {{ '%.2f' % comissao.valor }}
+                        {% endif %}
+                    </td>
+                    <td>{{ comissao.observacoes or '' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="extrato-empty">Nenhuma comissão encontrada.</p>
+    {% endif %}
+</section>
+
+<section class="extrato-section extrato-section--sessoes">
+    <header class="major">
+        <h2>Sessões realizadas</h2>
+    </header>
+    {% if sessoes %}
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Cliente</th>
+                    <th>Artista</th>
+                    <th>Valor</th>
+                    <th>Observações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for sessao in sessoes %}
+                <tr>
+                    <td>{{ sessao.data[:10] if sessao.data else '' }}</td>
+                    <td>{{ sessao.cliente_name or '' }}</td>
+                    <td>{{ sessao.artista_name or '' }}</td>
+                    <td>
+                        {% if sessao.valor is not none %}
+                        R$ {{ '%.2f' % sessao.valor }}
+                        {% endif %}
+                    </td>
+                    <td>{{ sessao.observacoes or '' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="extrato-empty">Nenhuma sessão encontrada.</p>
+    {% endif %}
+</section>
+
+{% set totais_por_artista = totais.por_artista if totais else [] %}
+{% if totais_por_artista %}
+<section class="extrato-section extrato-section--totais-artista">
+    <header class="major">
+        <h3>Comissões por Artista</h3>
+    </header>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Artista</th>
+                    <th>Receita Gerada</th>
+                    <th>Comissão</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for artista in totais_por_artista %}
+                <tr>
+                    <td>{{ artista.artista }}</td>
+                    <td>R$ {{ '%.2f' % artista.receita }}</td>
+                    <td>R$ {{ '%.2f' % artista.comissao }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endif %}
+
+{% set totais_por_forma = totais.por_forma_pagamento if totais else [] %}
+{% if totais_por_forma %}
+<section class="extrato-section extrato-section--totais-forma">
+    <header class="major">
+        <h3>Receita por Forma de Pagamento</h3>
+    </header>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Forma de Pagamento</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for forma in totais_por_forma %}
+                <tr>
+                    <td>{{ forma.forma }}</td>
+                    <td>R$ {{ '%.2f' % forma.total }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endif %}
+
+{% if gastos %}
+<section class="extrato-section extrato-section--gastos">
+    <header class="major">
+        <h3>Gastos do Mês</h3>
+    </header>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Valor</th>
+                    <th>Descrição</th>
+                    <th>Forma de Pagamento</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for gasto in gastos %}
+                <tr>
+                    <td>{{ gasto.data[:10] if gasto.data else '' }}</td>
+                    <td>R$ {{ '%.2f' % gasto.valor }}</td>
+                    <td>{{ gasto.descricao or '' }}</td>
+                    <td>{{ gasto.forma_pagamento or '' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endif %}
+
+{% if totais %}
+<section class="extrato-section extrato-section--totais">
+    <header class="major">
+        <h2>Totais do Mês Atual</h2>
+    </header>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Métrica</th>
+                    <th>Valor</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Receita Total (Bruta)</td>
+                    <td>R$ {{ '%.2f' % (totais.receita_total or 0) }}</td>
+                </tr>
+                <tr>
+                    <td>Comissões Totais</td>
+                    <td>R$ {{ '%.2f' % (totais.comissoes_total or 0) }}</td>
+                </tr>
+                <tr>
+                    <td>Despesas (Gastos)</td>
+                    <td>R$ {{ '%.2f' % (totais.despesas_total or 0) }}</td>
+                </tr>
+                <tr>
+                    <td>Receita Líquida (Bruta - Comissões)</td>
+                    <td>R$ {{ '%.2f' % (totais.receita_liquida or 0) }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endif %}

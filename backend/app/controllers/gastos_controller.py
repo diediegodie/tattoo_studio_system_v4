@@ -6,8 +6,7 @@ from app.core.api_utils import api_response
 from app.db.base import Gasto
 from app.db.session import SessionLocal
 from app.services.gastos_service import get_gastos_for_month, serialize_gastos
-from flask import (Blueprint, flash, jsonify, redirect, render_template,
-                   request, url_for)
+from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 from sqlalchemy.orm import joinedload
 
@@ -163,7 +162,7 @@ def api_get_gasto(gasto_id):
     db = None
     try:
         db = SessionLocal()
-        gasto = db.query(Gasto).get(gasto_id)
+        gasto = db.query(Gasto).options(joinedload(Gasto.creator)).get(gasto_id)
 
         if not gasto:
             return api_response(False, "Gasto não encontrado", None, 404)
@@ -197,7 +196,7 @@ def api_update_gasto(gasto_id):
     db = None
     try:
         db = SessionLocal()
-        gasto = db.query(Gasto).get(gasto_id)
+        gasto = db.query(Gasto).options(joinedload(Gasto.creator)).get(gasto_id)
         if not gasto:
             return api_response(False, "Gasto não encontrado", None, 404)
 
@@ -265,7 +264,7 @@ def api_delete_gasto(gasto_id):
     db = None
     try:
         db = SessionLocal()
-        gasto = db.query(Gasto).get(gasto_id)
+        gasto = db.query(Gasto).options(joinedload(Gasto.creator)).get(gasto_id)
         if not gasto:
             return api_response(False, "Gasto não encontrado", None, 404)
 

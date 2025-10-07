@@ -3,6 +3,7 @@ from typing import List, Optional
 from app.db.base import User as DbUser
 from app.domain.entities import User as DomainUser
 from app.domain.interfaces import IUserRepository
+from sqlalchemy.orm.attributes import InstrumentedAttribute
 
 
 class UserRepository(IUserRepository):
@@ -57,7 +58,7 @@ class UserRepository(IUserRepository):
         db_user.google_id = user.google_id  # type: ignore
         db_user.avatar_url = user.avatar_url  # type: ignore
         db_user.role = user.role  # type: ignore
-        db_user.is_active = user.is_active  # type: ignore
+        _assign_if_model_attribute(db_user, "is_active", user.is_active)
 
         self.db.add(db_user)
         self.db.commit()
@@ -82,7 +83,7 @@ class UserRepository(IUserRepository):
         db_user.google_id = user.google_id  # type: ignore
         db_user.avatar_url = user.avatar_url  # type: ignore
         db_user.role = user.role  # type: ignore
-        db_user.is_active = user.is_active  # type: ignore
+        _assign_if_model_attribute(db_user, "is_active", user.is_active)
 
         self.db.add(db_user)
         self.db.commit()
@@ -137,3 +138,10 @@ class UserRepository(IUserRepository):
             created_at=getattr(db_user, "created_at", None),
             updated_at=getattr(db_user, "updated_at", None),
         )
+
+
+def _assign_if_model_attribute(model: DbUser, name: str, value):
+    """Assign value to SQLAlchemy attribute only if underlying column exists."""
+    descriptor = getattr(model.__class__, name, None)
+    if isinstance(descriptor, InstrumentedAttribute):
+        setattr(model, name, value)

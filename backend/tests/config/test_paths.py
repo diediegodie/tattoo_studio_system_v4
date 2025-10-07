@@ -70,7 +70,7 @@ class TestPathResolver:
             try:
                 __import__(module_name)
                 import_results[module_name] = True
-            except ImportError:
+            except (ImportError, KeyError):
                 import_results[module_name] = False
 
         return import_results

@@ -25,7 +25,7 @@
                     {% include 'partials/_flash_messages.html' %}
 
                     {# Debug: show submitted form values when re-rendering (development only) #}
-                    {% if request.form %}
+                    {% if config.DEBUG and request.form %}
                     <div class="debug-box">
                         <strong>Debug POST values:</strong>
                         <pre class="debug-pre">{{ request.form }}</pre>
@@ -45,9 +45,9 @@
                                         value="{{ request.form.get('data') or data or '' }}">
                                 </div>
                                 <div class="flex-form-field">
-                                    <label for="cliente_id">Cliente</label>
-                                    <select name="cliente_id" id="cliente_id" required class="full-width">
-                                        <option value="">Selecione...</option>
+                                    <label for="cliente_id">Cliente (Opcional)</label>
+                                    <select name="cliente_id" id="cliente_id" class="full-width">
+                                        <option value="">Nenhum cliente / Não informado</option>
                                         {% for client in clients %}
                                         {% set sel_cliente = request.form.get('cliente_id') or cliente_id %}
                                         <option value="{{ client.id }}" {% if sel_cliente and sel_cliente|int==client.id

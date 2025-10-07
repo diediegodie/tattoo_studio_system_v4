@@ -200,19 +200,19 @@ def api_update_pagamento(pagamento_id: int):
             "forma_pagamento": updated.forma_pagamento,
             "cliente": (
                 {"id": updated.cliente.id, "name": updated.cliente.name}
-                if hasattr(updated, "cliente") and getattr(updated, "cliente", None)
+                if hasattr(updated, "cliente") and updated.cliente
                 else None
             ),
             "artista": (
                 {"id": updated.artista.id, "name": updated.artista.name}
-                if hasattr(updated, "artista") and getattr(updated, "artista", None)
+                if hasattr(updated, "artista") and updated.artista
                 else None
             ),
             "observacoes": getattr(updated, "observacoes", None),
             "created_at": (
                 updated.created_at.isoformat()
                 if hasattr(updated, "created_at")
-                and getattr(updated, "created_at", None)
+                and updated.created_at is not None
                 else None
             ),
         }

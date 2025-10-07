@@ -93,8 +93,8 @@ class TestSessaoModel:
             assert "Sessao" in repr_string
             assert "123" in repr_string  # ID
             assert "2025-08-30" in repr_string  # Date
-            assert "14:00:00" in repr_string  # Time
             assert "100.00" in repr_string  # Value
+            assert "status=" in repr_string  # Status field present
 
         except ImportError:
             pytest.skip("Sessao model not available for testing")

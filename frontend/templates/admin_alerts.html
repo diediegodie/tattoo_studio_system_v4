@@ -1,0 +1,109 @@
+{% set page_title = 'Painel de Alertas' %}
+{% include 'partials/_head.html' %}
+
+<body class="is-preload">
+    {% include 'partials/_flash_messages.html' %}
+    <div id="wrapper">
+        <div id="main">
+            <div class="inner">
+                <header id="header">
+                    <a href="#" class="logo"><strong>Painel de Alertas</strong> do Sistema</a>
+                    <div class="header-controls">
+                        <a href="{{ url_for('index') }}" class="button small">Voltar ao painel</a>
+                    </div>
+                </header>
+
+                <section class="alerts-dashboard">
+                    <header class="alerts-dashboard__header">
+                        <div>
+                            <h1>Alertas Recentes</h1>
+                            <p class="alerts-dashboard__meta">
+                                Exibindo até {{ limit }} itens · Fonte: {{ log_source or 'logs/app.log' }}
+                            </p>
+                        </div>
+                        {% if severity_summary.total %}
+                        <div class="alerts-dashboard__summary">
+                            <span class="alerts-dashboard__summary-total">
+                                Total de alertas: {{ severity_summary.total }}
+                            </span>
+                            <ul class="alert-summary-list">
+                                {% for item in severity_summary.entries %}
+                                <li class="alert-summary-list__item">
+                                    <span class="alert-summary-badge alert-summary-badge--{{ item.severity }}">
+                                        {{ item.label }}
+                                    </span>
+                                    <span class="alert-summary-count">{{ item.count }}</span>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endif %}
+                    </header>
+
+                    {% if alerts %}
+                    <div class="alerts-list">
+                        {% for alert in alerts %}
+                        <article class="alert-card alert-card--{{ alert.severity }}">
+                            <header class="alert-card__header">
+                                <span class="alert-card__type">{{ alert.alert_type|replace('_', ' ')|title }}</span>
+                                {% if alert.timestamp %}
+                                <time class="alert-card__time" datetime="{{ alert.timestamp }}">{{ alert.timestamp
+                                    }}</time>
+                                {% endif %}
+                            </header>
+                            <p class="alert-card__message">{{ alert.message }}</p>
+
+                            {% set details = alert.details %}
+                            {% if details %}
+                            <dl class="alert-card__details">
+                                {% if details.request.request_id %}
+                                <div>
+                                    <dt>Request ID</dt>
+                                    <dd>{{ details.request.request_id }}</dd>
+                                </div>
+                                {% endif %}
+                                {% if details.request.route %}
+                                <div>
+                                    <dt>Rota</dt>
+                                    <dd>{{ details.request.route }}</dd>
+                                </div>
+                                {% endif %}
+                                {% if details.request.user_id is not none %}
+                                <div>
+                                    <dt>Usuário</dt>
+                                    <dd>{{ details.request.user_id }}</dd>
+                                </div>
+                                {% endif %}
+                                {% for key, value in details.items() if key not in ['request', 'alert_type', 'severity']
+                                %}
+                                <div>
+                                    <dt>{{ key|replace('_', ' ')|title }}</dt>
+                                    <dd>
+                                        {% if value is mapping or value is sequence and value is not string %}
+                                        <pre class="alert-card__json">{{ value | tojson(indent=2) }}</pre>
+                                        {% else %}
+                                        {{ value }}
+                                        {% endif %}
+                                    </dd>
+                                </div>
+                                {% endfor %}
+                            </dl>
+                            {% endif %}
+                        </article>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="alerts-empty">
+                        <p>Não há alertas registrados até o momento.</p>
+                    </div>
+                    {% endif %}
+                </section>
+            </div>
+        </div>
+        {% include 'partials/_sidebar.html' %}
+    </div>
+    <script src="{{ url_for('static', filename='js/common.js') }}"></script>
+    {% include 'partials/_base_scripts.html' %}
+</body>
+
+</html>

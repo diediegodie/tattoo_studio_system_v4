@@ -5,7 +5,9 @@ Test script to debug Google Calendar sync with proper authentication
 import json
 from datetime import datetime
 
+import pytest
 import requests
+from requests.exceptions import ConnectionError
 
 # App URL
 BASE_URL = "http://127.0.0.1:5000"
@@ -19,19 +21,22 @@ def test_calendar_sync():
 
     # Try to access the calendar sync endpoint
     print("\n1. Testing calendar sync endpoint...")
-    response = session.get(f"{BASE_URL}/calendar/sync")
+    try:
+        response = session.get(f"{BASE_URL}/calendar/sync", timeout=3)
+    except ConnectionError as exc:
+        pytest.skip(f"Calendar service unavailable: {exc}")
     print(f"Status: {response.status_code}")
     print(f"URL after redirect: {response.url}")
 
     # Check if we can get the events API directly
     print("\n2. Testing calendar API events endpoint...")
-    response = session.get(f"{BASE_URL}/calendar/api/events")
+    response = session.get(f"{BASE_URL}/calendar/api/events", timeout=3)
     print(f"Status: {response.status_code}")
     print(f"Response: {response.text[:500]}...")
 
     # Try to trigger sync
     print("\n3. Testing calendar sync POST endpoint...")
-    response = session.post(f"{BASE_URL}/calendar/api/sync")
+    response = session.post(f"{BASE_URL}/calendar/api/sync", timeout=3)
     print(f"Status: {response.status_code}")
     print(f"Response: {response.text[:500]}...")
 

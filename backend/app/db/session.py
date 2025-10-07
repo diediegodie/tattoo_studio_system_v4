@@ -3,6 +3,8 @@ import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
+from ..core.db import register_query_timing
+
 # Create Base class for models
 Base = declarative_base()
 
@@ -30,6 +32,7 @@ def get_engine():
             except Exception:
                 pass
         _engine = create_engine(database_url)
+        register_query_timing(_engine)
         _database_url = database_url
     return _engine
 

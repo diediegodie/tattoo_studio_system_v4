@@ -99,11 +99,14 @@ class TestOptionalClientDatabaseIntegration:
             observacoes="Payment without client",
         )
 
-        # Create commission
+        # Create commission (align timestamp with test month so query_data picks it up)
         commission = Comissao(
             artista_id=sample_artist.id,
             percentual=Decimal("20.00"),
             valor=Decimal("50.00"),
+        )
+        commission.created_at = datetime(
+            test_date.year, test_date.month, test_date.day, 12, 0, 0
         )
 
         # Create expense

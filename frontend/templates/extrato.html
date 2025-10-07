@@ -1,6 +1,30 @@
 {% set page_title = 'Extrato' %}
 {% include 'partials/_head.html' %}
 
+{% set initial_mes = initial_mes | default('', true) %}
+{% set initial_ano = initial_ano | default('', true) %}
+{% set bootstrap_state = bootstrap_state | default('info', true) %}
+{% set bootstrap_message = bootstrap_message | default('Selecione o mês e o ano para visualizar o extrato mensal.') %}
+{% set bootstrap_extrato = bootstrap_extrato | default(None) %}
+{% set months = [
+('01', 'Janeiro'),
+('02', 'Fevereiro'),
+('03', 'Março'),
+('04', 'Abril'),
+('05', 'Maio'),
+('06', 'Junho'),
+('07', 'Julho'),
+('08', 'Agosto'),
+('09', 'Setembro'),
+('10', 'Outubro'),
+('11', 'Novembro'),
+('12', 'Dezembro')
+] %}
+{% set years = [
+'2020', '2021', '2022', '2023', '2024',
+'2025', '2026', '2027', '2028', '2029', '2030'
+] %}
+
 <body class="is-preload">
 
     <!-- Wrapper -->
@@ -18,45 +42,39 @@
                 <!-- Content -->
                 <section>
                     <header class="main">
-                        <h1>Extrato</h1>
+                        <h1>
+                            Extrato
+                            {% if bootstrap_extrato %}
+                            <span class="extrato-period">{{ bootstrap_extrato.mes_nome }} / {{ bootstrap_extrato.ano
+                                }}</span>
+                            {% elif bootstrap_mes_nome and initial_ano %}
+                            <span class="extrato-period">{{ bootstrap_mes_nome }} / {{ initial_ano }}</span>
+                            {% endif %}
+                        </h1>
                     </header>
 
                     <section>
                         <div class="table-wrapper">
-                            <form id="extrato-form" class="row gtr-uniform form-container-narrow">
+                            <form id="extrato-form" class="row gtr-uniform form-container-narrow"
+                                data-initial-mes="{{ initial_mes }}" data-initial-ano="{{ initial_ano }}">
                                 <div class="col-6 col-12-mobile">
                                     <label for="mes">Mês</label>
                                     <select id="mes" name="mes" required>
                                         <option value="">Selecione</option>
-                                        <option value="01">Janeiro</option>
-                                        <option value="02">Fevereiro</option>
-                                        <option value="03">Março</option>
-                                        <option value="04">Abril</option>
-                                        <option value="05">Maio</option>
-                                        <option value="06">Junho</option>
-                                        <option value="07">Julho</option>
-                                        <option value="08">Agosto</option>
-                                        <option value="09">Setembro</option>
-                                        <option value="10">Outubro</option>
-                                        <option value="11">Novembro</option>
-                                        <option value="12">Dezembro</option>
+                                        {% for value, label in months %}
+                                        <option value="{{ value }}" {% if value==initial_mes %}selected{% endif %}>{{
+                                            label }}</option>
+                                        {% endfor %}
                                     </select>
                                 </div>
                                 <div class="col-6 col-12-mobile">
                                     <label for="ano">Ano</label>
                                     <select id="ano" name="ano" required>
                                         <option value="">Selecione</option>
-                                        <option value="2020">2020</option>
-                                        <option value="2021">2021</option>
-                                        <option value="2022">2022</option>
-                                        <option value="2023">2023</option>
-                                        <option value="2024">2024</option>
-                                        <option value="2025">2025</option>
-                                        <option value="2026">2026</option>
-                                        <option value="2027">2027</option>
-                                        <option value="2028">2028</option>
-                                        <option value="2029">2029</option>
-                                        <option value="2030">2030</option>
+                                        {% for year in years %}
+                                        <option value="{{ year }}" {% if year==initial_ano %}selected{% endif %}>{{ year
+                                            }}</option>
+                                        {% endfor %}
                                     </select>
                                 </div>
                                 <div class="col-12 text-center mt-1">
@@ -65,7 +83,24 @@
                             </form>
                         </div>
 
-                        <!-- Result modal will be injected by frontend/assets/js/extrato.js -->
+                        <div id="extrato-feedback" class="box extrato-feedback is-info" role="status" aria-live="polite"
+                            data-bootstrap-state="{{ bootstrap_state }}"
+                            data-bootstrap-message="{{ bootstrap_message }}">
+                            {{ bootstrap_message }}
+                        </div>
+                        <div id="extrato-results" class="extrato-results" aria-live="polite" {% if bootstrap_extrato
+                            %}data-bootstrap='{{ bootstrap_extrato | tojson | safe }}' {% endif %}>
+                            {% if bootstrap_extrato %}
+                            {% with extrato=bootstrap_extrato %}
+                            {% include 'partials/_extrato_sections.html' %}
+                            {% endwith %}
+                            {% else %}
+                            <p class="extrato-empty">Os resultados do extrato aparecerão aqui.</p>
+                            {% endif %}
+                        </div>
+                        <noscript>
+                            <p class="extrato-empty">Ative o JavaScript para consultar o extrato.</p>
+                        </noscript>
                     </section>
 
                 </section>

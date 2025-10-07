@@ -53,7 +53,10 @@ def should_run_monthly_extrato():
 
     except Exception as e:
         # If there's any error reading the database, log it but allow the run
-        print(f"Warning: Could not check extrato run history: {e}")
+        logger.warning(
+            "Could not check extrato run history",
+            extra={"context": {"error": str(e)}},
+        )
         return True
     finally:
         db.close()
@@ -75,14 +78,22 @@ def run_extrato_in_background():
         try:
             check_and_generate_extrato()
         except Exception as e:
-            print(f"Error in extrato generation: {e}")
+            logger.error(
+                "Error in extrato generation",
+                extra={"context": {"error": str(e)}},
+                exc_info=True,
+            )
     else:
         # Run in background thread
         def run_extrato_generation():
             try:
                 check_and_generate_extrato()
             except Exception as e:
-                print(f"Error in background extrato generation: {e}")
+                logger.error(
+                    "Error in background extrato generation",
+                    extra={"context": {"error": str(e)}},
+                    exc_info=True,
+                )
 
         # Start background thread
         thread = threading.Thread(target=run_extrato_generation, daemon=True)

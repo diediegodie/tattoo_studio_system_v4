@@ -197,6 +197,13 @@ python backend/scripts/monitor_atomic_extrato.py
 python backend/scripts/monitor_atomic_extrato.py --report
 ```
 
+#### Slow query alerts
+- SQLAlchemy queries longer than the configured threshold are logged via the `sql.alerts` logger with full context (request ID, route, user, database target).
+- Use `ALERT_SLOW_QUERY_ENABLED` (default `true`) to toggle the feature.
+- Set `ALERT_QUERY_MS_THRESHOLD` to the number of milliseconds before a warning is emitted. Changes take effect immediately without restarting.
+- Optionally provide `ALERT_SINK_SLACK_WEBHOOK` to mirror the alert to Slack; transient sink failures are reported once per failure type and then muted.
+
+
 ### Testing
 ```bash
 # Test atomic functionality

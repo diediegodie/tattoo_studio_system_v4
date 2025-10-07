@@ -1,3 +1,4 @@
+import logging
 from typing import Any, Dict, List, Optional, Union
 
 from app.db.base import Pagamento
@@ -32,10 +33,14 @@ class PagamentoRepository:
             self.db.commit()
             self.db.refresh(pagamento)
             return pagamento
-        except SQLAlchemyError as e:
+        except Exception as e:
             self.db.rollback()
-            print(f"Error creating pagamento: {str(e)}")
-            return None
+            logging.error(
+                "Error creating pagamento",
+                extra={"context": {"error": str(e)}},
+                exc_info=True,
+            )
+            raise
 
     def get_by_id(self, pagamento_id: int) -> Optional[Pagamento]:
         """
@@ -82,10 +87,14 @@ class PagamentoRepository:
             self.db.commit()
             self.db.refresh(pagamento)
             return pagamento
-        except SQLAlchemyError as e:
+        except Exception as e:
             self.db.rollback()
-            print(f"Error updating pagamento: {str(e)}")
-            return None
+            logging.error(
+                "Error updating pagamento",
+                extra={"context": {"pagamento_id": pagamento_id, "error": str(e)}},
+                exc_info=True,
+            )
+            raise
 
     def delete(self, pagamento_id: int) -> bool:
         """
@@ -122,7 +131,11 @@ class PagamentoRepository:
             self.db.delete(pagamento)
             self.db.commit()
             return True
-        except SQLAlchemyError as e:
+        except Exception as e:
             self.db.rollback()
-            print(f"Error deleting pagamento: {str(e)}")
-            return False
+            logging.error(
+                "Error deleting pagamento",
+                extra={"context": {"pagamento_id": pagamento_id, "error": str(e)}},
+                exc_info=True,
+            )
+            raise

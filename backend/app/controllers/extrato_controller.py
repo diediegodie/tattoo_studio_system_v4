@@ -7,8 +7,17 @@ import logging
 
 from app.db.base import Extrato
 from app.db.session import SessionLocal
+from app.services.extrato_generation import (
+    generate_extrato as _service_generate_extrato,
+)
 from flask import Blueprint, jsonify, request
-from flask_login import login_required
+from flask_login import current_user, login_required
+
+
+def generate_extrato(mes: int, ano: int, force: bool = False):
+    """Compatibility wrapper that delegates to the extrato generation service."""
+    return _service_generate_extrato(mes, ano, force=force)
+
 
 logger = logging.getLogger(__name__)
 

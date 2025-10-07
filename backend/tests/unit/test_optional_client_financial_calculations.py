@@ -369,17 +369,26 @@ class TestSearchServiceOptionalClient:
                 },
             ]
 
-            with patch.object(SearchService, "_search_pagamentos") as mock_search:
-                mock_search.return_value = mock_results
-
-                service = SearchService()
+            with patch.multiple(
+                SearchService,
+                _search_pagamentos=Mock(return_value=mock_results),
+                _search_sessoes=Mock(return_value=[]),
+                _search_comissoes=Mock(return_value=[]),
+                _search_extratos=Mock(return_value=[]),
+                _search_gastos=Mock(return_value=[]),
+                _search_inventory=Mock(return_value=[]),
+            ):
+                service = SearchService(db=Mock())
                 results = service.search("test query")
 
+                pagamentos = results["pagamentos"]
                 # Verify both payments are in results
-                assert len(results) == 2
+                assert len(pagamentos) == 2
 
                 # Verify null client payment is properly formatted
-                null_client_result = next(r for r in results if r["cliente_id"] is None)
+                null_client_result = next(
+                    r for r in pagamentos if r["cliente_id"] is None
+                )
                 assert null_client_result["cliente_name"] is None
                 assert null_client_result["valor"] == 150.00
 
@@ -391,20 +400,26 @@ class TestSearchServiceOptionalClient:
         try:
             from app.services.search_service import SearchService
 
-            with patch.object(SearchService, "_search_pagamentos") as mock_search:
-                # Mock database query with outerjoin for null clients
-                mock_search.return_value = [
-                    {"cliente_id": None, "valor": 100.00},
-                    {"cliente_id": 1, "valor": 150.00},
-                ]
+            with patch.multiple(
+                SearchService,
+                _search_pagamentos=Mock(
+                    return_value=[
+                        {"cliente_id": None, "valor": 100.00},
+                        {"cliente_id": 1, "valor": 150.00},
+                    ]
+                ),
+                _search_sessoes=Mock(return_value=[]),
+                _search_comissoes=Mock(return_value=[]),
+                _search_extratos=Mock(return_value=[]),
+                _search_gastos=Mock(return_value=[]),
+                _search_inventory=Mock(return_value=[]),
+            ):
+                service = SearchService(db=Mock())
+                results = service.search("payment")
 
-                service = SearchService()
-                results = service.search(
-                    "payment", filters={"include_null_clients": True}
-                )
-
-                # Verify null client payments are included when filter allows
-                null_client_results = [r for r in results if r["cliente_id"] is None]
+                pagamentos = results["pagamentos"]
+                # Verify null client payments are included
+                null_client_results = [r for r in pagamentos if r["cliente_id"] is None]
                 assert len(null_client_results) == 1
 
         except ImportError:

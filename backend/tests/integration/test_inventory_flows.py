@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 import pytest
+
 # Ensure test imports are configured
 from tests.config import setup_test_imports
 
@@ -80,13 +81,24 @@ def test_full_inventory_crud_flow(app, db_session, mock_authenticated_user):
 def test_change_quantity_flow(app, db_session, mock_authenticated_user):
     client = app.test_client()
 
+    from app.db.base import User
+
+    test_user = User(
+        name="Inventory Tester",
+        email="inventory@test.com",
+        google_id="inventory123",
+    )
+    db_session.add(test_user)
+    db_session.commit()
+    db_session.refresh(test_user)
+
     with patch("flask_login.current_user", mock_authenticated_user):
         mock_authenticated_user.is_authenticated = True
-        mock_authenticated_user.id = 1
+        mock_authenticated_user.id = test_user.id
 
         with client.session_transaction() as sess:
-            sess["user_id"] = 1
-            sess["_user_id"] = "1"
+            sess["user_id"] = test_user.id
+            sess["_user_id"] = str(test_user.id)
             sess["logged_in"] = True
 
         # Create item with known quantity

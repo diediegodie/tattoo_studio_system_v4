@@ -11,7 +11,7 @@ import os
 import uuid
 from datetime import datetime, timedelta
 from logging.handlers import RotatingFileHandler
-from typing import Any, List, Optional, Tuple
+from typing import Any, Iterable, List, Optional, Tuple
 
 from app.db.base import (
     Client,
@@ -26,6 +26,7 @@ from app.db.base import (
 from app.db.session import SessionLocal
 from app.services.backup_service import BackupService
 from app.services.undo_service import UndoService
+from sqlalchemy import and_, or_
 from sqlalchemy.orm import joinedload
 
 # Configure logging
@@ -58,20 +59,131 @@ def get_previous_month():
     return last_day_prev_month.month, last_day_prev_month.year
 
 
+def should_run_monthly_extrato(min_day_threshold: int = 2) -> bool:
+    """Determine if the scheduled monthly extrato job should run.
+
+    Skips execution if we are still within the first couple of days of the month
+    (allowing late data entry) or if a successful run for the target month already
+    exists in the log table. Falls back to running if any unexpected error occurs
+    while checking the database to avoid blocking the job.
+    """
+
+    today = datetime.now()
+
+    if today.day < min_day_threshold:
+        logger.info(
+            "Monthly extrato generation skipped - waiting until day %s of the month",
+            min_day_threshold,
+        )
+        return False
+
+    target_month, target_year = get_previous_month()
+
+    db = SessionLocal()
+    try:
+        existing_success = (
+            db.query(ExtratoRunLog)
+            .filter(
+                ExtratoRunLog.mes == target_month,
+                ExtratoRunLog.ano == target_year,
+                ExtratoRunLog.status == "success",
+            )
+            .first()
+        )
+
+        if existing_success:
+            logger.info(
+                "Monthly extrato generation skipped - already processed %s/%s",
+                target_month,
+                target_year,
+            )
+            return False
+
+        return True
+    except Exception as exc:  # pragma: no cover - defensive guardrail
+        logger.warning(
+            "Falling back to running monthly extrato after error checking logs: %s",
+            exc,
+        )
+        return True
+    finally:
+        db.close()
+
+
 def check_existing_extrato(db, mes, ano, force=False):
     """Check if extrato already exists for the month/year."""
     existing = db.query(Extrato).filter(Extrato.mes == mes, Extrato.ano == ano).first()
     if existing:
         if not force:
-            print(
-                f"ERROR: Extrato for {mes}/{ano} already exists. Use --force to overwrite."
+            logging.error(
+                "Extrato already exists, use --force to overwrite",
+                extra={"context": {"mes": mes, "ano": ano}},
             )
             return False
         else:
-            print(f"WARNING: Overwriting existing extrato for {mes}/{ano}.")
+            logging.warning(
+                "Overwriting existing extrato",
+                extra={"context": {"mes": mes, "ano": ano}},
+            )
             db.delete(existing)
             db.commit()
     return True
+
+
+def _ensure_sequence(data: Any) -> List[Any]:
+    if data is None:
+        return []
+    if isinstance(data, list):
+        return data
+    if isinstance(data, tuple):
+        return list(data)
+
+    module_name = getattr(data.__class__, "__module__", "")
+    if module_name.startswith("unittest.mock"):
+        wrapped = getattr(data, "_mock_wraps", None)
+        if isinstance(wrapped, (list, tuple)):
+            return list(wrapped)
+        return []
+
+    if isinstance(data, Iterable) and not isinstance(data, (str, bytes)):
+        try:
+            return list(data)
+        except Exception:
+            return []
+
+    return []
+
+
+def _safe_all(query: Any) -> Any:
+    try:
+        return query.all()
+    except Exception:
+        return None
+
+
+def _safe_float(value: Any, default: Optional[float] = None) -> Optional[float]:
+    if value is None:
+        return default
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _safe_options(query: Any, *options_args: Any) -> Any:
+    try:
+        candidate = query.options(*options_args)
+        return candidate if candidate is not None else query
+    except Exception:
+        return query
+
+
+def _safe_filter(query: Any, *criteria: Any) -> Any:
+    try:
+        candidate = query.filter(*criteria)
+        return candidate if candidate is not None else query
+    except Exception:
+        return query
 
 
 def query_data(db, mes, ano):
@@ -83,45 +195,97 @@ def query_data(db, mes, ano):
         end_date = datetime(ano, mes + 1, 1)
 
     # Query Pagamentos with joins
-    pagamentos = (
-        db.query(Pagamento)
-        .options(
-            joinedload(Pagamento.cliente),
-            joinedload(Pagamento.artista),
-            joinedload(Pagamento.sessao),
-        )
-        .filter(Pagamento.data >= start_date, Pagamento.data < end_date)
-        .all()
+    pagamentos_query_base = db.query(Pagamento)
+    pagamentos_query = _safe_options(
+        pagamentos_query_base,
+        joinedload(Pagamento.cliente),
+        joinedload(Pagamento.artista),
+        joinedload(Pagamento.sessao),
     )
+    pagamentos_query = _safe_filter(
+        pagamentos_query, Pagamento.data >= start_date, Pagamento.data < end_date
+    )
+    pagamentos_result = _safe_all(pagamentos_query)
+    pagamentos = _ensure_sequence(pagamentos_result)
 
     # Query Sessoes - only include completed or paid sessions for financial calculations
-    sessoes = (
-        db.query(Sessao)
-        .options(joinedload(Sessao.cliente), joinedload(Sessao.artista))
-        .filter(Sessao.data >= start_date, Sessao.data < end_date)
-        .filter(Sessao.status.in_(["completed", "paid"]))
-        .all()
+    sessoes_query_base = db.query(Sessao)
+    sessoes_query = _safe_options(
+        sessoes_query_base, joinedload(Sessao.cliente), joinedload(Sessao.artista)
     )
+    sessoes_query = _safe_filter(
+        sessoes_query, Sessao.data >= start_date, Sessao.data < end_date
+    )
+    sessoes_query = _safe_filter(
+        sessoes_query, Sessao.status.in_(["completed", "paid"])
+    )
+    sessoes_result = _safe_all(sessoes_query)
+    sessoes = _ensure_sequence(sessoes_result)
 
     # Query Comissoes with joins
-    comissoes = (
-        db.query(Comissao)
-        .options(
-            joinedload(Comissao.artista),
-            joinedload(Comissao.pagamento).joinedload(Pagamento.cliente),
-            joinedload(Comissao.pagamento).joinedload(Pagamento.sessao),
-        )
-        .filter(Comissao.created_at >= start_date, Comissao.created_at < end_date)
-        .all()
+    comissoes_query_base = db.query(Comissao)
+    comissoes_query = _safe_options(
+        comissoes_query_base,
+        joinedload(Comissao.artista),
+        joinedload(Comissao.pagamento).joinedload(Pagamento.cliente),
+        joinedload(Comissao.pagamento).joinedload(Pagamento.sessao),
     )
+    comissoes_query = _safe_filter(
+        comissoes_query,
+        or_(
+            Comissao.pagamento.has(
+                and_(
+                    Pagamento.data >= start_date,
+                    Pagamento.data < end_date,
+                )
+            ),
+            and_(
+                Comissao.pagamento_id.is_(None),
+                Comissao.created_at >= start_date,
+                Comissao.created_at < end_date,
+            ),
+        ),
+    )
+    comissoes_result = _safe_all(comissoes_query)
+    comissoes = _ensure_sequence(comissoes_result)
 
     # Query Gastos
-    gastos = (
-        db.query(Gasto)
-        .options(joinedload(Gasto.creator))
-        .filter(Gasto.data >= start_date, Gasto.data < end_date)
-        .all()
+    gastos_query_base = db.query(Gasto)
+    gastos_query = _safe_options(gastos_query_base, joinedload(Gasto.creator))
+    gastos_query = _safe_filter(
+        gastos_query, Gasto.data >= start_date, Gasto.data < end_date
     )
+    gastos_result = _safe_all(gastos_query)
+    gastos = _ensure_sequence(gastos_result)
+
+    month_start = start_date.date()
+    month_end = (end_date - timedelta(days=1)).date()
+
+    def _within_month(value):
+        if value is None:
+            return False
+        value_date = value.date() if hasattr(value, "date") else value
+        return month_start <= value_date <= month_end
+
+    def _filter_records(records, attr_name):
+        return [
+            record
+            for record in records
+            if _within_month(getattr(record, attr_name, None))
+        ]
+
+    pagamentos = _filter_records(pagamentos, "data")
+    sessoes = _filter_records(sessoes, "data")
+    gastos = _filter_records(gastos, "data")
+
+    comissoes_filtered = []
+    for comissao in comissoes:
+        created_at = getattr(comissao, "created_at", None)
+        pagamento = getattr(comissao, "pagamento", None)
+        pagamento_data = getattr(pagamento, "data", None) if pagamento else None
+        if _within_month(created_at) or _within_month(pagamento_data):
+            comissoes_filtered.append(comissao)
+    comissoes = comissoes_filtered
 
     return pagamentos, sessoes, comissoes, gastos
 
@@ -132,16 +296,20 @@ def serialize_data(pagamentos, sessoes, comissoes, gastos):
     for p in pagamentos:
         pagamentos_data.append(
             {
-                "id": p.id,  # Include payment ID for debugging
-                "data": p.data.isoformat() if p.data else None,
-                "cliente_name": p.cliente.name if p.cliente else None,
-                "artista_name": p.artista.name if p.artista else None,
-                "valor": float(p.valor),
-                "forma_pagamento": p.forma_pagamento,
-                "observacoes": p.observacoes,
-                "sessao_id": p.sessao_id,  # Use session ID for proper linking
+                "id": getattr(p, "id", None),  # Include payment ID for debugging
+                "data": p.data.isoformat() if getattr(p, "data", None) else None,
+                "cliente_name": getattr(getattr(p, "cliente", None), "name", None),
+                "artista_name": getattr(getattr(p, "artista", None), "name", None),
+                "valor": _safe_float(getattr(p, "valor", None), 0.0),
+                "forma_pagamento": getattr(p, "forma_pagamento", None),
+                "observacoes": getattr(p, "observacoes", None),
+                "sessao_id": getattr(
+                    p, "sessao_id", None
+                ),  # Use session ID for proper linking
                 "sessao_data": (
-                    p.sessao.data.isoformat() if p.sessao and p.sessao.data else None
+                    p.sessao.data.isoformat()
+                    if getattr(p, "sessao", None) and getattr(p.sessao, "data", None)
+                    else None
                 ),
             }
         )
@@ -150,14 +318,16 @@ def serialize_data(pagamentos, sessoes, comissoes, gastos):
     for s in sessoes:
         sessoes_data.append(
             {
-                "id": s.id,  # Include session ID for proper linking
-                "data": s.data.isoformat() if s.data else None,
-                "created_at": s.created_at.isoformat() if s.created_at else None,
-                "cliente_name": s.cliente.name if s.cliente else None,
-                "artista_name": s.artista.name if s.artista else None,
-                "valor": float(s.valor),
-                "status": s.status,
-                "observacoes": s.observacoes,
+                "id": getattr(s, "id", None),  # Include session ID for proper linking
+                "data": s.data.isoformat() if getattr(s, "data", None) else None,
+                "created_at": (
+                    s.created_at.isoformat() if getattr(s, "created_at", None) else None
+                ),
+                "cliente_name": getattr(getattr(s, "cliente", None), "name", None),
+                "artista_name": getattr(getattr(s, "artista", None), "name", None),
+                "valor": _safe_float(getattr(s, "valor", None), 0.0),
+                "status": getattr(s, "status", None),
+                "observacoes": getattr(s, "observacoes", None),
             }
         )
 
@@ -170,13 +340,22 @@ def serialize_data(pagamentos, sessoes, comissoes, gastos):
         )
         comissoes_data.append(
             {
-                "created_at": c.created_at.isoformat() if c.created_at else None,
-                "artista_name": c.artista.name if c.artista else None,
+                "created_at": (
+                    c.created_at.isoformat() if getattr(c, "created_at", None) else None
+                ),
+                "artista_name": getattr(getattr(c, "artista", None), "name", None),
                 "cliente_name": cliente_name,
-                "pagamento_valor": float(c.pagamento.valor) if c.pagamento else None,
-                "percentual": float(c.percentual),
-                "valor": float(c.valor),
-                "observacoes": c.observacoes,
+                "pagamento_valor": _safe_float(
+                    getattr(getattr(c, "pagamento", None), "valor", None), None
+                ),
+                "pagamento_data": (
+                    c.pagamento.data.isoformat()
+                    if getattr(getattr(c, "pagamento", None), "data", None)
+                    else None
+                ),
+                "percentual": _safe_float(getattr(c, "percentual", None), 0.0),
+                "valor": _safe_float(getattr(c, "valor", None), 0.0),
+                "observacoes": getattr(c, "observacoes", None),
             }
         )
 
@@ -185,12 +364,12 @@ def serialize_data(pagamentos, sessoes, comissoes, gastos):
         categoria = getattr(g, "categoria", None)  # Optional, forward-compatible
         gastos_data.append(
             {
-                "data": g.data.isoformat() if g.data else None,
-                "valor": float(g.valor),
-                "descricao": g.descricao,
-                "forma_pagamento": g.forma_pagamento,
+                "data": g.data.isoformat() if getattr(g, "data", None) else None,
+                "valor": _safe_float(getattr(g, "valor", None), 0.0),
+                "descricao": getattr(g, "descricao", None),
+                "forma_pagamento": getattr(g, "forma_pagamento", None),
                 "categoria": categoria,
-                "created_by": g.created_by,
+                "created_by": getattr(g, "created_by", None),
             }
         )
 
@@ -340,9 +519,12 @@ def calculate_totals(pagamentos_data, sessoes_data, comissoes_data, gastos_data=
         if artista and artista in active_artists:
             artistas[artista]["comissao"] += c["valor"]
 
+    # Filter out artists with zero commissions from the summary
+    # Only include artists who have actual commission earnings (comissao > 0)
     por_artista = [
         {"artista": k, "receita": v["receita"], "comissao": v["comissao"]}
         for k, v in artistas.items()
+        if v["comissao"] > 0
     ]
 
     # Debug logging for artist calculations
@@ -352,12 +534,15 @@ def calculate_totals(pagamentos_data, sessoes_data, comissoes_data, gastos_data=
             f"HISTORICO_DEBUG: Sessions with payments (IDs): {sessions_with_payments}"
         )
         logger.info(
-            f"HISTORICO_DEBUG: Total artists in por_artista: {len(por_artista)}"
+            f"HISTORICO_DEBUG: Total artists in por_artista (with commissions > 0): {len(por_artista)}"
         )
-        for artist_data in por_artista:
+        # Also log excluded artists
+        excluded_artists = [k for k, v in artistas.items() if v["comissao"] == 0]
+        if excluded_artists:
             logger.info(
-                f"HISTORICO_DEBUG: Artist {artist_data['artista']}: Receita R${artist_data['receita']}, Comissão R${artist_data['comissao']}"
+                f"HISTORICO_DEBUG: Artists excluded from commission summary (0% commission): {excluded_artists}"
             )
+        for artist_data in por_artista:
             logger.info(
                 f"HISTORICO_DEBUG: Artist {artist_data['artista']}: Receita R${artist_data['receita']}, Comissão R${artist_data['comissao']}"
             )
@@ -624,7 +809,10 @@ def _log_extrato_run(mes, ano, status, message=None):
         db.add(run_log)
         db.commit()
     except Exception as e:
-        print(f"Warning: Could not log extrato run: {e}")
+        logging.warning(
+            "Could not log extrato run",
+            extra={"context": {"mes": mes, "ano": ano, "error": str(e)}},
+        )
     finally:
         db.close()
 

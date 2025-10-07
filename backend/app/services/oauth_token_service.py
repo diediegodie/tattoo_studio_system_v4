@@ -41,11 +41,21 @@ class OAuthTokenService:
             True if stored successfully, False otherwise
         """
         try:
-            print(
-                f"[DEBUG] Storing OAuth token for user {user_id}, provider {provider}"
-            )
-            print(
-                f"[DEBUG] Token data type: {type(token)}, has [REDACTED_ACCESS_TOKEN] in token if isinstance(token, dict) else 'Not a dict'}"
+            logger.debug(
+                "Storing OAuth token",
+                extra={
+                    "context": {
+                        "user_id": user_id,
+                        "provider": provider,
+                        "provider_user_id": provider_user_id,
+                        "token_type": type(token).__name__,
+                        "has_[REDACTED_ACCESS_TOKEN]
+                            "access_token" in token
+                            if isinstance(token, dict)
+                            else False
+                        ),
+                    }
+                },
             )
 
             # Check if record already exists by provider_user_id (unique constraint)
@@ -60,8 +70,14 @@ class OAuthTokenService:
 
             if existing:
                 # Update existing token - use setattr for SQLAlchemy attributes
-                print(
-                    f"[DEBUG] Updating existing OAuth record for provider_user_id: {provider_user_id}"
+                logger.debug(
+                    "Updating existing OAuth record",
+                    extra={
+                        "context": {
+                            "provider_user_id": provider_user_id,
+                            "provider": provider,
+                        }
+                    },
                 )
                 setattr(
                     existing,
@@ -81,8 +97,14 @@ class OAuthTokenService:
                 )
             else:
                 # Create new token record
-                print(
-                    f"[DEBUG] Creating new OAuth record for provider_user_id: {provider_user_id}"
+                logger.debug(
+                    "Creating new OAuth record",
+                    extra={
+                        "context": {
+                            "provider_user_id": provider_user_id,
+                            "provider": provider,
+                        }
+                    },
                 )
                 oauth_record = OAuth()
                 # Set all attributes after creation using setattr
@@ -102,12 +124,30 @@ class OAuthTokenService:
                 self.db.add(oauth_record)
 
             self.db.commit()
-            print(f"[DEBUG] OAuth token committed to database")
+            logger.info(
+                "OAuth token committed to database",
+                extra={
+                    "context": {
+                        "user_id": user_id,
+                        "provider": provider,
+                        "provider_user_id": provider_user_id,
+                    }
+                },
+            )
             return True
 
         except Exception as e:
-            print(f"[ERROR] Failed to store OAuth token: {str(e)}")
-            logger.error(f"Error storing OAuth token for user {user_id}: {str(e)}")
+            logger.error(
+                "Failed to store OAuth token",
+                extra={
+                    "context": {
+                        "user_id": user_id,
+                        "provider": provider,
+                        "error": str(e),
+                    }
+                },
+                exc_info=True,
+            )
             self.db.rollback()
             return False
         finally:

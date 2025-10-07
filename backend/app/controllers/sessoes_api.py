@@ -115,7 +115,11 @@ def api_update_sessao(sessao_id: int):
             return api_response(False, "Expected JSON payload", None, 400)
         payload = request.get_json()
 
-        s = db.query(Sessao).get(sessao_id)
+        s = (
+            db.query(Sessao)
+            .options(joinedload(Sessao.cliente), joinedload(Sessao.artista))
+            .get(sessao_id)
+        )
         if not s:
             return api_response(False, "Sessão não encontrada", None, 404)
 
@@ -184,7 +188,11 @@ def api_delete_sessao(sessao_id: int):
 
         db = SessionLocal()
 
-        s = db.query(Sessao).get(sessao_id)
+        s = (
+            db.query(Sessao)
+            .options(joinedload(Sessao.cliente), joinedload(Sessao.artista))
+            .get(sessao_id)
+        )
         if not s:
             return api_response(False, "Sessão não encontrada", None, 404)
 

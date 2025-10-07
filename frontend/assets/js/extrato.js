@@ -1,557 +1,546 @@
-// Initialize extrato - check if DOM is already loaded// Initialize extrato - check if DOM is already loaded
-
-function initializeExtrato() {function init    let html = '<h3>Sessões</h3><div class="table-wrapper"><table><thead><tr>';
-
-  const form = document.getElementById('extrato-form');    html += '<th>Data</th><th>Cliente</th><th>Artista</th><th>Valor</th><th>Status</th></tr></thead><tbody>';
-
-  if (!form) return;
-
-    sessoes.forEach(s => {
-
-  const nf = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });      html += '<tr>';
-
-      html += `<td>${formatDate(s.data)}</td>`;
-
-  function createResultModalIfNeeded() {      html += `<td>${s.cliente_name || 'N/A'}</td>`;
-
-    let modal = document.getElementById('extrato-result-modal');      html += `<td>${s.artista_name || 'N/A'}</td>`;
-
-    if (modal) return modal;      html += `<td>${nf.format(s.valor || 0)}</td>`;
-
-      html += `<td>${s.status || 'N/A'}</td>`;
-
-    // Build modal markup reusing project classes for consistency      html += '</tr>';o() {
-
-    modal = document.createElement('div');  const form = document.getElementById('extrato-form');
-
-    modal.id = 'extrato-result-modal';  if (!form) return;
-
-    modal.innerHTML = `
-
-      <div class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="extrato-result-title">  const nf = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
-
-        <div class="modal-container" tabindex="-1">
-
-          <div class="modal-scrollable">  function showResultModal(title, content, onNewQuery = null) {
-
-            <h2 id="extrato-result-title">Extrato Mensal</h2>    // Use unified modal system
-
-            <div id="extrato-result-content" aria-live="polite" class="box"></div>    openModal({
-
-          </div>      title: title,
-
-          <div class="modal-footer">      body: content,
-
-            <button type="button" id="extrato-close-btn" class="button">Fechar</button>      showConfirm: !!onNewQuery,
-
-            <button type="button" id="extrato-new-btn" class="button primary">Nova consulta</button>      showCancel: true,
-
-          </div>      confirmText: 'Nova consulta',
-
-        </div>      cancelText: 'Fechar',
-
-      </div>      onConfirm: onNewQuery,
-
-    `;      onCancel: null,
-
-      closeOnCancel: true,
-
-    document.body.appendChild(modal);      closeOnConfirm: true
-
-    });
-
-    // Close handling  }
-
-    const closeBtn = modal.querySelector('#extrato-close-btn');
-
-    const newBtn = modal.querySelector('#extrato-new-btn');  function formatDate(dateStr) {
-
-    if (!dateStr) return 'N/A';
-
-    closeBtn.addEventListener('click', function () { modal.remove(); });    try {
-
-      return new Date(dateStr).toLocaleDateString('pt-BR');
-
-    // Nova consulta: reset form, focus month select and remove modal    } catch (e) {
-
-    newBtn.addEventListener('click', function () {      return dateStr;
-
-      const formEl = document.getElementById('extrato-form');    }
-
-      if (formEl) {  }
-
-        try { formEl.reset(); } catch (e) { /* ignore */ }
-
-      }  function formatTime(timeStr) {
-
-      const first = document.getElementById('mes');    if (!timeStr) return 'N/A';
-
-      if (first) first.focus();    try {
-
-      modal.remove();      return timeStr.substring(0, 5); // HH:MM format
-
-    });    } catch (e) {
-
-      return timeStr;
-
-    // Keyboard accessibility: close on ESC; trap focus minimally by focusing container    }
-
-    modal.addEventListener('keydown', function (ev) {  }
-
-      if (ev.key === 'Escape') { modal.remove(); }
-
-    });  function renderPagamentosTable(pagamentos) {
-
-    if (!pagamentos || pagamentos.length === 0) {
-
-    return modal;      return '<p><strong>Nenhum pagamento encontrado.</strong></p>';
-
-  }    }
-
-
-
-  function formatDate(dateStr) {    let html = '<h3>Pagamentos</h3><div class="table-wrapper"><table><thead><tr>';
-
-    if (!dateStr) return 'N/A';    html += '<th>Data</th><th>Cliente</th><th>Artista</th><th>Valor</th><th>Forma Pagamento</th></tr></thead><tbody>';
-
-    try {
-
-      return new Date(dateStr).toLocaleDateString('pt-BR');    pagamentos.forEach(p => {
-
-    } catch (e) {      html += '<tr>';
-
-      return dateStr;      html += `<td>${formatDate(p.data)}</td>`;
-
-    }      html += `<td>${p.cliente_name || 'N/A'}</td>`;
-
-  }      html += `<td>${p.artista_name || 'N/A'}</td>`;
-
-      html += `<td>${nf.format(p.valor || 0)}</td>`;
-
-  function renderPagamentosTable(pagamentos) {      html += `<td>${p.forma_pagamento || 'N/A'}</td>`;
-
-    if (!pagamentos || pagamentos.length === 0) {      html += '</tr>';
-
-      return '<p><strong>Nenhum pagamento encontrado.</strong></p>';    });
-
+(function () {
+  const monthNames = {
+    "01": "Janeiro",
+    "02": "Fevereiro",
+    "03": "Março",
+    "04": "Abril",
+    "05": "Maio",
+    "06": "Junho",
+    "07": "Julho",
+    "08": "Agosto",
+    "09": "Setembro",
+    "10": "Outubro",
+    "11": "Novembro",
+    "12": "Dezembro"
+  };
+
+  const feedbackStates = ["info", "success", "warning", "error", "loading"];
+  const currencyFormatter = new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL"
+  });
+  const dateFormatter = new Intl.DateTimeFormat("pt-BR");
+
+  let formElement = null;
+  let feedbackElement = null;
+  let resultsContainer = null;
+
+  function escapeHtml(value) {
+    if (value === null || value === undefined) {
+      return "";
     }
 
-    html += '</tbody></table></div>';
-
-    let html = '<h3>Pagamentos</h3><div class="table-wrapper"><table><thead><tr>';    return html;
-
-    html += '<th>Data</th><th>Cliente</th><th>Artista</th><th>Valor</th><th>Forma Pagamento</th></tr></thead><tbody>';  }
-
-
-
-    pagamentos.forEach(p => {    function renderSessoesTable(sessoes) {
-
-      html += '<tr>';    if (!sessoes || sessoes.length === 0) {
-
-      html += `<td>${formatDate(p.data)}</td>`;      return '<h3>Sessões</h3><p><strong>Nenhuma sessão encontrada.</strong></p>';
-
-      html += `<td>${p.cliente_name || 'N/A'}</td>`;    }
-
-      html += `<td>${p.artista_name || 'N/A'}</td>`;
-
-      html += `<td>${nf.format(p.valor || 0)}</td>`;    let html = '<h3>Sessões</h3><div class="table-wrapper"><table><thead><tr>';
-
-      html += `<td>${p.forma_pagamento || 'N/A'}</td>`;    html += '<th>Data</th><th>Cliente</th><th>Artista</th><th>Valor</th><th>Status</th></tr></thead><tbody>';
-
-      html += '</tr>';
-
-    });    sessoes.forEach(s => {
-
-      html += '<tr>';
-
-    html += '</tbody></table></div>';      html += `<td>${formatDate(s.data)}</td>`;
-
-    return html;      html += `<td>${s.cliente_name || 'N/A'}</td>`;
-
-  }      html += `<td>${s.artista_name || 'N/A'}</td>`;
-
-      html += `<td>${nf.format(s.valor || 0)}</td>`;
-
-  function renderSessoesTable(sessoes) {      html += `<td>${s.status || 'N/A'}</td>`;
-
-    if (!sessoes || sessoes.length === 0) {      html += '</tr>';
-
-      return '<h3>Sessões</h3><p><strong>Nenhuma sessão encontrada.</strong></p>';    });
-
-    }
-
-    html += '</tbody></table></div>';
-
-    let html = '<h3>Sessões</h3><div class="table-wrapper"><table><thead><tr>';    return html;
-
-    html += '<th>Data</th><th>Cliente</th><th>Artista</th><th>Valor</th><th>Status</th></tr></thead><tbody>';  }
-
-
-
-    sessoes.forEach(s => {  function renderComissoesTable(comissoes) {
-
-      html += '<tr>';    if (!comissoes || comissoes.length === 0) {
-
-      html += `<td>${formatDate(s.data)}</td>`;      return '<h3>Comissões</h3><p><strong>Nenhuma comissão encontrada.</strong></p>';
-
-      html += `<td>${s.cliente_name || 'N/A'}</td>`;    }
-
-      html += `<td>${s.artista_name || 'N/A'}</td>`;
-
-      html += `<td>${nf.format(s.valor || 0)}</td>`;    let html = '<h3>Comissões</h3><div class="table-wrapper"><table><thead><tr>';
-
-      html += `<td>${s.status || 'N/A'}</td>`;    html += '<th>Data</th><th>Artista</th><th>Cliente</th><th>Valor do Pagamento</th><th>Percentual</th><th>Comissão (R$)</th><th>Observações</th></tr></thead><tbody>';
-
-      html += '</tr>';
-
-    });    comissoes.forEach(c => {
-
-      html += '<tr>';
-
-    html += '</tbody></table></div>';      html += `<td>${formatDate(c.created_at)}</td>`;
-
-    return html;      html += `<td>${c.artista_name || 'N/A'}</td>`;
-
-  }      html += `<td>${c.cliente_name || 'N/A'}</td>`;
-
-      html += `<td>${nf.format(c.pagamento_valor || 0)}</td>`;
-
-  function renderComissoesTable(comissoes) {      html += `<td>${(c.percentual || 0).toFixed(1)}%</td>`;
-
-    if (!comissoes || comissoes.length === 0) {      html += `<td>${nf.format(c.valor || 0)}</td>`;
-
-      return '<h3>Comissões</h3><p><strong>Nenhuma comissão encontrada.</strong></p>';      html += `<td>${c.observacoes || ''}</td>`;
-
-    }      html += '</tr>';
-
-    });
-
-    let html = '<h3>Comissões</h3><div class="table-wrapper"><table><thead><tr>';
-
-    html += '<th>Data</th><th>Artista</th><th>Cliente</th><th>Valor do Pagamento</th><th>Percentual</th><th>Comissão (R$)</th><th>Observações</th></tr></thead><tbody>';    html += '</tbody></table></div>';
-
-    return html;
-
-    comissoes.forEach(c => {  }
-
-      html += '<tr>';
-
-      html += `<td>${formatDate(c.created_at)}</td>`;  function renderGastosTable(gastos) {
-
-      html += `<td>${c.artista_name || 'N/A'}</td>`;    if (!gastos || gastos.length === 0) {
-
-      html += `<td>${c.cliente_name || 'N/A'}</td>`;      return '<h3>Gastos</h3><p><strong>Nenhum gasto encontrado.</strong></p>';
-
-      html += `<td>${nf.format(c.pagamento_valor || 0)}</td>`;    }
-
-      html += `<td>${(c.percentual || 0).toFixed(1)}%</td>`;
-
-      html += `<td>${nf.format(c.valor || 0)}</td>`;    let html = '<h3>Gastos</h3><div class="table-wrapper"><table><thead><tr>';
-
-      html += `<td>${c.observacoes || ''}</td>`;    html += '<th>Data</th><th>Valor</th><th>Descrição</th><th>Forma Pagamento</th></tr></thead><tbody>';
-
-      html += '</tr>';
-
-    });    gastos.forEach(g => {
-
-      html += '<tr>';
-
-    html += '</tbody></table></div>';      html += `<td>${formatDate(g.data)}</td>`;
-
-    return html;      html += `<td>${nf.format(g.valor || 0)}</td>`;
-
-  }      html += `<td>${g.descricao || ''}</td>`;
-
-      html += `<td>${g.forma_pagamento || 'N/A'}</td>`;
-
-  function renderGastosTable(gastos) {      html += '</tr>';
-
-    if (!gastos || gastos.length === 0) {    });
-
-      return '<h3>Gastos</h3><p><strong>Nenhum gasto encontrado.</strong></p>';
-
-    }    html += '</tbody></table></div>';
-
-    return html;
-
-    let html = '<h3>Gastos</h3><div class="table-wrapper"><table><thead><tr>';  }
-
-    html += '<th>Data</th><th>Valor</th><th>Descrição</th><th>Forma Pagamento</th></tr></thead><tbody>';
-
-  function renderTotais(totais) {
-
-    gastos.forEach(g => {    if (!totais) return '<h3>Resumo Geral</h3><p>Dados não disponíveis.</p>';
-
-      html += '<tr>';
-
-      html += `<td>${formatDate(g.data)}</td>`;    let html = '<h3>Resumo Geral</h3>';
-
-      html += `<td>${nf.format(g.valor || 0)}</td>`;    html += `<p><strong>Receita Total:</strong> ${nf.format(totais.receita_total || 0)}</p>`;
-
-      html += `<td>${g.descricao || ''}</td>`;    html += `<p><strong>Comissões Total:</strong> ${nf.format(totais.comissoes_total || 0)}</p>`;
-
-      html += `<td>${g.forma_pagamento || 'N/A'}</td>`;    if (typeof totais.despesas_total !== 'undefined') {
-
-      html += '</tr>';      html += `<p><strong>Despesas (Gastos):</strong> ${nf.format(totais.despesas_total || 0)}</p>`;
-
-    });    }
-
-    if (typeof totais.saldo !== 'undefined') {
-
-    html += '</tbody></table></div>';      html += `<p><strong>Saldo (Receita - Despesas):</strong> ${nf.format(totais.saldo || 0)}</p>`;
-
-    return html;    }
-
+    return String(value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
   }
 
-    return html;
+  function normalizeText(value, fallback = "N/A") {
+    if (value === null || value === undefined || value === "") {
+      return fallback;
+    }
+    return value;
+  }
 
-  function renderTotais(totais) {  }
+  function formatCurrency(value) {
+    if (value === null || value === undefined || value === "") {
+      return currencyFormatter.format(0);
+    }
 
-    if (!totais) return '<h3>Resumo Geral</h3><p>Dados não disponíveis.</p>';
+    const number = typeof value === "string" ? Number(value) : value;
+    if (Number.isNaN(number)) {
+      return String(value);
+    }
 
-  form.addEventListener('submit', async function (e) {
+    return currencyFormatter.format(number);
+  }
 
-    let html = '<h3>Resumo Geral</h3>';    e.preventDefault();
+  function formatDate(value) {
+    if (!value) {
+      return "N/A";
+    }
 
-    html += `<p><strong>Receita Total:</strong> ${nf.format(totais.receita_total || 0)}</p>`;
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return String(value);
+    }
 
-    html += `<p><strong>Comissões Total:</strong> ${nf.format(totais.comissoes_total || 0)}</p>`;    const mesEl = document.getElementById('mes');
+    return dateFormatter.format(date);
+  }
 
-    if (typeof totais.despesas_total !== 'undefined') {    const anoEl = document.getElementById('ano');
-
-      html += `<p><strong>Despesas (Gastos):</strong> ${nf.format(totais.despesas_total || 0)}</p>`;    
-
-    }    if (!mesEl || !anoEl) return;
-
-    if (typeof totais.saldo !== 'undefined') {
-
-      html += `<p><strong>Saldo (Receita - Despesas):</strong> ${nf.format(totais.saldo || 0)}</p>`;    const mes = mesEl.value;
-
-    }    const ano = anoEl.value;
-
-
-
-    return html;    if (!mes || !ano) {
-
-  }      showResultModal('Erro', '<p>Por favor, selecione o mês e o ano.</p>');
-
+  function setFeedback(message, state = "info") {
+    if (!feedbackElement) {
+      if (state === "error") {
+        window.notifyError ? window.notifyError(message) : console.error(message);
+      } else if (state === "warning") {
+        window.notifyWarning ? window.notifyWarning(message) : console.warn(message);
+      } else {
+        console.log(message);
+      }
       return;
+    }
 
-  form.addEventListener('submit', async function (e) {    }
+    feedbackStates.forEach((feedbackState) => {
+      feedbackElement.classList.remove(`is-${feedbackState}`);
+    });
 
-    e.preventDefault();
+    if (!feedbackStates.includes(state)) {
+      state = "info";
+    }
 
-    // Show loading state
+    feedbackElement.classList.add(`is-${state}`);
+    feedbackElement.textContent = message;
+  }
 
-    const mesEl = document.getElementById('mes');    showResultModal('Processando...', '<p>Processando...</p>');
+  function clearResults() {
+    if (resultsContainer) {
+      resultsContainer.innerHTML = "";
+      resultsContainer.dataset.state = "empty";
+    }
+  }
 
-    const anoEl = document.getElementById('ano');
+  function buildTableSection({
+    title,
+    columns,
+    rows,
+    emptyMessage,
+    headerLevel = "h3",
+    headerClass = "major",
+    sectionClass = ""
+  }) {
+    const sectionTitle = escapeHtml(title);
+    const headerTag = headerLevel === "h2" ? "h2" : "h3";
+    const sectionClasses = ["extrato-section"];
 
+    if (sectionClass) {
+      sectionClasses.push(sectionClass);
+    }
+
+    const sectionHeaderHtml = `
+      <header class="${escapeHtml(headerClass)}">
+        <${headerTag}>${sectionTitle}</${headerTag}>
+      </header>
+    `;
+
+    if (!Array.isArray(rows) || rows.length === 0) {
+      return `
+        <section class="${sectionClasses.join(" ")}">
+          ${sectionHeaderHtml}
+          <p class="extrato-empty">${escapeHtml(emptyMessage)}</p>
+        </section>
+      `;
+    }
+
+    const tableHeaderCells = columns
+      .map((column) => `<th>${escapeHtml(column.header)}</th>`)
+      .join("");
+
+    const tableBodyRows = rows
+      .map((row) => {
+        const cells = columns
+          .map((column) => {
+            const value = column.render ? column.render(row) : row[column.key];
+            return `<td>${escapeHtml(normalizeText(value))}</td>`;
+          })
+          .join("");
+
+        return `<tr>${cells}</tr>`;
+      })
+      .join("");
+
+    return `
+      <section class="${sectionClasses.join(" ")}">
+        ${sectionHeaderHtml}
+        <div class="table-wrapper">
+          <table>
+            <thead><tr>${tableHeaderCells}</tr></thead>
+            <tbody>${tableBodyRows}</tbody>
+          </table>
+        </div>
+      </section>
+    `;
+  }
+
+  function buildMonthlyTotalsSection(totais) {
+    if (!totais || typeof totais !== "object") {
+      return "";
+    }
+
+    const metrics = [
+      ["Receita Total (Bruta)", totais.receita_total],
+      ["Comissões Totais", totais.comissoes_total],
+      ["Despesas (Gastos)", totais.despesas_total],
+      ["Receita Líquida (Bruta - Comissões)", totais.receita_liquida]
+    ];
+
+    const rowsHtml = metrics
+      .map(
+        ([label, value]) =>
+          `<tr><td>${escapeHtml(label)}</td><td>${formatCurrency(value)}</td></tr>`
+      )
+      .join("");
+
+    return `
+      <section class="extrato-section extrato-section--totais">
+        <header class="major"><h2>Totais do Mês Atual</h2></header>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr><th>Métrica</th><th>Valor</th></tr>
+            </thead>
+            <tbody>${rowsHtml}</tbody>
+          </table>
+        </div>
+      </section>
+    `;
+  }
+
+  function renderResults(data) {
+    if (!resultsContainer) {
+      return;
+    }
+
+    const safeData = data || {};
+    const pagamentos = Array.isArray(safeData.pagamentos) ? safeData.pagamentos : [];
+    const comissoes = Array.isArray(safeData.comissoes) ? safeData.comissoes : [];
+    const sessoes = Array.isArray(safeData.sessoes) ? safeData.sessoes : [];
+    const gastos = Array.isArray(safeData.gastos) ? safeData.gastos : [];
+    const totais =
+      safeData.totais && typeof safeData.totais === "object" ? safeData.totais : null;
+
+    const sections = [];
+
+    sections.push(
+      buildTableSection({
+        title: "Pagamentos",
+        rows: pagamentos,
+        emptyMessage: "Nenhum pagamento encontrado.",
+        headerLevel: "h2",
+        sectionClass: "extrato-section--pagamentos",
+        columns: [
+          {
+            header: "Data",
+            render: (row) => formatDate(row.data)
+          },
+          {
+            header: "Cliente",
+            render: (row) => row.cliente_name || ""
+          },
+          {
+            header: "Artista",
+            render: (row) => row.artista_name || ""
+          },
+          {
+            header: "Valor",
+            render: (row) => formatCurrency(row.valor)
+          },
+          {
+            header: "Forma de pagamento",
+            render: (row) => row.forma_pagamento || ""
+          },
+          {
+            header: "Observações",
+            render: (row) => row.observacoes || ""
+          }
+        ]
+      })
+    );
+
+    sections.push(
+      buildTableSection({
+        title: "Comissões",
+        rows: comissoes,
+        emptyMessage: "Nenhuma comissão encontrada.",
+        headerLevel: "h2",
+        sectionClass: "extrato-section--comissoes",
+        columns: [
+          {
+            header: "Data",
+            render: (row) => formatDate(row.created_at)
+          },
+          {
+            header: "Artista",
+            render: (row) => row.artista_name || ""
+          },
+          {
+            header: "Cliente",
+            render: (row) => row.cliente_name || ""
+          },
+          {
+            header: "Valor total",
+            render: (row) => formatCurrency(row.pagamento_valor)
+          },
+          {
+            header: "Comissão",
+            render: (row) => formatCurrency(row.valor)
+          },
+          {
+            header: "Observações",
+            render: (row) => row.observacoes || ""
+          }
+        ]
+      })
+    );
+
+    sections.push(
+      buildTableSection({
+        title: "Sessões realizadas",
+        rows: sessoes,
+        emptyMessage: "Nenhuma sessão encontrada.",
+        headerLevel: "h2",
+        sectionClass: "extrato-section--sessoes",
+        columns: [
+          {
+            header: "Data",
+            render: (row) => formatDate(row.data)
+          },
+          {
+            header: "Cliente",
+            render: (row) => row.cliente_name || ""
+          },
+          {
+            header: "Artista",
+            render: (row) => row.artista_name || ""
+          },
+          {
+            header: "Valor",
+            render: (row) => formatCurrency(row.valor)
+          },
+          {
+            header: "Observações",
+            render: (row) => row.observacoes || ""
+          }
+        ]
+      })
+    );
+
+    if (totais && Array.isArray(totais.por_artista) && totais.por_artista.length > 0) {
+      sections.push(
+        buildTableSection({
+          title: "Comissões por Artista",
+          rows: totais.por_artista,
+          emptyMessage: "Sem dados de comissões por artista.",
+          headerLevel: "h3",
+          sectionClass: "extrato-section--totais-artista",
+          columns: [
+            {
+              header: "Artista",
+              render: (row) => row.artista || ""
+            },
+            {
+              header: "Receita Gerada",
+              render: (row) => formatCurrency(row.receita)
+            },
+            {
+              header: "Comissão",
+              render: (row) => formatCurrency(row.comissao)
+            }
+          ]
+        })
+      );
+    }
+
+    if (
+      totais &&
+      Array.isArray(totais.por_forma_pagamento) &&
+      totais.por_forma_pagamento.length > 0
+    ) {
+      sections.push(
+        buildTableSection({
+          title: "Receita por Forma de Pagamento",
+          rows: totais.por_forma_pagamento,
+          emptyMessage: "Sem dados de receita por forma de pagamento.",
+          headerLevel: "h3",
+          sectionClass: "extrato-section--totais-forma",
+          columns: [
+            {
+              header: "Forma de Pagamento",
+              render: (row) => row.forma || ""
+            },
+            {
+              header: "Total",
+              render: (row) => formatCurrency(row.total)
+            }
+          ]
+        })
+      );
+    }
+
+    if (gastos.length > 0) {
+      sections.push(
+        buildTableSection({
+          title: "Gastos do Mês",
+          rows: gastos,
+          emptyMessage: "Nenhum gasto encontrado.",
+          headerLevel: "h3",
+          sectionClass: "extrato-section--gastos",
+          columns: [
+            {
+              header: "Data",
+              render: (row) => formatDate(row.data)
+            },
+            {
+              header: "Valor",
+              render: (row) => formatCurrency(row.valor)
+            },
+            {
+              header: "Descrição",
+              render: (row) => row.descricao || ""
+            },
+            {
+              header: "Forma de Pagamento",
+              render: (row) => row.forma_pagamento || ""
+            }
+          ]
+        })
+      );
+    }
+
+    const totalsSection = buildMonthlyTotalsSection(totais);
+    if (totalsSection) {
+      sections.push(totalsSection);
+    }
+
+    resultsContainer.innerHTML = sections.join("");
+    resultsContainer.dataset.state = "loaded";
+
+    if (typeof resultsContainer.scrollIntoView === "function") {
+      resultsContainer.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+
+    if (!formElement) {
+      return;
+    }
+
+    const mesRaw = formElement.querySelector("#mes")?.value || "";
+    const anoRaw = formElement.querySelector("#ano")?.value || "";
+
+    if (!mesRaw || !anoRaw) {
+      setFeedback("Por favor, selecione o mês e o ano.", "warning");
+      clearResults();
+      return;
+    }
+
+    const mes = mesRaw.padStart(2, "0");
+    const ano = anoRaw;
+    const periodoLabel = `${monthNames[mes] || mes}/${ano}`;
+
+    setFeedback(`Carregando extrato de ${periodoLabel}...`, "loading");
+    clearResults();
+
+    const params = new URLSearchParams({ mes, ano });
+
+    let response;
+    try {
+      response = await fetch(`/extrato/api?${params.toString()}`, {
+        headers: {
+          Accept: "application/json"
+        }
+      });
+    } catch (networkError) {
+      console.error("Falha de rede ao carregar extrato", networkError);
+      setFeedback("Erro de conexão. Verifique sua internet e tente novamente.", "error");
+      return;
+    }
+
+    let payload;
+    try {
+      payload = await response.json();
+    } catch (parseError) {
+      console.error("Não foi possível interpretar a resposta do extrato", parseError);
+      setFeedback("Resposta inválida do servidor. Tente novamente mais tarde.", "error");
+      return;
+    }
+
+    if (!response.ok || payload.success === false) {
+      const defaultNotFound = "Nenhum extrato encontrado para este mês.";
+      const message = payload && payload.message ? payload.message : defaultNotFound;
+      const state = response.status === 404 ? "warning" : "error";
+      setFeedback(message || defaultNotFound, state);
+      clearResults();
+      return;
+    }
+
+    if (!payload.data) {
+      setFeedback("Nenhum dado retornado pelo servidor.", "warning");
+      clearResults();
+      return;
+    }
+
+    renderResults(payload.data);
+    setFeedback(`Extrato de ${periodoLabel} carregado com sucesso.`, "success");
+  }
+
+  function initializeExtrato() {
+    formElement = document.getElementById("extrato-form");
+    feedbackElement = document.getElementById("extrato-feedback");
+    resultsContainer = document.getElementById("extrato-results");
+
+    if (!formElement || !resultsContainer) {
+      return;
+    }
+
+    const monthSelect = formElement.querySelector("#mes");
+    const yearSelect = formElement.querySelector("#ano");
+    const initialMes = formElement.dataset.initialMes || "";
+    const initialAno = formElement.dataset.initialAno || "";
+
+    if (initialMes && monthSelect) {
+      monthSelect.value = initialMes;
+    }
+
+    if (initialAno && yearSelect) {
+      yearSelect.value = initialAno;
+    }
+
+    if (feedbackElement) {
+      const bootstrapState = feedbackElement.dataset.bootstrapState || "info";
+      const bootstrapMessage = feedbackElement.dataset.bootstrapMessage;
+      if (bootstrapMessage) {
+        setFeedback(bootstrapMessage, bootstrapState);
+      }
+    }
+
+    if (resultsContainer) {
+      const bootstrapPayload = resultsContainer.dataset.bootstrap;
+      if (bootstrapPayload) {
         try {
-
-    if (!mesEl || !anoEl) return;      // Fetch extrato data from the API
-
-      const response = await fetch(`/extrato/api?mes=${mes}&ano=${ano}`);
-
-    const mes = mesEl.value;      const result = await response.json();
-
-    const ano = anoEl.value;
-
-      if (!result.success) {
-
-    if (!mes || !ano) {        showResultModal('Erro', `<p><strong>Erro:</strong> ${result.message || 'Não foi possível concluir a ação. Tente novamente.'}</p>`);
-
-      const modalErr = createResultModalIfNeeded();        return;
-
-      modalErr.querySelector('#extrato-result-content').innerHTML = '<p>Por favor, selecione o mês e o ano.</p>';      }
-
-      modalErr.querySelector('.modal-container').focus();
-
-      return;      const data = result.data;
-
-    }      const title = `Extrato - ${mes}/${ano}`;
-
-
-
-    // Show loading state      // Build content with all sections
-
-    const modal = createResultModalIfNeeded();      let html = '';
-
-    const content = modal.querySelector('#extrato-result-content');      html += renderPagamentosTable(data.pagamentos);
-
-    content.innerHTML = '<p>Carregando extrato...</p>';      html += renderSessoesTable(data.sessoes);
-
-    modal.querySelector('.modal-container').focus();      html += renderComissoesTable(data.comissoes);
-
-
-
-    try {      // Render detailed breakdowns from totais first
-
-      // Fetch extrato data from the API      if (data.totais && data.totais.por_artista && data.totais.por_artista.length > 0) {
-
-      const response = await fetch(`/extrato/api?mes=${mes}&ano=${ano}`);        html += '<h3>Comissões por Artista</h3><div class="table-wrapper"><table><thead><tr>';
-
-      const result = await response.json();        html += '<th>Artista</th><th>Receita</th><th>Comissão</th></tr></thead><tbody>';
-
-        data.totais.por_artista.forEach(a => {
-
-      if (!result.success) {          html += '<tr>';
-
-        content.innerHTML = `<p><strong>Erro:</strong> ${result.message}</p>`;          html += `<td>${a.artista || 'N/A'}</td>`;
-
-        return;          html += `<td>${nf.format(a.receita || 0)}</td>`;
-
-      }          html += `<td>${nf.format(a.comissao || 0)}</td>`;
-
-          html += '</tr>';
-
-      const data = result.data;        });
-
-      const modalTitle = modal.querySelector('#extrato-result-title');        html += '</tbody></table></div>';
-
-      modalTitle.textContent = `Extrato - ${mes}/${ano}`;      }
-
-
-
-      // Build content with all sections      if (data.totais && data.totais.por_forma_pagamento && data.totais.por_forma_pagamento.length > 0) {
-
-      let html = '';        html += '<h3>Receita por Forma de Pagamento</h3><div class="table-wrapper"><table><thead><tr>';
-
-      html += renderPagamentosTable(data.pagamentos);        html += '<th>Forma</th><th>Total</th></tr></thead><tbody>';
-
-      html += renderSessoesTable(data.sessoes);        data.totais.por_forma_pagamento.forEach(f => {
-
-      html += renderComissoesTable(data.comissoes);          html += '<tr>';
-
-          html += `<td>${f.forma || 'N/A'}</td>`;
-
-      // Render detailed breakdowns from totais first          html += `<td>${nf.format(f.total || 0)}</td>`;
-
-      if (data.totais && data.totais.por_artista && data.totais.por_artista.length > 0) {          html += '</tr>';
-
-        html += '<h3>Comissões por Artista</h3><div class="table-wrapper"><table><thead><tr>';        });
-
-        html += '<th>Artista</th><th>Receita</th><th>Comissão</th></tr></thead><tbody>';        html += '</tbody></table></div>';
-
-        data.totais.por_artista.forEach(a => {      }
-
-          html += '<tr>';
-
-          html += `<td>${a.artista || 'N/A'}</td>`;      if (data.totais && data.totais.gastos_por_forma_pagamento && data.totais.gastos_por_forma_pagamento.length > 0) {
-
-          html += `<td>${nf.format(a.receita || 0)}</td>`;        html += '<h3>Gastos por Forma de Pagamento</h3><div class="table-wrapper"><table><thead><tr>';
-
-          html += `<td>${nf.format(a.comissao || 0)}</td>`;        html += '<th>Forma</th><th>Total</th></tr></thead><tbody>';
-
-          html += '</tr>';        data.totais.gastos_por_forma_pagamento.forEach(f => {
-
-        });          html += '<tr>';
-
-        html += '</tbody></table></div>';          html += `<td>${f.forma || 'N/A'}</td>`;
-
-      }          html += `<td>${nf.format(f.total || 0)}</td>`;
-
-          html += '</tr>';
-
-      if (data.totais && data.totais.por_forma_pagamento && data.totais.por_forma_pagamento.length > 0) {        });
-
-        html += '<h3>Receita por Forma de Pagamento</h3><div class="table-wrapper"><table><thead><tr>';        html += '</tbody></table></div>';
-
-        html += '<th>Forma</th><th>Total</th></tr></thead><tbody>';      }
-
-        data.totais.por_forma_pagamento.forEach(f => {
-
-          html += '<tr>';      if (data.totais && data.totais.gastos_por_categoria && data.totais.gastos_por_categoria.length > 0) {
-
-          html += `<td>${f.forma || 'N/A'}</td>`;        html += '<h3>Gastos por Categoria</h3><div class="table-wrapper"><table><thead><tr>';
-
-          html += `<td>${nf.format(f.total || 0)}</td>`;        html += '<th>Categoria</th><th>Total</th></tr></thead><tbody>';
-
-          html += '</tr>';        data.totais.gastos_por_categoria.forEach(c => {
-
-        });          html += '<tr>';
-
-        html += '</tbody></table></div>';          html += `<td>${c.categoria || 'Outros'}</td>`;
-
-      }          html += `<td>${nf.format(c.total || 0)}</td>`;
-
-          html += '</tr>';
-
-      if (data.totais && data.totais.gastos_por_forma_pagamento && data.totais.gastos_por_forma_pagamento.length > 0) {        });
-
-        html += '<h3>Gastos por Forma de Pagamento</h3><div class="table-wrapper"><table><thead><tr>';        html += '</tbody></table></div>';
-
-        html += '<th>Forma</th><th>Total</th></tr></thead><tbody>';      }
-
-        data.totais.gastos_por_forma_pagamento.forEach(f => {
-
-          html += '<tr>';      // Now render Gastos and main totals summary together at the end
-
-          html += `<td>${f.forma || 'N/A'}</td>`;      html += renderGastosTable(data.gastos);
-
-          html += `<td>${nf.format(f.total || 0)}</td>`;      html += renderTotais(data.totais);
-
-          html += '</tr>';
-
-        });      // Define the "Nova consulta" action
-
-        html += '</tbody></table></div>';      const onNewQuery = function() {
-
-      }        const formEl = document.getElementById('extrato-form');
-
-        if (formEl) {
-
-      if (data.totais && data.totais.gastos_por_categoria && data.totais.gastos_por_categoria.length > 0) {          try { formEl.reset(); } catch (e) { /* ignore */ }
-
-        html += '<h3>Gastos por Categoria</h3><div class="table-wrapper"><table><thead><tr>';        }
-
-        html += '<th>Categoria</th><th>Total</th></tr></thead><tbody>';        const first = document.getElementById('mes');
-
-        data.totais.gastos_por_categoria.forEach(c => {        if (first) first.focus();
-
-          html += '<tr>';      };
-
-          html += `<td>${c.categoria || 'Outros'}</td>`;
-
-          html += `<td>${nf.format(c.total || 0)}</td>`;      // Show results with "Nova consulta" button
-
-          html += '</tr>';      showResultModal(title, html, onNewQuery);
-
-        });
-
-        html += '</tbody></table></div>';    } catch (error) {
-
-      }      console.error('Error fetching extrato:', error);
-
-      showResultModal('Erro', '<p><strong>Erro:</strong> Falha de conexão. Verifique sua internet e tente novamente.</p>');
-
-      // Now render Gastos and main totals summary together at the end    }
-
-      html += renderGastosTable(data.gastos);  });
-
-      html += renderTotais(data.totais);}
-
-
-
-      content.innerHTML = html;// Set up initialization immediately if DOM is ready, otherwise wait for DOMContentLoaded
-
-if (document.readyState === 'loading' || document.readyState === 'interactive') {
-
-    } catch (error) {  document.addEventListener('DOMContentLoaded', initializeExtrato);
-
-      console.error('Error fetching extrato:', error);} else {
-
-      content.innerHTML = '<p><strong>Erro:</strong> Falha ao carregar dados do extrato.</p>';  initializeExtrato();
-
-    }}
-
-  });
-}
-
-// Set up initialization immediately if DOM is ready, otherwise wait for DOMContentLoaded
-if (document.readyState === 'loading' || document.readyState === 'interactive') {
-  document.addEventListener('DOMContentLoaded', initializeExtrato);
-} else {
-  initializeExtrato();
-}
+          const parsedPayload = JSON.parse(bootstrapPayload);
+          if (parsedPayload && typeof parsedPayload === "object") {
+            renderResults(parsedPayload);
+            resultsContainer.dataset.state = "loaded";
+          }
+        } catch (error) {
+          console.error("Bootstrap do extrato inválido", error);
+          setFeedback(
+            "Erro ao carregar dados iniciais do extrato.",
+            "error"
+          );
+          clearResults();
+        }
+      } else if (
+        feedbackElement &&
+        ["warning", "error"].includes(
+          feedbackElement.dataset.bootstrapState || ""
+        )
+      ) {
+        resultsContainer.dataset.state = "empty";
+      }
+    }
+
+    formElement.addEventListener("submit", handleSubmit);
+  }
+
+  if (document.readyState === "loading" || document.readyState === "interactive") {
+    document.addEventListener("DOMContentLoaded", initializeExtrato);
+  } else {
+    initializeExtrato();
+  }
+})();

@@ -12,6 +12,7 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
+
 # Set up test environment paths
 from tests.config.test_paths import setup_test_environment
 
@@ -66,7 +67,15 @@ def db_session(app):
     # Ensure tables exist
     from app.db.base import Base
 
-    Base.metadata.create_all(bind=session.get_bind())
+    bind = session.get_bind()
+    # Drop tables to ensure a clean slate between tests where previous commits
+    # might otherwise persist due to explicit session.commit() calls.
+    try:
+        Base.metadata.drop_all(bind=bind)
+    except Exception:
+        # Swallow drop errors; tables might not exist on first run.
+        pass
+    Base.metadata.create_all(bind=bind)
 
     # Begin a transaction
     transaction = session.begin()

@@ -1,23 +1,25 @@
+from __future__ import annotations
+
+from datetime import date, datetime
+from decimal import Decimal
+from typing import Any, Optional
+
 from flask_dance.consumer.storage.sqla import OAuthConsumerMixin
 from flask_login import UserMixin
 from sqlalchemy import (
     JSON,
     Boolean,
-    Column,
     Date,
     DateTime,
     ForeignKey,
     Integer,
     Numeric,
     String,
-    Time,
     UniqueConstraint,
     func,
 )
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.ext.mutable import MutableDict
-from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .session import Base
 
@@ -45,21 +47,26 @@ class User(UserMixin, Base):
 
     __tablename__ = "users"
 
-    id = Column(Integer, primary_key=True, index=True)
-    email = Column(
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    email: Mapped[Optional[str]] = mapped_column(
         String(100), unique=True, nullable=True
     )  # Nullable for artists without email
-    name = Column(String(100), nullable=False)
-    avatar_url = Column(String(255))
-    google_id = Column(String(50), unique=True)
-    password_hash = Column(String(255), nullable=True)  # For local authentication
-    role = Column(
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    avatar_url: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    google_id: Mapped[Optional[str]] = mapped_column(String(50), unique=True)
+    password_hash: Mapped[Optional[str]] = mapped_column(
+        String(255), nullable=True
+    )  # For local authentication
+    role: Mapped[str] = mapped_column(
         String(20), nullable=False, default="client"
     )  # 'client', 'artist', 'admin'
-    # Keep the original column name to match existing database
-    is_active = Column(Boolean, default=True)  # type: ignore[assignment]
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    # Flask-Login integration: is_active is provided by UserMixin
+    created_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), onupdate=func.now()
+    )
 
 
 # ------------------- ESTOQUE (INVENTORY) -------------------
@@ -68,17 +75,21 @@ class Inventory(Base):
 
     __tablename__ = "inventory"
 
-    id = Column(Integer, primary_key=True, index=True)
-    nome = Column(String(100), nullable=True)
-    quantidade = Column(Integer, nullable=True)
-    observacoes = Column(String(255), nullable=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    nome: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    quantidade: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    observacoes: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     # Manual order for drag&drop. Nullable: items without manual order appear first (newest first)
-    order = Column(Integer, nullable=True, default=None)
-    category = Column(String(50), nullable=True)  # Categoria do item
-    unit_price = Column(Numeric(10, 2), nullable=True)  # Preço unitário
-    supplier = Column(String(100), nullable=True)  # Fornecedor
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    order: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, default=None)
+    category: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    unit_price: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2), nullable=True)
+    supplier: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    created_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), onupdate=func.now()
+    )
 
     # Flask-Login required methods - explicit implementation
     def get_id(self):
@@ -104,8 +115,10 @@ class OAuth(OAuthConsumerMixin, Base):
 
     __tablename__ = "oauth"  # type: ignore[assignment]
 
-    provider_user_id = Column(String(256), unique=True, nullable=False)
-    user_id = Column(Integer, nullable=False)
+    provider_user_id: Mapped[str] = mapped_column(
+        String(256), unique=True, nullable=False
+    )
+    user_id: Mapped[int] = mapped_column(Integer, nullable=False)
 
 
 class TestModel(Base):
@@ -113,12 +126,16 @@ class TestModel(Base):
 
     __tablename__ = "test_table"
 
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(100), nullable=False)
-    description = Column(String(255))
-    is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), onupdate=func.now()
+    )
 
     def __repr__(self):
         return f"<TestModel(id={self.id}, name='{self.name}')>"
@@ -129,11 +146,17 @@ class Client(Base):
 
     __tablename__ = "clients"
 
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(255), nullable=False)
-    jotform_submission_id = Column(String(100), unique=True, nullable=False)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    jotform_submission_id: Mapped[str] = mapped_column(
+        String(100), unique=True, nullable=False
+    )
+    created_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), onupdate=func.now()
+    )
 
     def __repr__(self):
         return f"<Client(id={self.id}, name='{self.name}', jotform_id='{self.jotform_submission_id}')>"
@@ -145,28 +168,40 @@ class Sessao(Base):
 
     __tablename__ = "sessoes"
 
-    id = Column(Integer, primary_key=True, index=True)
-    data = Column(Date, nullable=False)
-    valor = Column(Numeric(10, 2), nullable=False)
-    observacoes = Column(String(255))
-    cliente_id = Column(Integer, ForeignKey("clients.id"), nullable=False, index=True)
-    artista_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
-    google_event_id = Column(
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    data: Mapped[date] = mapped_column(Date, nullable=False)
+    valor: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    observacoes: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    cliente_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("clients.id"), nullable=False, index=True
+    )
+    artista_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id"), nullable=False, index=True
+    )
+    google_event_id: Mapped[Optional[str]] = mapped_column(
         String(100), nullable=True, unique=True
     )  # Added for Google Calendar integration
-    status = Column(
+    status: Mapped[str] = mapped_column(
         String(20), nullable=False, default="active"
     )  # active, completed, archived
-    payment_id = Column(
+    payment_id: Mapped[Optional[int]] = mapped_column(
         Integer, ForeignKey("pagamentos.id"), nullable=True, index=True
-    )  # Link to payment
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    )
+    created_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), onupdate=func.now()
+    )
 
     # Relationships (ORM navigation)
-    cliente = relationship("Client", foreign_keys=[cliente_id], backref="sessoes")
-    artista = relationship("User", foreign_keys=[artista_id], backref="sessoes_artista")
-    payment = relationship(
+    cliente: Mapped["Client"] = relationship(
+        "Client", foreign_keys=[cliente_id], backref="sessoes"
+    )
+    artista: Mapped["User"] = relationship(
+        "User", foreign_keys=[artista_id], backref="sessoes_artista"
+    )
+    payment: Mapped[Optional["Pagamento"]] = relationship(
         "Pagamento", backref="session", uselist=False, foreign_keys=[payment_id]
     )  # Link to payment
 
@@ -182,28 +217,36 @@ class Pagamento(Base):
 
     __tablename__ = "pagamentos"
 
-    id = Column(Integer, primary_key=True, index=True)
-    data = Column(Date, nullable=False, index=True)
-    valor = Column(Numeric(10, 2), nullable=False)
-    forma_pagamento = Column(String(50), nullable=False, index=True)
-    observacoes = Column(String(255), nullable=True)
-    comissao = Column(Numeric(10, 2), nullable=True)  # For future implementation
-    cliente_id = Column(
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    data: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    valor: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    forma_pagamento: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    observacoes: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    comissao: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2), nullable=True)
+    cliente_id: Mapped[Optional[int]] = mapped_column(
         Integer, ForeignKey("clients.id"), nullable=True, index=True
-    )  # Made optional
-    artista_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
-    sessao_id = Column(
+    )
+    artista_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id"), nullable=False, index=True
+    )
+    sessao_id: Mapped[Optional[int]] = mapped_column(
         Integer, ForeignKey("sessoes.id"), nullable=True, index=True
-    )  # Link to session
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    )
+    created_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), onupdate=func.now()
+    )
 
     # Relationships
-    cliente = relationship("Client", foreign_keys=[cliente_id], backref="pagamentos")
-    artista = relationship(
+    cliente: Mapped[Optional["Client"]] = relationship(
+        "Client", foreign_keys=[cliente_id], backref="pagamentos"
+    )
+    artista: Mapped["User"] = relationship(
         "User", foreign_keys=[artista_id], backref="pagamentos_artista"
     )
-    sessao = relationship(
+    sessao: Mapped[Optional["Sessao"]] = relationship(
         "Sessao", backref="pagamento", uselist=False, foreign_keys=[sessao_id]
     )  # Link to session
 
@@ -219,21 +262,25 @@ class Comissao(Base):
 
     __tablename__ = "comissoes"
 
-    id = Column(Integer, primary_key=True, index=True)
-    pagamento_id = Column(
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    pagamento_id: Mapped[Optional[int]] = mapped_column(
         Integer, ForeignKey("pagamentos.id"), nullable=True, index=True
     )
-    artista_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
-    percentual = Column(Numeric(5, 2), nullable=False)
-    valor = Column(Numeric(10, 2), nullable=False)
-    observacoes = Column(String(255), nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    artista_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id"), nullable=False, index=True
+    )
+    percentual: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False)
+    valor: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    observacoes: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    created_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
 
     # Relationships
-    pagamento = relationship(
+    pagamento: Mapped[Optional["Pagamento"]] = relationship(
         "Pagamento", foreign_keys=[pagamento_id], backref="comissoes"
     )
-    artista = relationship("User", foreign_keys=[artista_id])
+    artista: Mapped["User"] = relationship("User", foreign_keys=[artista_id])
 
     def __repr__(self):
         return (
@@ -251,17 +298,25 @@ class Gasto(Base):
 
     __tablename__ = "gastos"
 
-    id = Column(Integer, primary_key=True, index=True)
-    data = Column(Date, nullable=False, index=True)
-    valor = Column(Numeric(10, 2), nullable=False)
-    descricao = Column(String(255), nullable=True)
-    forma_pagamento = Column(String(50), nullable=False)
-    created_by = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    data: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    valor: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    descricao: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    forma_pagamento: Mapped[str] = mapped_column(String(50), nullable=False)
+    created_by: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id"), nullable=False, index=True
+    )
+    created_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), onupdate=func.now()
+    )
 
     # Relationships
-    creator = relationship("User", foreign_keys=[created_by], backref="gastos_criados")
+    creator: Mapped["User"] = relationship(
+        "User", foreign_keys=[created_by], backref="gastos_criados"
+    )
 
     def __repr__(self):
         return (
@@ -280,20 +335,22 @@ class Extrato(Base):
     __tablename__ = "extratos"
     __table_args__ = (UniqueConstraint("mes", "ano", name="uq_extratos_mes_ano"),)
 
-    id = Column(Integer, primary_key=True, index=True)
-    mes = Column(Integer, nullable=False, index=True)  # 1..12
-    ano = Column(Integer, nullable=False, index=True)  # ex.: 2025
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    mes: Mapped[int] = mapped_column(Integer, nullable=False, index=True)  # 1..12
+    ano: Mapped[int] = mapped_column(Integer, nullable=False, index=True)  # ex.: 2025
 
     # Snapshots (lists) of objects: pagamentos, sessoes, comissoes, gastos
-    pagamentos = Column(get_json_type(), nullable=False)
-    sessoes = Column(get_json_type(), nullable=False)
-    comissoes = Column(get_json_type(), nullable=False)
-    gastos = Column(get_json_type(), nullable=True)
+    pagamentos: Mapped[Any] = mapped_column(get_json_type(), nullable=False)
+    sessoes: Mapped[Any] = mapped_column(get_json_type(), nullable=False)
+    comissoes: Mapped[Any] = mapped_column(get_json_type(), nullable=False)
+    gastos: Mapped[Optional[Any]] = mapped_column(get_json_type(), nullable=True)
 
     # Pre-calculated totals to speed reads and avoid recomputation
-    totais = Column(get_json_type(), nullable=False)
+    totais: Mapped[Any] = mapped_column(get_json_type(), nullable=False)
 
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
 
     def __repr__(self):
         return f"<Extrato(id={self.id}, mes={self.mes}, ano={self.ano})>"
@@ -304,12 +361,14 @@ class ExtratoRunLog(Base):
 
     __tablename__ = "extrato_run_logs"
 
-    id = Column(Integer, primary_key=True, index=True)
-    mes = Column(Integer, nullable=False, index=True)  # Month that was processed
-    ano = Column(Integer, nullable=False, index=True)  # Year that was processed
-    run_at = Column(DateTime(timezone=True), server_default=func.now())  # When it ran
-    status = Column(String(50), nullable=False)  # 'success', 'error', 'skipped'
-    message = Column(String(500), nullable=True)  # Optional message/details
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    mes: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    ano: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    run_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    status: Mapped[str] = mapped_column(String(50), nullable=False)
+    message: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
 
     __table_args__ = (
         UniqueConstraint("mes", "ano", "status", name="unique_extrato_run_per_month"),
@@ -324,13 +383,19 @@ class ExtratoSnapshot(Base):
 
     __tablename__ = "extrato_snapshots"
 
-    id = Column(Integer, primary_key=True, index=True)
-    snapshot_id = Column(String(50), nullable=False, unique=True, index=True)
-    mes = Column(Integer, nullable=False, index=True)
-    ano = Column(Integer, nullable=False, index=True)
-    data = Column(get_json_type(), nullable=False)  # JSON snapshot of extrato data
-    correlation_id = Column(String(50), nullable=False, index=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    snapshot_id: Mapped[str] = mapped_column(
+        String(50), nullable=False, unique=True, index=True
+    )
+    mes: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    ano: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    data: Mapped[Any] = mapped_column(
+        get_json_type(), nullable=False
+    )  # JSON snapshot of extrato data
+    correlation_id: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    created_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
 
     def __repr__(self):
         return f"<ExtratoSnapshot(id={self.id}, snapshot_id={self.snapshot_id}, mes={self.mes}, ano={self.ano})>"

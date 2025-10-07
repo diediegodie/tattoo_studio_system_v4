@@ -2,11 +2,13 @@ from app.db.session import SessionLocal
 from app.repositories.inventory_repository import InventoryRepository
 from app.services.inventory_service import InventoryService
 from flask import Blueprint, render_template
+from flask_login import login_required
 
 drag_drop_bp = Blueprint("drag_drop", __name__)
 
 
 @drag_drop_bp.route("/drag_drop", methods=["GET", "POST", "PATCH"])
+@login_required
 def drag_drop():
     from flask import flash, redirect, request, url_for
 
