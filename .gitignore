@@ -72,3 +72,4 @@ docker-compose.override.yml
 .pytest_cache/
 client_secret.json
 client_secrets.json:Zone.Identifier
+backend/logs/
