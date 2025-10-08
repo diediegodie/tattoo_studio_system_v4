@@ -10,24 +10,41 @@ It will import models to register them and then create the required table(s).
 
 # Import models so SQLAlchemy is aware of them
 import app.db.base  # noqa: F401
+from app.core.logging_config import get_logger
 from app.db.session import Base, get_engine
 from sqlalchemy import inspect
+
+logger = get_logger(__name__)
 
 
 def create_gastos_table():
     engine = get_engine()
     inspector = inspect(engine)
     if inspector is None:
-        print(
-            "Error: Unable to create inspector. Ensure the database engine is properly configured and connected."
+        logger.error(
+            "Unable to create inspector",
+            extra={
+                "context": {
+                    "hint": "Ensure the database engine is properly configured and connected."
+                }
+            },
         )
         return
     if not inspector.has_table("gastos"):
-        print("Creating 'gastos' table...")
+        logger.info(
+            "Creating table",
+            extra={"context": {"table": "gastos", "action": "create"}},
+        )
         Base.metadata.tables["gastos"].create(engine)
-        print("Table 'gastos' created successfully.")
+        logger.info(
+            "Table created successfully",
+            extra={"context": {"table": "gastos", "action": "created"}},
+        )
     else:
-        print("Table 'gastos' already exists.")
+        logger.info(
+            "Table already exists",
+            extra={"context": {"table": "gastos", "action": "exists"}},
+        )
 
 
 if __name__ == "__main__":

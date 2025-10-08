@@ -21,11 +21,11 @@ import requests
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, Any
+from app.core.logging_config import get_logger
 
 # Add backend to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from app.main import create_app
 from app.core.pg_stats_setup import (
     get_slow_queries,
     get_most_frequent_queries,
@@ -33,12 +33,12 @@ from app.core.pg_stats_setup import (
     reset_statistics,
 )
 
+logger = get_logger(__name__)
+
 
 def print_section(title: str) -> None:
-    """Print formatted section header."""
-    print(f"\n{'=' * 100}")
-    print(f"{title:^100}")
-    print(f"{'=' * 100}\n")
+    """Log formatted section header."""
+    logger.info("Section", extra={"context": {"title": title, "delimiter": "=" * 100}})
 
 
 def test_endpoint(url: str, description: str) -> Dict[str, Any]:
@@ -52,8 +52,9 @@ def test_endpoint(url: str, description: str) -> Dict[str, Any]:
     Returns:
         Response metrics
     """
-    print(f"\n🔍 Testing: {description}")
-    print(f"   URL: {url}")
+    logger.info(
+        "Testing endpoint", extra={"context": {"description": description, "url": url}}
+    )
 
     start_time = time.time()
 
@@ -61,17 +62,28 @@ def test_endpoint(url: str, description: str) -> Dict[str, Any]:
         response = requests.get(url, timeout=30)
         elapsed = (time.time() - start_time) * 1000  # Convert to ms
 
-        print(f"   ✅ Status: {response.status_code}")
-        print(f"   ⏱️  Response Time: {elapsed:.2f}ms")
+        logger.info(
+            "Endpoint response",
+            extra={
+                "context": {
+                    "status": response.status_code,
+                    "elapsed_ms": round(elapsed, 2),
+                }
+            },
+        )
 
         try:
             data = response.json()
             if isinstance(data, dict):
-                print(f"   📦 Response Keys: {list(data.keys())}")
+                logger.info(
+                    "Response keys", extra={"context": {"keys": list(data.keys())}}
+                )
             elif isinstance(data, list):
-                print(f"   📦 Response Items: {len(data)}")
+                logger.info("Response items", extra={"context": {"count": len(data)}})
         except:
-            print(f"   📦 Response Length: {len(response.text)} bytes")
+            logger.info(
+                "Response length", extra={"context": {"bytes": len(response.text)}}
+            )
 
         return {
             "url": url,
@@ -82,8 +94,11 @@ def test_endpoint(url: str, description: str) -> Dict[str, Any]:
 
     except Exception as e:
         elapsed = (time.time() - start_time) * 1000
-        print(f"   ❌ Error: {e}")
-        print(f"   ⏱️  Time to Error: {elapsed:.2f}ms")
+        logger.error(
+            "Endpoint error",
+            extra={"context": {"error": str(e), "elapsed_ms": round(elapsed, 2)}},
+            exc_info=True,
+        )
 
         return {
             "url": url,
@@ -96,9 +111,7 @@ def test_endpoint(url: str, description: str) -> Dict[str, Any]:
 def demonstrate_structured_logging():
     """Demonstrate structured logging output."""
     print_section("1. STRUCTURED LOGGING DEMONSTRATION")
-
-    print("📝 Example JSON log entries:")
-    print()
+    logger.info("Example JSON log entries")
 
     # Simulate log entries
     log_entries = [
@@ -130,25 +143,29 @@ def demonstrate_structured_logging():
     ]
 
     for entry in log_entries:
-        print(json.dumps(entry, indent=2, ensure_ascii=False))
-        print()
+        logger.info("Example entry", extra={"context": entry})
 
 
 def demonstrate_query_logging():
     """Demonstrate SQLAlchemy query logging."""
     print_section("2. SQLALCHEMY QUERY LOGGING")
-
-    print("📊 Queries will be logged with:")
-    print("   • Full SQL statement with parameters")
-    print("   • Execution time in milliseconds")
-    print("   • Number of rows returned")
-    print("   • Stack trace to calling code")
-    print()
-
-    print("Example query log:")
-    print(
-        json.dumps(
-            {
+    logger.info(
+        "Queries will be logged with",
+        extra={
+            "context": {
+                "details": [
+                    "Full SQL statement with parameters",
+                    "Execution time in milliseconds",
+                    "Number of rows returned",
+                    "Stack trace to calling code",
+                ]
+            }
+        },
+    )
+    logger.info(
+        "Example query log",
+        extra={
+            "context": {
                 "timestamp": datetime.now().isoformat(),
                 "level": "INFO",
                 "logger": "sqlalchemy.engine",
@@ -160,29 +177,32 @@ def demonstrate_query_logging():
                     "row_count": 23,
                     "caller": "app/controllers/calendar_controller.py:145",
                 },
-            },
-            indent=2,
-            ensure_ascii=False,
-        )
+            }
+        },
     )
 
 
 def demonstrate_request_tracking():
     """Demonstrate Flask request/response tracking."""
     print_section("3. FLASK REQUEST/RESPONSE TRACKING")
-
-    print("📡 Each HTTP request logs:")
-    print("   • Method and path")
-    print("   • Query parameters")
-    print("   • Response status code")
-    print("   • Total processing time")
-    print("   • User context (if authenticated)")
-    print()
-
-    print("Example request log:")
-    print(
-        json.dumps(
-            {
+    logger.info(
+        "Each HTTP request logs",
+        extra={
+            "context": {
+                "details": [
+                    "Method and path",
+                    "Query parameters",
+                    "Response status code",
+                    "Total processing time",
+                    "User context (if authenticated)",
+                ]
+            }
+        },
+    )
+    logger.info(
+        "Example request log",
+        extra={
+            "context": {
                 "timestamp": datetime.now().isoformat(),
                 "level": "INFO",
                 "logger": "app.main",
@@ -196,10 +216,8 @@ def demonstrate_request_tracking():
                     "user_id": 1,
                     "ip": "127.0.0.1",
                 },
-            },
-            indent=2,
-            ensure_ascii=False,
-        )
+            }
+        },
     )
 
 
@@ -208,54 +226,86 @@ def demonstrate_pg_stats():
     print_section("4. POSTGRESQL QUERY ANALYSIS (pg_stat_statements)")
 
     try:
-        print("🔍 Analyzing query performance...")
-        print()
+        logger.info("Analyzing query performance")
 
         # Get slow queries
-        print("📉 Slowest Queries:")
+        logger.info("Slowest Queries")
         slow_queries = get_slow_queries(5)
         if slow_queries:
             for i, q in enumerate(slow_queries, 1):
-                print(
-                    f"\n{i}. Mean Time: {q['mean_time_ms']:.2f}ms | Calls: {q['calls']:,}"
+                logger.info(
+                    "Slow query",
+                    extra={
+                        "context": {
+                            "rank": i,
+                            "mean_time_ms": round(q["mean_time_ms"], 2),
+                            "calls": q["calls"],
+                            "query": q["query"],
+                        }
+                    },
                 )
-                print(f"   Query: {q['query']}")
         else:
-            print("   No queries found (may need to reset stats or execute queries)")
+            logger.info("No queries found (may need to reset stats or execute queries)")
 
         # Get frequent queries
-        print("\n\n📈 Most Frequent Queries:")
+        logger.info("Most Frequent Queries")
         frequent = get_most_frequent_queries(5)
         if frequent:
             for i, q in enumerate(frequent, 1):
-                print(
-                    f"\n{i}. Calls: {q['calls']:,} | Mean: {q['mean_time_ms']:.2f}ms | Cache Hit: {q['cache_hit_percent']:.1f}%"
+                logger.info(
+                    "Frequent query",
+                    extra={
+                        "context": {
+                            "rank": i,
+                            "calls": q["calls"],
+                            "mean_time_ms": round(q["mean_time_ms"], 2),
+                            "cache_hit_percent": round(q["cache_hit_percent"], 1),
+                            "query": q["query"],
+                        }
+                    },
                 )
-                print(f"   Query: {q['query']}")
         else:
-            print("   No queries found")
+            logger.info("No queries found")
 
         # Detect N+1
-        print("\n\n⚠️  Potential N+1 Patterns:")
+        logger.info("Potential N+1 Patterns")
         n_plus_one = detect_n_plus_one()
         if n_plus_one:
             for i, q in enumerate(n_plus_one, 1):
-                print(f"\n{i}. Calls: {q['calls']:,} | Mean: {q['mean_time_ms']:.2f}ms")
-                print(f"   Query: {q['query']}")
-                print(
-                    "   🚨 This pattern suggests N+1 queries - consider eager loading"
+                logger.warning(
+                    "Potential N+1 pattern",
+                    extra={
+                        "context": {
+                            "rank": i,
+                            "calls": q["calls"],
+                            "mean_time_ms": round(q["mean_time_ms"], 2),
+                            "query": q["query"],
+                        }
+                    },
                 )
         else:
-            print("   ✅ No obvious N+1 patterns detected")
+            logger.info("No obvious N+1 patterns detected")
 
     except Exception as e:
-        print(f"❌ Error accessing pg_stat_statements: {e}")
-        print("\nTo enable pg_stat_statements:")
-        print("1. Add to postgresql.conf:")
-        print("     shared_preload_libraries = 'pg_stat_statements'")
-        print("     pg_stat_statements.track = all")
-        print("2. Restart PostgreSQL")
-        print("3. Run: python -m app.core.pg_stats_setup --enable")
+        logger.error(
+            "Error accessing pg_stat_statements",
+            extra={"context": {"error": str(e)}},
+            exc_info=True,
+        )
+        logger.info(
+            "To enable pg_stat_statements",
+            extra={
+                "context": {
+                    "steps": [
+                        "Add to postgresql.conf:",
+                        "shared_preload_libraries = 'pg_stat_statements'",
+                        "pg_stat_statements.track = all",
+                        "Restart PostgreSQL",
+                        "Run: python -m app.core.pg_stats_setup --enable",
+                    ]
+                }
+            },
+        )
 
 
 def run_live_tests():
@@ -264,18 +314,17 @@ def run_live_tests():
 
     base_url = "http://127.0.0.1:5000"
 
-    print("⚠️  Note: Make sure the Flask app is running!")
-    print(f"   Starting server with: python backend/app/main.py")
-    print()
-
-    input("Press Enter when server is ready...")
+    logger.info(
+        "Note: Make sure the Flask app is running!",
+        extra={"context": {"start_cmd": "python backend/app/main.py"}},
+    )
 
     # Reset pg_stat_statements before testing
     try:
         reset_statistics()
-        print("✅ Reset pg_stat_statements\n")
+        logger.info("Reset pg_stat_statements")
     except:
-        print("⚠️  Could not reset pg_stat_statements\n")
+        logger.warning("Could not reset pg_stat_statements")
 
     # Test endpoints
     tests = [
@@ -295,32 +344,45 @@ def run_live_tests():
         time.sleep(0.5)  # Small delay between requests
 
     # Summary
-    print("\n\n📊 Test Summary:")
-    successful = sum(1 for r in results if r["success"])
-    print(f"   Total Tests: {len(results)}")
-    print(f"   Successful: {successful}")
-    print(f"   Failed: {len(results) - successful}")
-    print(
-        f"   Avg Response Time: {sum(r['elapsed_ms'] for r in results) / len(results):.2f}ms"
+    logger.info(
+        "Test Summary",
+        extra={
+            "context": {
+                "total": len(results),
+                "successful": sum(1 for r in results if r["success"]),
+                "failed": len(results) - sum(1 for r in results) if results else 0,
+                "avg_response_ms": (
+                    round(sum(r["elapsed_ms"] for r in results) / len(results), 2)
+                    if results
+                    else 0
+                ),
+            }
+        },
     )
 
     # Analyze queries after tests
-    print("\n\n🔍 Query Analysis After Tests:")
+    logger.info("Query Analysis After Tests")
     demonstrate_pg_stats()
 
 
 def main():
     """Main demonstration flow."""
     print_section("RUNTIME MONITORING DEMONSTRATION")
-
-    print("This script demonstrates the monitoring capabilities:")
-    print("✓ Structured logging with JSON format")
-    print("✓ SQLAlchemy query timing and logging")
-    print("✓ Flask request/response tracking")
-    print("✓ pg_stat_statements query analysis")
-    print("✓ N+1 query pattern detection")
-    print("✓ Performance metrics capture")
-    print()
+    logger.info(
+        "This script demonstrates the monitoring capabilities",
+        extra={
+            "context": {
+                "features": [
+                    "Structured logging with JSON format",
+                    "SQLAlchemy query timing and logging",
+                    "Flask request/response tracking",
+                    "pg_stat_statements query analysis",
+                    "N+1 query pattern detection",
+                    "Performance metrics capture",
+                ]
+            }
+        },
+    )
 
     try:
         # Run demonstrations
@@ -329,24 +391,28 @@ def main():
         demonstrate_request_tracking()
         demonstrate_pg_stats()
 
-        # Ask if user wants to run live tests
-        print("\n" + "=" * 100)
-        response = input("\nRun live endpoint tests? (y/n): ").strip().lower()
-
-        if response == "y":
-            run_live_tests()
-        else:
-            print("\n✅ Demonstration complete!")
-            print("\nTo see live logs:")
-            print("1. Start the app: python backend/app/main.py")
-            print("2. Check logs/app.log for JSON logs")
-            print("3. Check console for colored output")
-            print("4. Run: python -m app.core.pg_stats_setup --top-slow 10")
+        # Run live tests automatically to avoid interactive input
+        run_live_tests()
+        logger.info(
+            "Demonstration complete",
+            extra={
+                "context": {
+                    "next_steps": [
+                        "Start the app: python backend/app/main.py",
+                        "Check logs/app.log for JSON logs",
+                        "Check console for colored output",
+                        "Run: python -m app.core.pg_stats_setup --top-slow 10",
+                    ]
+                }
+            },
+        )
 
     except KeyboardInterrupt:
-        print("\n\n⚠️  Demonstration interrupted")
+        logger.warning("Demonstration interrupted")
     except Exception as e:
-        print(f"\n❌ Error: {e}")
+        logger.error(
+            "Demonstration error", extra={"context": {"error": str(e)}}, exc_info=True
+        )
         raise
 
 

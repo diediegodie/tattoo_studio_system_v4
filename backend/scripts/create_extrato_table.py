@@ -17,17 +17,29 @@ import sys
 backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, backend_dir)
 
+from app.core.logging_config import get_logger
+
 # Import all models to register them with Base
 import app.db.base
 from app.db.session import Base, engine
 
+logger = get_logger(__name__)
+
 
 def main():
-    print(
-        "Creating tables (this will create any missing tables, including 'extratos')..."
+    logger.info(
+        "Creating tables",
+        extra={
+            "context": {
+                "note": "This will create any missing tables, including 'extratos'"
+            }
+        },
     )
     Base.metadata.create_all(bind=engine)
-    print("Done. Tables created/updated.")
+    logger.info(
+        "Tables created/updated",
+        extra={"context": {"action": "create_all", "status": "done"}},
+    )
 
 
 if __name__ == "__main__":

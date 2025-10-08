@@ -6,18 +6,14 @@ and correctness of indexes created by add_indexes.py. It performs read-only
 operations and generates a validation report.
 """
 
-import logging
+from app.core.logging_config import get_logger
 import os
 from datetime import datetime
 
 from app.db.session import get_engine
 from sqlalchemy import text
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # Expected indexes from add_indexes.py
 EXPECTED_INDEXES = {
@@ -275,9 +271,9 @@ def main():
             logger.error("Validation failed - no results returned")
             return
 
-        # Generate and display report
+        # Generate and log report
         report = generate_report(validation_results)
-        print("\n" + report)
+        logger.info("Index validation report", extra={"context": {"report": report}})
 
         # Save report to file
         save_report_to_file(report)

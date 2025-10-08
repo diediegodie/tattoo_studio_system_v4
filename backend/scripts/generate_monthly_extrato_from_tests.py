@@ -21,11 +21,15 @@ Requirements:
 
 import argparse
 import json
+import logging
 from datetime import datetime, timedelta
 
+from app.core.logging_config import get_logger
 from app.db.base import Client, Comissao, Extrato, Pagamento, Sessao, User
 from app.db.session import SessionLocal
 from sqlalchemy.orm import joinedload
+
+logger = get_logger(__name__)
 
 
 def get_previous_month():
@@ -41,12 +45,16 @@ def check_existing_extrato(db, mes, ano, force):
     existing = db.query(Extrato).filter(Extrato.mes == mes, Extrato.ano == ano).first()
     if existing:
         if not force:
-            print(
-                f"ERROR: Extrato for {mes}/{ano} already exists. Use --force to overwrite."
+            logger.error(
+                "Extrato already exists",
+                extra={"context": {"mes": mes, "ano": ano, "action": "abort"}},
             )
             return False
         else:
-            print(f"WARNING: Overwriting existing extrato for {mes}/{ano}.")
+            logger.warning(
+                "Overwriting existing extrato",
+                extra={"context": {"mes": mes, "ano": ano}},
+            )
             db.delete(existing)
             db.commit()
     return True
@@ -205,7 +213,7 @@ def main():
     else:
         mes, ano = get_previous_month()
 
-    print(f"Generating extrato for {mes}/{ano}...")
+    logger.info("Generating extrato", extra={"context": {"mes": mes, "ano": ano}})
 
     db = SessionLocal()
     try:
@@ -215,8 +223,15 @@ def main():
 
         # Query data
         pagamentos, sessoes, comissoes = query_data(db, mes, ano)
-        print(
-            f"Found {len(pagamentos)} pagamentos, {len(sessoes)} sessoes, {len(comissoes)} comissoes."
+        logger.info(
+            "Data queried",
+            extra={
+                "context": {
+                    "pagamentos": len(pagamentos),
+                    "sessoes": len(sessoes),
+                    "comissoes": len(comissoes),
+                }
+            },
         )
 
         # Serialize
@@ -239,7 +254,10 @@ def main():
         db.add(extrato)
         db.commit()
 
-        print("Extrato created successfully.")
+        logger.info(
+            "Extrato created successfully",
+            extra={"context": {"mes": mes, "ano": ano}},
+        )
 
         # Delete original records
         for p in pagamentos:
@@ -250,13 +268,24 @@ def main():
             db.delete(c)
         db.commit()
 
-        print(
-            f"Deleted {len(pagamentos)} pagamentos, {len(sessoes)} sessoes, {len(comissoes)} comissoes."
+        logger.info(
+            "Original records deleted",
+            extra={
+                "context": {
+                    "pagamentos": len(pagamentos),
+                    "sessoes": len(sessoes),
+                    "comissoes": len(comissoes),
+                }
+            },
         )
 
     except Exception as e:
         db.rollback()
-        print(f"ERROR: {str(e)}")
+        logger.error(
+            "Extrato generation failed",
+            extra={"context": {"error": str(e), "mes": mes, "ano": ano}},
+            exc_info=True,
+        )
         raise
     finally:
         db.close()

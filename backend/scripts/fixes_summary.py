@@ -16,67 +16,157 @@ ISSUE RESOLVED:
 "Google Calendar events not appearing in app after successful OAuth authorization"
 """
 
-print("🔧 GOOGLE CALENDAR OAUTH FIXES - VERIFICATION SUMMARY")
-print("=" * 70)
+from app.core.logging_config import get_logger
 
-print("\n📋 FIXES APPLIED:")
+logger = get_logger(__name__)
 
-print("\n1. ✅ OAuth Token Storage Fix")
-print("   File: backend/app/services/oauth_token_service.py")
-print("   Issue: Constraint violation preventing token storage")
-print("   Fix: Changed query from (user_id, provider) to (provider_user_id, provider)")
+logger.info(
+    "GOOGLE CALENDAR OAUTH FIXES - VERIFICATION SUMMARY",
+    extra={"context": {"delimiter": "=" * 70}},
+)
 
-print("\n2. ✅ Token Validation Exception Fix")
-print("   File: backend/app/repositories/google_calendar_repo.py")
-print("   Issue: ExpiredAccessTokenError caught by generic exception handler")
-print("   Fix: Added specific exception re-raising for ExpiredAccessTokenError")
+logger.info("FIXES APPLIED")
 
-print("\n3. ✅ Service Layer Token Refresh Fix")
-print("   File: backend/app/services/google_calendar_service.py")
-print("   Issue: Expired token detection not triggering refresh properly")
-print("   Fix: Improved exception handling to trigger token refresh flow")
+logger.info(
+    "OAuth Token Storage Fix",
+    extra={
+        "context": {
+            "file": "backend/app/services/oauth_token_service.py",
+            "issue": "Constraint violation preventing token storage",
+            "fix": "Changed query from (user_id, provider) to (provider_user_id, provider)",
+        }
+    },
+)
 
-print("\n4. ✅ OAuth Configuration Fix")
-print("   File: backend/app/main.py")
-print("   Issue: No refresh tokens provided by Google OAuth")
-print("   Fix: Added offline=True and reprompt_consent=True to OAuth blueprint")
+logger.info(
+    "Token Validation Exception Fix",
+    extra={
+        "context": {
+            "file": "backend/app/repositories/google_calendar_repo.py",
+            "issue": "ExpiredAccessTokenError caught by generic exception handler",
+            "fix": "Added specific exception re-raising for ExpiredAccessTokenError",
+        }
+    },
+)
 
-print("\n📊 VERIFICATION STATUS:")
+logger.info(
+    "Service Layer Token Refresh Fix",
+    extra={
+        "context": {
+            "file": "backend/app/services/google_calendar_service.py",
+            "issue": "Expired token detection not triggering refresh properly",
+            "fix": "Improved exception handling to trigger token refresh flow",
+        }
+    },
+)
 
-print("\n✅ OAuth Token Storage: FIXED")
-print("   - Tokens can now be stored without constraint violations")
-print("   - Verified with database query - user 13 token exists")
+logger.info(
+    "OAuth Configuration Fix",
+    extra={
+        "context": {
+            "file": "backend/app/main.py",
+            "issue": "No refresh tokens provided by Google OAuth",
+            "fix": "Added offline=True and reprompt_consent=True to OAuth blueprint",
+        }
+    },
+)
 
-print("\n✅ Token Validation Flow: FIXED")
-print("   - ExpiredAccessTokenError properly propagated to service layer")
-print("   - Token refresh mechanism triggered on expired tokens")
+logger.info("VERIFICATION STATUS")
 
-print("\n✅ Calendar Service Logic: FIXED")
-print("   - Service correctly handles token expiration and refresh")
-print("   - Comprehensive debug logging added for troubleshooting")
+logger.info(
+    "OAuth Token Storage: FIXED",
+    extra={
+        "context": {
+            "details": [
+                "Tokens can now be stored without constraint violations",
+                "Verified with database query - user 13 token exists",
+            ]
+        }
+    },
+)
 
-print("\n✅ OAuth Configuration: FIXED")
-print("   - Future OAuth flows will now provide refresh tokens")
-print("   - offline=True ensures Google provides long-term access")
+logger.info(
+    "Token Validation Flow: FIXED",
+    extra={
+        "context": {
+            "details": [
+                "ExpiredAccessTokenError properly propagated to service layer",
+                "Token refresh mechanism triggered on expired tokens",
+            ]
+        }
+    },
+)
 
-print("\n🚀 NEXT STEPS FOR TESTING:")
-print("\n1. Restart the application to load new OAuth configuration")
-print("2. User must re-authorize Google Calendar access to get refresh token")
-print("3. New authorization will provide both access and refresh tokens")
-print("4. Calendar sync will work with automatic token refresh")
+logger.info(
+    "Calendar Service Logic: FIXED",
+    extra={
+        "context": {
+            "details": [
+                "Service correctly handles token expiration and refresh",
+                "Comprehensive debug logging added for troubleshooting",
+            ]
+        }
+    },
+)
 
-print("\n⚠️  NETWORK ISSUE FOUND:")
-print("   Current container cannot reach googleapis.com due to network config")
-print("   This prevents real API testing but logic fixes are verified")
+logger.info(
+    "OAuth Configuration: FIXED",
+    extra={
+        "context": {
+            "details": [
+                "Future OAuth flows will now provide refresh tokens",
+                "offline=True ensures Google provides long-term access",
+            ]
+        }
+    },
+)
 
-print("\n🎯 RESOLUTION SUMMARY:")
-print("   The core issue 'Google Calendar events not appearing after OAuth'")
-print("   has been systematically identified and fixed at multiple levels:")
-print("   - Database layer: Token storage fixed")
-print("   - API layer: Exception handling fixed")
-print("   - Service layer: Refresh logic improved")
-print("   - OAuth layer: Refresh token acquisition fixed")
+logger.info(
+    "NEXT STEPS FOR TESTING",
+    extra={
+        "context": {
+            "steps": [
+                "Restart the application to load new OAuth configuration",
+                "User must re-authorize Google Calendar access to get refresh token",
+                "New authorization will provide both access and refresh tokens",
+                "Calendar sync will work with automatic token refresh",
+            ]
+        }
+    },
+)
 
-print("\n" + "=" * 70)
-print("✅ ALL GOOGLE CALENDAR OAUTH FIXES SUCCESSFULLY APPLIED")
-print("🔄 Application ready for testing with fresh OAuth authorization")
+logger.warning(
+    "NETWORK ISSUE FOUND",
+    extra={
+        "context": {
+            "details": [
+                "Current container cannot reach googleapis.com due to network config",
+                "This prevents real API testing but logic fixes are verified",
+            ]
+        }
+    },
+)
+
+logger.info(
+    "RESOLUTION SUMMARY",
+    extra={
+        "context": {
+            "details": [
+                "The core issue 'Google Calendar events not appearing after OAuth' has been systematically identified and fixed",
+                "Database layer: Token storage fixed",
+                "API layer: Exception handling fixed",
+                "Service layer: Refresh logic improved",
+                "OAuth layer: Refresh token acquisition fixed",
+            ]
+        }
+    },
+)
+
+logger.info(
+    "ALL GOOGLE CALENDAR OAUTH FIXES SUCCESSFULLY APPLIED",
+    extra={
+        "context": {
+            "next": "Application ready for testing with fresh OAuth authorization"
+        }
+    },
+)

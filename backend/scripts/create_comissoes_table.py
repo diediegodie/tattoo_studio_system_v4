@@ -5,12 +5,18 @@ and calls `Base.metadata.create_all()` to create any missing tables.
 """
 
 from app.db.session import create_tables
+from app.core.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 
 def run():
-    print("Running migration: create comissoes table and any missing tables...")
+    logger.info(
+        "Running migration",
+        extra={"context": {"tables": ["comissoes"], "action": "create_missing"}},
+    )
     create_tables()
-    print("Migration finished.")
+    logger.info("Migration finished")
 
 
 if __name__ == "__main__":

@@ -6,6 +6,7 @@ Run this to ensure the backup system works correctly.
 import os
 import sys
 from datetime import datetime
+from app.core.logging_config import get_logger
 
 # Add the app directory to the Python path
 sys.path.insert(
@@ -14,10 +15,12 @@ sys.path.insert(
 
 from app.services.backup_service import BackupService
 
+logger = get_logger(__name__)
+
 
 def test_backup_service():
     """Test the backup service functionality."""
-    print("Testing Backup Service...")
+    logger.info("Testing Backup Service")
 
     # Initialize service
     backup_service = BackupService(backup_base_dir="test_backups")
@@ -27,34 +30,45 @@ def test_backup_service():
     year = now.year
     month = now.month
 
-    print(f"Creating backup for {month:02d}/{year}...")
+    logger.info("Creating backup", extra={"context": {"month": month, "year": year}})
 
     # Create backup
     success, message = backup_service.create_backup(year=year, month=month)
 
     if success:
-        print(f"✓ Backup created successfully: {message}")
+        logger.info(
+            "Backup created successfully", extra={"context": {"message": message}}
+        )
 
         # Verify backup exists
         exists = backup_service.verify_backup_exists(year, month)
-        print(f"✓ Backup verification: {'PASS' if exists else 'FAIL'}")
+        logger.info(
+            "Backup verification",
+            extra={"context": {"status": "PASS" if exists else "FAIL"}},
+        )
 
         # Get backup info
         info = backup_service.get_backup_info(year, month)
-        print("✓ Backup info:")
-        print(f"  - File: {info['file_path']}")
-        print(f"  - Size: {info['file_size']} bytes")
-        print(f"  - Records: {info['record_count']}")
+        logger.info(
+            "Backup info",
+            extra={
+                "context": {
+                    "file": info.get("file_path"),
+                    "size": info.get("file_size"),
+                    "records": info.get("record_count"),
+                }
+            },
+        )
 
         return True
     else:
-        print(f"✗ Backup failed: {message}")
+        logger.error("Backup failed", extra={"context": {"message": message}})
         return False
 
 
 def test_csv_readability():
     """Test that the CSV file is readable and properly formatted."""
-    print("\nTesting CSV Readability...")
+    logger.info("Testing CSV Readability")
 
     try:
         backup_service = BackupService(backup_base_dir="test_backups")
@@ -63,7 +77,7 @@ def test_csv_readability():
         info = backup_service.get_backup_info(now.year, now.month)
 
         if not info["exists"]:
-            print("✗ No backup file found to test")
+            logger.error("No backup file found to test")
             return False
 
         file_path = info["file_path"]
@@ -77,33 +91,45 @@ def test_csv_readability():
             rows = list(reader)
 
         if headers is None:
-            print("✗ No headers found in CSV file")
+            logger.error("No headers found in CSV file")
             return False
 
-        print("✓ CSV file is readable")
-        print(f"  - Headers: {len(headers)}")
-        print(f"  - Rows: {len(rows)}")
-        print(f"  - Sample headers: {headers[:5]}")
+        logger.info(
+            "CSV file is readable",
+            extra={
+                "context": {
+                    "headers": len(headers),
+                    "rows": len(rows),
+                    "sample_headers": headers[:5],
+                }
+            },
+        )
 
         # Check for required columns
         required_cols = ["type", "id", "data"]
         missing_cols = [col for col in required_cols if col not in headers]
 
         if missing_cols:
-            print(f"✗ Missing required columns: {missing_cols}")
+            logger.error(
+                "Missing required columns", extra={"context": {"missing": missing_cols}}
+            )
             return False
 
-        print("✓ All required columns present")
+        logger.info("All required columns present")
         return True
 
     except Exception as e:
-        print(f"✗ CSV readability test failed: {str(e)}")
+        logger.error(
+            "CSV readability test failed",
+            extra={"context": {"error": str(e)}},
+            exc_info=True,
+        )
         return False
 
 
 def cleanup_test_files():
     """Clean up test backup files."""
-    print("\nCleaning up test files...")
+    logger.info("Cleaning up test files")
 
     import shutil
 
@@ -111,37 +137,41 @@ def cleanup_test_files():
 
     if os.path.exists(test_dir):
         shutil.rmtree(test_dir)
-        print("✓ Test backup directory removed")
+        logger.info("Test backup directory removed")
     else:
-        print("✓ No test directory to clean")
+        logger.info("No test directory to clean")
 
 
 def main():
     """Run all backup tests."""
-    print("=" * 50)
-    print("BACKUP SYSTEM TEST SUITE")
-    print("=" * 50)
+    logger.info("BACKUP SYSTEM TEST SUITE", extra={"context": {"delimiter": "=" * 50}})
 
     try:
         # Run tests
         backup_test = test_backup_service()
         csv_test = test_csv_readability()
 
-        print("\n" + "=" * 50)
-        print("TEST RESULTS")
-        print("=" * 50)
-        print(f"Backup Creation: {'PASS' if backup_test else 'FAIL'}")
-        print(f"CSV Readability: {'PASS' if csv_test else 'FAIL'}")
+        logger.info("TEST RESULTS", extra={"context": {"delimiter": "=" * 50}})
+        logger.info(
+            "Backup Creation",
+            extra={"context": {"status": "PASS" if backup_test else "FAIL"}},
+        )
+        logger.info(
+            "CSV Readability",
+            extra={"context": {"status": "PASS" if csv_test else "FAIL"}},
+        )
 
         if backup_test and csv_test:
-            print("\n🎉 ALL TESTS PASSED!")
+            logger.info("ALL TESTS PASSED")
             return 0
         else:
-            print("\n❌ SOME TESTS FAILED!")
+            logger.error("SOME TESTS FAILED")
             return 1
 
     except Exception as e:
-        print(f"\n💥 TEST SUITE CRASHED: {str(e)}")
+        logger.error(
+            "TEST SUITE CRASHED", extra={"context": {"error": str(e)}}, exc_info=True
+        )
         return 1
 
     finally:

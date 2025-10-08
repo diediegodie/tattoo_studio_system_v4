@@ -9,78 +9,98 @@ import sys
 # Add the backend directory to the path for imports
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
-import logging
+from app.core.logging_config import get_logger
 
-from app.db.session import SessionLocal
+from datetime import datetime
 from app.repositories.google_calendar_repo import GoogleCalendarRepository
 from app.services.google_calendar_service import GoogleCalendarService
 from app.services.oauth_token_service import OAuthTokenService
 
-# Configure logging to see our debug messages
-logging.basicConfig(level=logging.DEBUG)
+logger = get_logger(__name__)
 
 
 def test_oauth_token_retrieval():
     """Test if we can retrieve the OAuth token for user 13"""
-    print("=== Testing OAuth Token Retrieval ===")
+    logger.info("Testing OAuth Token Retrieval")
 
-    db_session = SessionLocal()
-    try:
-        oauth_service = OAuthTokenService(db_session)
+    oauth_service = OAuthTokenService()
 
-        # Test retrieving token for user 13 who has Google OAuth
-        token = oauth_service.get_user_oauth_token(13, "google")
+    # Test retrieving token for user 13 who has Google OAuth
+    [REDACTED_ACCESS_TOKEN]"13")
 
-        if token:
-            print(f"✅ OAuth token found for user 13")
-            print(f"   Provider: {token.provider}")
-            print(f"   Provider User ID: {token.provider_user_id}")
-            print(
-                f"   Token expires at: {getattr(token, 'expires_at', 'No expiration info')}"
-            )
-            return True
-        else:
-            print("❌ No OAuth token found for user 13")
-            return False
-    finally:
-        db_session.close()
+    if [REDACTED_ACCESS_TOKEN]
+            "OAuth access token available",
+            extra={
+                "context": {
+                    "user_id": 13,
+                    "token_preview": (
+                        access_token[:12] + "..."
+                        if len(access_token) > 12
+                        else access_token
+                    ),
+                }
+            },
+        )
+        return True
+    else:
+        logger.error("No OAuth token found", extra={"context": {"user_id": 13}})
+        return False
 
 
 def test_calendar_service():
     """Test the Google Calendar Service with our debug logging"""
-    print("\n=== Testing Google Calendar Service ===")
+    logger.info("Testing Google Calendar Service")
 
-    db_session = SessionLocal()
     try:
         # Initialize services
-        oauth_service = OAuthTokenService(db_session)
         calendar_repo = GoogleCalendarRepository()
-        calendar_service = GoogleCalendarService(calendar_repo, oauth_service)
+        calendar_service = GoogleCalendarService(calendar_repo)
 
         try:
             # Test getting events for user 13
-            events = calendar_service.get_user_events(13, "2025-09-01", "2025-09-30")
+            events = calendar_service.get_user_events(
+                "13",
+                datetime(2025, 9, 1),
+                datetime(2025, 9, 30),
+            )
 
-            print(f"✅ Calendar service returned {len(events) if events else 0} events")
+            logger.info(
+                "Calendar service returned events",
+                extra={"context": {"count": len(events) if events else 0}},
+            )
             if events:
-                print("   Sample events:")
-                for i, event in enumerate(events[:3]):  # Show first 3 events
-                    print(
-                        f"   {i+1}. {event.get('summary', 'No title')} - {event.get('start', {}).get('dateTime', 'No time')}"
+                for i, event in enumerate(events[:3]):
+                    start_dt = getattr(event, "start_time", None)
+                    start_str = start_dt.isoformat() if start_dt is not None else None
+                    logger.info(
+                        "Sample event",
+                        extra={
+                            "context": {
+                                "index": i + 1,
+                                "summary": getattr(event, "title", None),
+                                "start": start_str,
+                            }
+                        },
                     )
 
             return True
 
         except Exception as e:
-            print(f"❌ Calendar service failed: {str(e)}")
+            logger.error(
+                "Calendar service failed",
+                extra={"context": {"error": str(e)}},
+                exc_info=True,
+            )
             return False
     finally:
-        db_session.close()
+        pass
 
 
 if __name__ == "__main__":
-    print("🔍 Debugging Google Calendar OAuth and Sync Issues")
-    print("=" * 60)
+    logger.info(
+        "Debugging Google Calendar OAuth and Sync Issues",
+        extra={"context": {"delimiter": "=" * 60}},
+    )
 
     # Test 1: OAuth token retrieval
     token_works = test_oauth_token_retrieval()
@@ -89,7 +109,6 @@ if __name__ == "__main__":
     if token_works:
         calendar_works = test_calendar_service()
     else:
-        print("\n⚠️  Skipping calendar service test - no OAuth token")
+        logger.warning("Skipping calendar service test - no OAuth token")
 
-    print("\n" + "=" * 60)
-    print("🏁 Debug test completed")
+    logger.info("Debug test completed")

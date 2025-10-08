@@ -12,15 +12,26 @@ The script reads DATABASE_URL from the environment (same as the app).
 
 # Import all models to register them with Base
 import app.db.base
+from app.core.logging_config import get_logger
 from app.db.session import Base, engine
+
+logger = get_logger(__name__)
 
 
 def main():
-    print(
-        "Creating tables (this will create any missing tables, including 'extratos')..."
+    logger.info(
+        "Creating tables",
+        extra={
+            "context": {
+                "note": "This will create any missing tables, including 'extratos'"
+            }
+        },
     )
     Base.metadata.create_all(bind=engine)
-    print("Done. Tables created/updated.")
+    logger.info(
+        "Tables created/updated",
+        extra={"context": {"action": "create_all", "status": "done"}},
+    )
 
 
 if __name__ == "__main__":

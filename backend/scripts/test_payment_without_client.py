@@ -14,11 +14,16 @@ from datetime import date
 backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, backend_dir)
 
+from app.core.logging_config import get_logger
+
+logger = get_logger(__name__)
+
 
 def test_payment_registration_without_client():
     """Test payment registration via HTTP POST without client."""
 
     # Test data for payment without client
+    db = None
     payment_data = {
         "data": str(date.today()),
         "valor": "150.00",
@@ -30,7 +35,7 @@ def test_payment_registration_without_client():
 
     try:
         # Start the Flask app in test mode or make request to running server
-        print("Testing payment registration without client...")
+        logger.info("Testing payment registration without client...")
 
         # This would need a running Flask app or test client
         # For now, let's simulate the controller logic
@@ -44,17 +49,18 @@ def test_payment_registration_without_client():
         # Check if test user exists, create if not
         test_user = db.query(User).filter_by(name="Test Artist").first()
         if not test_user:
-            test_user = User(
-                name="Test Artist", email="test@example.com", role="artist"
-            )
+            test_user = User()
+            test_user.name = "Test Artist"
+            test_user.email = "test@example.com"
+            test_user.role = "artist"
             db.add(test_user)
             db.commit()
 
         # Update artista_id in test data
         payment_data["artista_id"] = str(test_user.id)
 
-        print(f"Test data: {payment_data}")
-        print("✅ Payment data prepared with empty cliente_id")
+        logger.info("Prepared payment data", extra={"context": payment_data})
+        logger.info("Payment data prepared with empty cliente_id")
 
         # Verify that empty string gets converted to None
         cliente_id_raw = payment_data.get("cliente_id")
@@ -63,9 +69,9 @@ def test_payment_registration_without_client():
         )
 
         if cliente_id is None:
-            print("✅ Empty string correctly converted to None")
+            logger.info("Empty string correctly converted to None")
         else:
-            print(f"❌ Expected None, got: {cliente_id}")
+            logger.error("Expected None", extra={"context": {"got": cliente_id}})
             return False
 
         # Create payment directly to test
@@ -81,23 +87,34 @@ def test_payment_registration_without_client():
         db.add(payment)
         db.commit()
 
-        print("✅ Successfully created payment without client")
-        print(f"   Payment ID: {payment.id}")
-        print(f"   Cliente ID: {payment.cliente_id} (None = no client)")
-        print(f"   Artist ID: {payment.artista_id}")
-        print(f"   Value: {payment.valor}")
+        logger.info(
+            "Successfully created payment without client",
+            extra={
+                "context": {
+                    "payment_id": payment.id,
+                    "cliente_id": payment.cliente_id,
+                    "artista_id": payment.artista_id,
+                    "valor": str(payment.valor),
+                }
+            },
+        )
 
         return True
 
     except Exception as e:
-        print(f"❌ Error: {e}")
+        logger.error(
+            "Error during test", extra={"context": {"error": str(e)}}, exc_info=True
+        )
         import traceback
 
         traceback.print_exc()
         return False
     finally:
-        if "db" in locals():
-            db.close()
+        try:
+            if "db" in locals() and db is not None:
+                db.close()
+        except Exception:
+            pass
 
 
 if __name__ == "__main__":
@@ -106,8 +123,9 @@ if __name__ == "__main__":
 
     success = test_payment_registration_without_client()
     if success:
-        print("\n🎉 Integration test PASSED!")
-        print("   Payments can be registered without selecting a client.")
+        logger.info(
+            "Integration test PASSED! Payments can be registered without selecting a client."
+        )
     else:
-        print("\n❌ Integration test FAILED!")
+        logger.error("Integration test FAILED!")
         sys.exit(1)

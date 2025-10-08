@@ -19,6 +19,9 @@ sys.path.insert(0, backend_dir)
 
 from app.db.session import engine
 from app.db.base import Base
+from app.core.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 
 def recreate_tables_with_nullable_cliente_id():
@@ -31,35 +34,45 @@ def recreate_tables_with_nullable_cliente_id():
             f"tattoo_studio_dev_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.db"
         )
         shutil.copy2(db_path, backup_path)
-        print(f"✅ Created backup: {backup_path}")
+        logger.info("Created backup", extra={"context": {"path": backup_path}})
+    else:
+        backup_path = None
+        logger.warning(
+            "Database file not found for backup", extra={"context": {"path": db_path}}
+        )
 
     try:
         # Drop all existing tables
         Base.metadata.drop_all(engine)
-        print("🗑️  Dropped all existing tables")
+        logger.info("Dropped all existing tables")
 
         # Create all tables with new schema
         Base.metadata.create_all(engine)
-        print("✅ Created all tables with new schema (nullable cliente_id)")
+        logger.info(
+            "Created all tables with new schema",
+            extra={"context": {"change": "cliente_id nullable"}},
+        )
 
-        print("🎉 Migration completed successfully!")
-        print("   WARNING: All data has been lost. This is only for development.")
+        logger.info("Migration completed successfully")
+        logger.warning("All data has been lost. Development-only operation.")
 
         return True
 
     except Exception as e:
-        print(f"❌ Error during migration: {e}")
-        if os.path.exists(backup_path):
-            print(f"🔄 Backup available at: {backup_path}")
+        logger.error(
+            "Error during migration",
+            extra={"context": {"error": str(e)}},
+            exc_info=True,
+        )
+        if backup_path and os.path.exists(backup_path):
+            logger.info("Backup available", extra={"context": {"path": backup_path}})
         return False
 
 
 if __name__ == "__main__":
-    print("🚨 WARNING: This will DELETE ALL DATA in the database!")
-    print("Only use this for development environments.")
-
+    logger.warning("This will DELETE ALL DATA in the database! Development only.")
     response = input("Continue? (yes/no): ").lower().strip()
     if response == "yes":
         recreate_tables_with_nullable_cliente_id()
     else:
-        print("Migration cancelled.")
+        logger.info("Migration cancelled by user")

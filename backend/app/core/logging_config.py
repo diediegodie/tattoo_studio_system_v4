@@ -108,15 +108,13 @@ def setup_logging(
 
     # Create logs directory (with fallback if creation fails)
     log_dir = Path(__file__).parent.parent.parent / "logs"
+    early_warnings = []
     try:
         log_dir.mkdir(exist_ok=True)
     except Exception as e:
-        # If we can't create logs directory, log to console only
-        # Use stderr for early initialization warnings
-        print(
-            f"WARNING: Failed to create logs directory: {e}. "
-            "Logging will only go to console.",
-            file=sys.stderr,
+        # Defer warning until console handler is configured to avoid print()
+        early_warnings.append(
+            f"Failed to create logs directory: {e}. Logging will only go to console."
         )
 
     # Root logger configuration
@@ -142,6 +140,10 @@ def setup_logging(
 
     console_handler.setFormatter(console_formatter)
     root_logger.addHandler(console_handler)
+
+    # Flush any early warnings now that a handler exists
+    for msg in early_warnings:
+        root_logger.warning(msg, extra={"context": {"component": "logging_setup"}})
 
     # File handler with rotation (with fallback on failure)
     if log_to_file:

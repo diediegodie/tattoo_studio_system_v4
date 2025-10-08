@@ -16,7 +16,6 @@ Requirements:
 """
 
 import argparse
-import logging
 import sys
 from datetime import datetime
 
@@ -25,20 +24,10 @@ sys.path.insert(
     0, "/home/diego/documentos/github/projetos/tattoo_studio_system_v4/backend"
 )
 
-from app.services.extrato_atomic import \
-    check_and_generate_extrato_with_transaction
+from app.services.extrato_atomic import check_and_generate_extrato_with_transaction
+from app.core.logging_config import get_logger
 
-# Set up logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.StreamHandler(sys.stdout),
-        logging.FileHandler("logs/atomic_extrato.log", mode="a"),
-    ],
-)
-
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def main():
@@ -55,32 +44,54 @@ def main():
     args = parser.parse_args()
 
     try:
-        logger.info("Starting atomic extrato generation script")
+        logger.info(
+            "Starting atomic extrato generation script",
+            extra={
+                "context": {
+                    "args": {
+                        "year": args.year,
+                        "month": args.month,
+                        "force": args.force,
+                    }
+                }
+            },
+        )
 
         if args.year and args.month:
             logger.info(
-                f"Running atomic extrato generation for specific month: {args.month}/{args.year}"
+                "Running atomic extrato generation for specific month",
+                extra={
+                    "context": {
+                        "month": args.month,
+                        "year": args.year,
+                        "force": args.force,
+                    }
+                },
             )
             success = check_and_generate_extrato_with_transaction(
                 mes=args.month, ano=args.year, force=args.force
             )
         else:
-            logger.info("Running monthly atomic extrato generation")
+            logger.info(
+                "Running monthly atomic extrato generation",
+                extra={"context": {"force": args.force}},
+            )
             success = check_and_generate_extrato_with_transaction(force=args.force)
 
         if success:
             logger.info("Atomic extrato generation completed successfully")
-            print("SUCCESS: Atomic extrato generation completed successfully")
             return 0
         else:
             logger.error("Atomic extrato generation failed")
-            print("ERROR: Atomic extrato generation failed")
             return 1
 
     except Exception as e:
         error_msg = f"Unexpected error in atomic extrato generation: {str(e)}"
-        logger.error(error_msg)
-        print(f"ERROR: {error_msg}")
+        logger.error(
+            "Atomic extrato generation crashed",
+            extra={"context": {"error": error_msg}},
+            exc_info=True,
+        )
         return 1
 
 

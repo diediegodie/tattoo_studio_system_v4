@@ -20,11 +20,14 @@ backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, backend_dir)
 
 from sqlalchemy import text, create_engine
+from app.core.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 
 def check_database_connection(database_url):
     """Verify database connection and check current state."""
-    print("🔍 Checking database connection...")
+    logger.info("Checking database connection")
 
     try:
         engine = create_engine(database_url)
@@ -33,9 +36,11 @@ def check_database_connection(database_url):
             version_result = conn.execute(text("SELECT version()")).fetchone()
             if version_result:
                 version = version_result[0]
-                print(f"✅ Connected to: {version[:50]}...")
+                logger.info(
+                    "Connected", extra={"context": {"db_version": version[:50] + "..."}}
+                )
             else:
-                print("❌ Could not get database version")
+                logger.error("Could not get database version")
                 return False
 
             # Check pagamentos table exists
@@ -51,13 +56,13 @@ def check_database_connection(database_url):
             ).fetchone()
 
             if not table_result:
-                print("❌ Could not check table existence")
+                logger.error("Could not check table existence")
                 return False
 
             table_exists = table_result[0]
 
             if not table_exists:
-                print("❌ pagamentos table not found")
+                logger.error("pagamentos table not found")
                 return False
 
             # Check current schema
@@ -72,17 +77,18 @@ def check_database_connection(database_url):
             ).fetchone()
 
             if not column_info:
-                print("❌ cliente_id column not found in pagamentos table")
+                logger.error("cliente_id column not found in pagamentos table")
                 return False
 
-            print(
-                f"📊 Current cliente_id schema: {column_info[2]}, nullable: {column_info[1]}"
+            logger.info(
+                "Current cliente_id schema",
+                extra={"context": {"type": column_info[2], "nullable": column_info[1]}},
             )
 
             if column_info[1] == "YES":
-                print("ℹ️  cliente_id is already nullable - migration not needed")
+                logger.info("cliente_id already nullable - migration not needed")
             else:
-                print("📝 cliente_id is NOT NULL - migration will be needed")
+                logger.warning("cliente_id is NOT NULL - migration will be needed")
 
             # Count current payments
             count_result = conn.execute(
@@ -90,9 +96,11 @@ def check_database_connection(database_url):
             ).fetchone()
             if count_result:
                 payment_count = count_result[0]
-                print(f"📈 Current payment count: {payment_count}")
+                logger.info(
+                    "Current payment count", extra={"context": {"count": payment_count}}
+                )
             else:
-                print("❌ Could not count payments")
+                logger.error("Could not count payments")
                 return False
 
             # Count payments with clients
@@ -101,71 +109,91 @@ def check_database_connection(database_url):
             ).fetchone()
             if client_result:
                 with_client = client_result[0]
-                print(f"👥 Payments with clients: {with_client}")
+                logger.info(
+                    "Payments with clients", extra={"context": {"count": with_client}}
+                )
             else:
-                print("❌ Could not count payments with clients")
+                logger.error("Could not count payments with clients")
                 return False
 
             return True
 
     except Exception as e:
-        print(f"❌ Database connection failed: {e}")
+        logger.error(
+            "Database connection failed",
+            extra={"context": {"error": str(e)}},
+            exc_info=True,
+        )
         return False
 
 
 def check_backup_tools():
     """Verify pg_dump is available for backup creation."""
-    print("\n🛠️  Checking backup tools...")
+    logger.info("Checking backup tools")
 
     try:
         result = subprocess.run(
             ["pg_dump", "--version"], capture_output=True, text=True
         )
         if result.returncode == 0:
-            print(f"✅ pg_dump available: {result.stdout.strip()}")
+            logger.info(
+                "pg_dump available",
+                extra={"context": {"version": result.stdout.strip()}},
+            )
             return True
         else:
-            print("❌ pg_dump not working properly")
+            logger.error("pg_dump not working properly")
             return False
     except FileNotFoundError:
-        print("❌ pg_dump not found - install postgresql-client tools")
+        logger.error("pg_dump not found - install postgresql-client tools")
         return False
 
 
 def check_migration_scripts():
     """Verify migration scripts exist and are executable."""
-    print("\n📁 Checking migration scripts...")
+    logger.info("Checking migration scripts")
 
     scripts_dir = os.path.dirname(__file__)
 
     # Check production migration script
     prod_script = os.path.join(scripts_dir, "migrate_cliente_nullable_production.py")
     if os.path.exists(prod_script):
-        print(f"✅ Production migration script found: {prod_script}")
+        logger.info(
+            "Production migration script found",
+            extra={"context": {"path": prod_script}},
+        )
     else:
-        print(f"❌ Production migration script missing: {prod_script}")
+        logger.error(
+            "Production migration script missing",
+            extra={"context": {"path": prod_script}},
+        )
         return False
 
     # Check original migration script
     orig_script = os.path.join(scripts_dir, "migrate_cliente_id_nullable.py")
     if os.path.exists(orig_script):
-        print(f"✅ Original migration script found: {orig_script}")
+        logger.info(
+            "Original migration script found", extra={"context": {"path": orig_script}}
+        )
     else:
-        print(f"❌ Original migration script missing: {orig_script}")
+        logger.warning(
+            "Original migration script missing",
+            extra={"context": {"path": orig_script}},
+        )
 
     # Check migration guide
     guide = os.path.join(scripts_dir, "production_migration_guide.md")
     if os.path.exists(guide):
-        print(f"✅ Migration guide found: {guide}")
+        logger.info("Migration guide found", extra={"context": {"path": guide}})
     else:
-        print(f"❌ Migration guide missing: {guide}")
+        logger.warning("Migration guide missing", extra={"context": {"path": guide}})
 
     return True
 
 
 def check_application_readiness():
     """Verify application code is ready for optional clients."""
-    print("\n🖥️  Checking application readiness...")
+    logger.info("Checking application readiness")
 
     # Check if model is updated
     try:
@@ -183,16 +211,20 @@ def check_application_readiness():
                 hasattr(cliente_id_field, "nullable")
                 and cliente_id_field.nullable is True
             ):
-                print("✅ Pagamento model: cliente_id is nullable")
+                logger.info("Pagamento model: cliente_id is nullable")
             else:
-                print("❌ Pagamento model: cliente_id is still NOT NULL")
+                logger.error("Pagamento model: cliente_id is still NOT NULL")
                 return False
         else:
-            print("❌ cliente_id field not found in Pagamento model")
+            logger.error("cliente_id field not found in Pagamento model")
             return False
 
     except ImportError as e:
-        print(f"❌ Could not import Pagamento model: {e}")
+        logger.error(
+            "Could not import Pagamento model",
+            extra={"context": {"error": str(e)}},
+            exc_info=True,
+        )
         return False
 
     # Check if controller is updated
@@ -202,33 +234,45 @@ def check_application_readiness():
             backend_dir, "app", "controllers", "financeiro_controller.py"
         )
         if os.path.exists(controller_file):
-            print("✅ financeiro_controller.py exists")
+            logger.info("financeiro_controller.py exists")
         else:
-            print("❌ financeiro_controller.py not found")
+            logger.error("financeiro_controller.py not found")
             return False
     except Exception as e:
-        print(f"❌ Controller check failed: {e}")
+        logger.error(
+            "Controller check failed",
+            extra={"context": {"error": str(e)}},
+            exc_info=True,
+        )
         return False
 
     return True
 
 
 def main():
-    print("🔍 Production Migration Readiness Check")
-    print("=" * 50)
+    logger.info(
+        "Production Migration Readiness Check",
+        extra={"context": {"delimiter": "=" * 50}},
+    )
 
     # Get database URL
     database_url = os.environ.get("DATABASE_URL")
     if not database_url:
-        print("❌ DATABASE_URL environment variable not set")
-        print("   Export your production database URL first:")
-        print("   export [REDACTED_DATABASE_URL]
+        logger.error("DATABASE_URL environment variable not set")
+        logger.info(
+            "Export your production database URL first",
+            extra={
+                "context": {
+                    "example": "export [REDACTED_DATABASE_URL]
+                }
+            },
+        )
         return 1
 
     # Parse URL to hide password in output
     parsed = urlparse(database_url)
     safe_url = f"{parsed.scheme}://{parsed.username}@{parsed.hostname}:{parsed.port or 5432}/{parsed.path[1:]}"
-    print(f"🎯 Target database: {safe_url}")
+    logger.info("Target database", extra={"context": {"url": safe_url}})
 
     checks_passed = 0
     total_checks = 4
@@ -247,20 +291,30 @@ def main():
         checks_passed += 1
 
     # Summary
-    print("\n" + "=" * 50)
-    print(f"📊 Readiness Summary: {checks_passed}/{total_checks} checks passed")
+    logger.info(
+        "Readiness Summary",
+        extra={"context": {"passed": checks_passed, "total": total_checks}},
+    )
 
     if checks_passed == total_checks:
-        print("🎉 All checks passed! Ready for production migration.")
-        print("\nNext steps:")
-        print(
-            "1. Review the migration guide: backend/scripts/production_migration_guide.md"
+        logger.info("All checks passed! Ready for production migration.")
+        logger.info(
+            "Next steps",
+            extra={
+                "context": {
+                    "steps": [
+                        "Review the migration guide: backend/scripts/production_migration_guide.md",
+                        "Schedule maintenance window",
+                        "Run: python backend/scripts/migrate_cliente_nullable_production.py",
+                    ]
+                }
+            },
         )
-        print("2. Schedule maintenance window")
-        print("3. Run: python backend/scripts/migrate_cliente_nullable_production.py")
         return 0
     else:
-        print("❌ Some checks failed. Address issues before proceeding with migration.")
+        logger.error(
+            "Some checks failed. Address issues before proceeding with migration."
+        )
         return 1
 
 

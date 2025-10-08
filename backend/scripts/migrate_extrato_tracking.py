@@ -12,8 +12,11 @@ from sqlalchemy import create_engine, text
 # Add the backend directory to the path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+from app.core.logging_config import get_logger
 from app.db.base import Base
 from app.db.session import engine
+
+logger = get_logger(__name__)
 
 
 def create_extrato_run_log_table():
@@ -36,24 +39,24 @@ def create_extrato_run_log_table():
         with engine.connect() as conn:
             conn.execute(text(create_table_sql))
             conn.commit()
-            print("✅ ExtratoRunLog table created successfully!")
+            logger.info("ExtratoRunLog table created successfully!")
     except Exception as e:
-        print(f"❌ Error creating table: {e}")
+        logger.error(f"Error creating table: {e}")
         return False
 
     return True
 
 
 def main():
-    print("Starting database migration for ExtratoRunLog table...")
+    logger.info("Starting database migration for ExtratoRunLog table...")
 
     if create_extrato_run_log_table():
-        print("Migration completed successfully!")
-        print(
+        logger.info("Migration completed successfully!")
+        logger.info(
             "The extrato system now uses database-based tracking instead of file-based."
         )
     else:
-        print("Migration failed!")
+        logger.error("Migration failed!")
         sys.exit(1)
 
 

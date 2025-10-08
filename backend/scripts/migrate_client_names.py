@@ -20,21 +20,30 @@ from pathlib import Path
 backend_dir = Path(__file__).parent.parent
 sys.path.insert(0, str(backend_dir))
 
+from app.core.logging_config import get_logger
 from app.db.base import Client as DbClient
 from app.db.session import SessionLocal
 from app.utils.client_utils import normalize_display_name
 
+logger = get_logger(__name__)
+
 
 def migrate_client_names():
     """Migrate existing client names to normalized format."""
-    print("Starting client name normalization migration...")
+    logger.info(
+        "Starting client name normalization migration",
+        extra={"context": {"action": "migrate_client_names"}},
+    )
 
     session = SessionLocal()
 
     try:
         # Get all clients
         clients = session.query(DbClient).all()
-        print(f"Found {len(clients)} client records to process.")
+        logger.info(
+            "Client records to process",
+            extra={"context": {"count": len(clients)}},
+        )
 
         updated_count = 0
 
@@ -44,23 +53,38 @@ def migrate_client_names():
 
             # Always update to ensure consistent normalization
             if original_name != normalized_name or True:  # Force update all records
-                print(
-                    f"Updating client {client.id}: '{original_name}' -> '{normalized_name}'"
+                logger.info(
+                    "Updating client name",
+                    extra={
+                        "context": {
+                            "client_id": client.id,
+                            "original": original_name,
+                            "normalized": normalized_name,
+                        }
+                    },
                 )
                 client.name = normalized_name
                 updated_count += 1
             else:
-                print(f"Client {client.id} already normalized: '{original_name}'")
+                logger.info(
+                    "Client already normalized",
+                    extra={"context": {"client_id": client.id, "name": original_name}},
+                )
 
         # Commit all changes
         session.commit()
-        print(
-            f"Migration complete! Updated {updated_count} out of {len(clients)} client records."
+        logger.info(
+            "Migration complete",
+            extra={"context": {"updated": updated_count, "total": len(clients)}},
         )
 
     except Exception as e:
         session.rollback()
-        print(f"Error during migration: {e}")
+        logger.error(
+            "Error during migration",
+            extra={"context": {"error": str(e)}},
+            exc_info=True,
+        )
         raise
     finally:
         session.close()

@@ -8,11 +8,12 @@ from typing import Optional
 
 import click
 
+from app.core.logging_config import get_logger
 from app.main import create_app
 from app.db.base import User
 from app.db.session import SessionLocal
 
-logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
+logger = get_logger(__name__)
 
 # Create the Flask application once so commands can share configuration.
 app = create_app()

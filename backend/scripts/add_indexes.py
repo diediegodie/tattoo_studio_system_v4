@@ -11,14 +11,11 @@ The script is idempotent and safe to run multiple times.
 
 import logging
 
+from app.core.logging_config import get_logger
 from app.db.session import get_engine
 from sqlalchemy import text
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def create_index_if_not_exists(engine, index_name, table_name, column_name):

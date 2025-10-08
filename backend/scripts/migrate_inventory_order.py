@@ -9,6 +9,13 @@ import sqlite3
 import sys
 from pathlib import Path
 
+# Add the backend directory to the Python path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
+from app.core.logging_config import get_logger
+
+logger = get_logger(__name__)
+
 
 def migrate_inventory_order(database_url=None):
     """Migrate the inventory table to make 'order' column nullable."""
@@ -27,7 +34,7 @@ def migrate_inventory_order(database_url=None):
         else:
             raise ValueError("DATABASE_URL not set or not SQLite")
 
-    print(f"Migrating database at: {db_path}")
+    logger.info(f"Migrating database at: {db_path}")
 
     # Connect to database
     conn = sqlite3.connect(db_path)
@@ -42,12 +49,12 @@ def migrate_inventory_order(database_url=None):
         if not order_col:
             raise ValueError("Column 'order' not found in inventory table")
 
-        print(f"Current 'order' column: {order_col}")
+        logger.info(f"Current 'order' column: {order_col}")
 
         # SQLite doesn't support ALTER COLUMN to change NULL constraints directly
         # We need to recreate the table with the new schema
         if order_col[3] == 1:  # notnull == 1 means NOT NULL
-            print("Making 'order' column nullable...")
+            logger.info("Making 'order' column nullable...")
 
             # Get all data
             cur.execute('SELECT id, nome, quantidade, "order" FROM inventory')
@@ -75,9 +82,9 @@ def migrate_inventory_order(database_url=None):
             )
 
             conn.commit()
-            print("Migration completed successfully")
+            logger.info("Migration completed successfully")
         else:
-            print("'order' column is already nullable")
+            logger.info("'order' column is already nullable")
 
     except Exception as e:
         conn.rollback()

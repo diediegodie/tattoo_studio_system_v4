@@ -9,17 +9,17 @@ import sys
 sys.path.append("/app/backend")
 
 import json
-import logging
 from datetime import datetime
 from unittest.mock import Mock, patch
 
-# Configure logging to see our debug messages
-logging.basicConfig(level=logging.DEBUG)
+from app.core.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 
 def test_token_refresh_flow():
     """Test that our OAuth token refresh logic works correctly with mocked responses"""
-    print("=== Testing OAuth Token Refresh Flow (Mocked) ===")
+    logger.info("Testing OAuth Token Refresh Flow (Mocked)")
 
     try:
         from app.services.oauth_token_service import OAuthTokenService
@@ -48,16 +48,26 @@ def test_token_refresh_flow():
             new_token = oauth_service.refresh_access_token("13")
 
             if new_token:
-                print(f"✅ Token refresh simulation successful")
-                print(f"   New token: {new_token[:20]}...")
-                print(f"   Mock API called: {mock_post.called}")
+                logger.info(
+                    "Token refresh simulation successful",
+                    extra={
+                        "context": {
+                            "new_token_prefix": new_token[:20],
+                            "mock_api_called": mock_post.called,
+                        }
+                    },
+                )
                 return True
             else:
-                print("❌ Token refresh simulation failed")
+                logger.error("Token refresh simulation failed")
                 return False
 
     except Exception as e:
-        print(f"❌ Token refresh test failed: {str(e)}")
+        logger.error(
+            "Token refresh test failed",
+            extra={"context": {"error": str(e)}},
+            exc_info=True,
+        )
         import traceback
 
         traceback.print_exc()
@@ -66,7 +76,7 @@ def test_token_refresh_flow():
 
 def test_calendar_service_with_mocked_api():
     """Test Google Calendar Service with mocked API responses"""
-    print("\n=== Testing Calendar Service with Mock API ===")
+    logger.info("Testing Calendar Service with Mock API")
 
     try:
         from app.core.exceptions import ExpiredAccessTokenError
@@ -106,14 +116,30 @@ def test_calendar_service_with_mocked_api():
 
                 events = calendar_service.get_user_events("13", start_date, end_date)
 
-                print(f"✅ Calendar service returned {len(events)} mocked events")
+                logger.info(
+                    "Calendar service returned mocked events",
+                    extra={"context": {"count": len(events)}},
+                )
                 for i, event in enumerate(events):
-                    print(f"   {i+1}. {event.title} - {event.start_time}")
+                    logger.info(
+                        "Event",
+                        extra={
+                            "context": {
+                                "index": i + 1,
+                                "title": getattr(event, "title", None),
+                                "start_time": str(getattr(event, "start_time", None)),
+                            }
+                        },
+                    )
 
                 return True
 
     except Exception as e:
-        print(f"❌ Calendar service test failed: {str(e)}")
+        logger.error(
+            "Calendar service test failed",
+            extra={"context": {"error": str(e)}},
+            exc_info=True,
+        )
         import traceback
 
         traceback.print_exc()
@@ -122,7 +148,7 @@ def test_calendar_service_with_mocked_api():
 
 def test_expired_token_refresh_flow():
     """Test the token expiration and refresh flow"""
-    print("\n=== Testing Expired Token Refresh Flow ===")
+    logger.info("Testing Expired Token Refresh Flow")
 
     try:
         from app.core.exceptions import ExpiredAccessTokenError
@@ -171,14 +197,23 @@ def test_expired_token_refresh_flow():
                         "13", start_date, end_date
                     )
 
-                    print(
-                        f"✅ Token refresh flow successful - got {len(events)} events after refresh"
+                    logger.info(
+                        "Token refresh flow successful",
+                        extra={
+                            "context": {
+                                "events_after_refresh": len(events),
+                                "validate_token_call_count": call_count,
+                            }
+                        },
                     )
-                    print(f"   Validate token called {call_count} times (expected 2)")
                     return True
 
     except Exception as e:
-        print(f"❌ Token refresh flow test failed: {str(e)}")
+        logger.error(
+            "Token refresh flow test failed",
+            extra={"context": {"error": str(e)}},
+            exc_info=True,
+        )
         import traceback
 
         traceback.print_exc()
@@ -186,8 +221,7 @@ def test_expired_token_refresh_flow():
 
 
 if __name__ == "__main__":
-    print("🔍 Mock Testing Google Calendar OAuth and Sync Fixes")
-    print("=" * 65)
+    logger.info("Mock Testing Google Calendar OAuth and Sync Fixes")
 
     # Test 1: Token refresh mechanism
     refresh_works = test_token_refresh_flow()
@@ -198,15 +232,20 @@ if __name__ == "__main__":
     # Test 3: Expired token refresh flow
     refresh_flow_works = test_expired_token_refresh_flow()
 
-    print("\n" + "=" * 65)
-    print("🏁 Mock Test Results:")
-    print(f"   Token Refresh: {'✅ PASS' if refresh_works else '❌ FAIL'}")
-    print(f"   Calendar Service: {'✅ PASS' if calendar_works else '❌ FAIL'}")
-    print(f"   Refresh Flow: {'✅ PASS' if refresh_flow_works else '❌ FAIL'}")
+    logger.info(
+        "Mock Test Results",
+        extra={
+            "context": {
+                "token_refresh": "PASS" if refresh_works else "FAIL",
+                "calendar_service": "PASS" if calendar_works else "FAIL",
+                "refresh_flow": "PASS" if refresh_flow_works else "FAIL",
+            }
+        },
+    )
 
     if refresh_works and calendar_works and refresh_flow_works:
-        print("\n🎉 All OAuth and Calendar fixes are working correctly!")
-        print("   The network connectivity issue is preventing real API calls,")
-        print("   but our core logic and exception handling fixes are solid.")
+        logger.info(
+            "All OAuth and Calendar fixes are working correctly! The network connectivity issue is preventing real API calls, but our core logic and exception handling fixes are solid."
+        )
     else:
-        print("\n⚠️  Some issues detected - need further investigation")
+        logger.warning("Some issues detected - need further investigation")

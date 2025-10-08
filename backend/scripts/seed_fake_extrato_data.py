@@ -10,12 +10,15 @@ import os
 import sys
 from datetime import datetime, timedelta
 from decimal import Decimal
+from app.core.logging_config import get_logger
 
 # Add the backend directory to Python path
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
 from app.db.base import Client, Comissao, Pagamento, Sessao, User
 from app.db.session import SessionLocal
+
+logger = get_logger(__name__)
 
 
 def get_previous_month():
@@ -30,24 +33,21 @@ def create_fake_users_and_clients(db):
     """Cria ou recupera usuários (artistas) e clientes fictícios."""
 
     # Criar/recuperar artistas
+
     artista1 = db.query(User).filter(User.email == "pedro.artista@teste.com").first()
     if not artista1:
-        artista1 = User(
-            email="pedro.artista@teste.com",
-            name="Pedro Artista",
-            role="artist",
-            is_active=True,
-        )
+        artista1 = User()
+        artista1.email = "pedro.artista@teste.com"
+        artista1.name = "Pedro Artista"
+        artista1.role = "artist"
         db.add(artista1)
 
     artista2 = db.query(User).filter(User.email == "maria.artista@teste.com").first()
     if not artista2:
-        artista2 = User(
-            email="maria.artista@teste.com",
-            name="Maria Artista",
-            role="artist",
-            is_active=True,
-        )
+        artista2 = User()
+        artista2.email = "maria.artista@teste.com"
+        artista2.name = "Maria Artista"
+        artista2.role = "artist"
         db.add(artista2)
 
     # Criar/recuperar clientes
@@ -95,7 +95,6 @@ def create_fake_sessoes(db, mes, ano, artistas, clientes):
     # Sessão 1
     sessao1 = Sessao(
         data=sessao1_date,
-        hora=datetime.strptime("14:00", "%H:%M").time(),
         valor=Decimal("450.00"),
         observacoes="Sessão de tatuagem - braço completo",
         cliente_id=clientes[0].id,
@@ -107,7 +106,6 @@ def create_fake_sessoes(db, mes, ano, artistas, clientes):
     # Sessão 2
     sessao2 = Sessao(
         data=sessao2_date,
-        hora=datetime.strptime("16:30", "%H:%M").time(),
         valor=Decimal("320.00"),
         observacoes="Sessão de tatuagem - perna",
         cliente_id=clientes[1].id,
@@ -119,7 +117,6 @@ def create_fake_sessoes(db, mes, ano, artistas, clientes):
     # Sessão 3
     sessao3 = Sessao(
         data=sessao3_date,
-        hora=datetime.strptime("10:00", "%H:%M").time(),
         valor=Decimal("280.00"),
         observacoes="Sessão de tatuagem - costas",
         cliente_id=clientes[2].id,
@@ -201,66 +198,106 @@ def create_fake_comissoes(db, pagamentos):
 def main():
     """Função principal para executar o seeding."""
 
-    print("🌱 Iniciando seed de dados fictícios para extrato...")
+    logger.info("Iniciando seed de dados fictícios para extrato")
 
     # Calcular mês anterior
     mes, ano = get_previous_month()
-    print(f"📅 Criando dados para: {mes:02d}/{ano}")
+    logger.info("Criando dados", extra={"context": {"mes": mes, "ano": ano}})
 
     db = SessionLocal()
     try:
         # 1. Criar usuários e clientes fictícios
-        print("👥 Criando usuários e clientes fictícios...")
+        logger.info("Criando usuários e clientes fictícios")
         artistas, clientes = create_fake_users_and_clients(db)
-        print(
-            f"   ✅ Criados/recuperados {len(artistas)} artistas e {len(clientes)} clientes"
+        logger.info(
+            "Criados/recuperados usuários e clientes",
+            extra={"context": {"artistas": len(artistas), "clientes": len(clientes)}},
         )
 
         # 2. Criar sessões
-        print("📝 Criando sessões fictícias...")
+        logger.info("Criando sessões fictícias")
         sessoes = create_fake_sessoes(db, mes, ano, artistas, clientes)
-        print(f"   ✅ Criadas {len(sessoes)} sessões")
+        logger.info("Sessões criadas", extra={"context": {"count": len(sessoes)}})
 
         # 3. Criar pagamentos
-        print("💰 Criando pagamentos fictícios...")
+        logger.info("Criando pagamentos fictícios")
         pagamentos = create_fake_pagamentos(db, sessoes)
-        print(f"   ✅ Criados {len(pagamentos)} pagamentos")
+        logger.info("Pagamentos criados", extra={"context": {"count": len(pagamentos)}})
 
         # 4. Criar comissões
-        print("🎯 Criando comissões fictícias...")
+        logger.info("Criando comissões fictícias")
         comissoes = create_fake_comissoes(db, pagamentos)
-        print(f"   ✅ Criadas {len(comissoes)} comissões")
+        logger.info("Comissões criadas", extra={"context": {"count": len(comissoes)}})
 
         # Resumo dos dados criados
-        print("\n📊 Resumo dos dados criados:")
-        print("=" * 50)
+        logger.info(
+            "Resumo dos dados criados", extra={"context": {"delimiter": "=" * 50}}
+        )
 
         for i, (sessao, pagamento, comissao) in enumerate(
             zip(sessoes, pagamentos, comissoes), 1
         ):
-            print(f"\n🔸 Registro {i}:")
-            print(
-                f"   Sessão: {sessao.data} - {artistas[sessao.artista_id-artistas[0].id].name} - R$ {sessao.valor}"
+            logger.info(
+                "Registro criado",
+                extra={
+                    "context": {
+                        "indice": i,
+                        "sessao": {
+                            "data": str(sessao.data),
+                            "artista": getattr(
+                                getattr(sessao, "artista", None), "name", None
+                            ),
+                            "valor": str(sessao.valor),
+                        },
+                        "cliente": getattr(
+                            getattr(sessao, "cliente", None), "name", None
+                        ),
+                        "pagamento": {
+                            "forma": pagamento.forma_pagamento,
+                            "valor": str(pagamento.valor),
+                        },
+                        "comissao": {
+                            "percentual": str(comissao.percentual),
+                            "valor": str(comissao.valor),
+                        },
+                    }
+                },
             )
-            print(f"   Cliente: {clientes[sessao.cliente_id-clientes[0].id].name}")
-            print(f"   Pagamento: {pagamento.forma_pagamento} - R$ {pagamento.valor}")
-            print(f"   Comissão: {comissao.percentual}% - R$ {comissao.valor}")
 
         total_receita = sum(p.valor for p in pagamentos)
         total_comissoes = sum(c.valor for c in comissoes)
 
-        print(f"\n💵 Total receita: R$ {total_receita}")
-        print(f"🎯 Total comissões: R$ {total_comissoes}")
+        logger.info(
+            "Totais",
+            extra={
+                "context": {
+                    "receita": str(total_receita),
+                    "comissoes": str(total_comissoes),
+                }
+            },
+        )
 
-        print(f"\n✅ Dados fictícios criados com sucesso para {mes:02d}/{ano}!")
-        print("🔍 Agora você pode testar a página de extrato com dados reais.")
-        print(
-            f"💡 Para gerar o extrato, execute: python backend/scripts/generate_monthly_extrato.py --mes {mes} --ano {ano} --force"
+        logger.info(
+            "Dados fictícios criados com sucesso",
+            extra={"context": {"mes": mes, "ano": ano}},
+        )
+        logger.info("Agora você pode testar a página de extrato com dados reais")
+        logger.info(
+            "Para gerar o extrato",
+            extra={
+                "context": {
+                    "command": f"python backend/scripts/generate_monthly_extrato.py --mes {mes} --ano {ano} --force"
+                }
+            },
         )
 
     except Exception as e:
         db.rollback()
-        print(f"❌ Erro ao criar dados fictícios: {str(e)}")
+        logger.error(
+            "Erro ao criar dados fictícios",
+            extra={"context": {"error": str(e)}},
+            exc_info=True,
+        )
         raise
     finally:
         db.close()

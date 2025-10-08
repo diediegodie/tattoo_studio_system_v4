@@ -12,15 +12,21 @@ import os
 import sys
 
 # Add the backend directory to the Python path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "backend", "app"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from app.db.session import DATABASE_URL
+from app.core.logging_config import get_logger
 from sqlalchemy import create_engine, text
+
+logger = get_logger(__name__)
 
 
 def run_migration():
     """Add financial flow fields and relationships to existing database."""
-    engine = create_engine(DATABASE_URL)
+    database_url = os.getenv("DATABASE_URL")
+    if not database_url:
+        raise ValueError("DATABASE_URL environment variable not set")
+
+    engine = create_engine(database_url)
 
     with engine.connect() as conn:
         try:
@@ -66,14 +72,14 @@ def run_migration():
             )
 
             conn.commit()
-            print("✅ Migration completed successfully!")
-            print("   - Added status field to sessoes table")
-            print("   - Added payment_id field to sessoes table")
-            print("   - Added sessao_id field to pagamentos table")
-            print("   - Updated existing sessions to 'active' status")
+            logger.info("Migration completed successfully!")
+            logger.info("   - Added status field to sessoes table")
+            logger.info("   - Added payment_id field to sessoes table")
+            logger.info("   - Added sessao_id field to pagamentos table")
+            logger.info("   - Updated existing sessions to 'active' status")
 
         except Exception as e:
-            print(f"❌ Migration failed: {str(e)}")
+            logger.error(f"Migration failed: {str(e)}")
             conn.rollback()
             raise
 

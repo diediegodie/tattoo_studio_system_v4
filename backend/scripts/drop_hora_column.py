@@ -20,24 +20,9 @@ backend_dir = os.path.dirname(current_dir)
 sys.path.insert(0, backend_dir)
 
 from app import create_app
+from app.core.logging_config import get_logger
 from app.db.session import SessionLocal
 from sqlalchemy import text
-
-
-def setup_logging():
-    """Set up logging for the migration."""
-    log_dir = os.path.join(backend_dir, "logs")
-    os.makedirs(log_dir, exist_ok=True)
-
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    log_file = os.path.join(log_dir, f"drop_hora_column_{timestamp}.log")
-
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(levelname)s - %(message)s",
-        handlers=[logging.FileHandler(log_file), logging.StreamHandler(sys.stdout)],
-    )
-    return logging.getLogger(__name__)
 
 
 def check_column_exists(db_session, logger):
@@ -153,7 +138,7 @@ def drop_hora_column(db_session, logger):
 
 def main():
     """Main migration function."""
-    logger = setup_logging()
+    logger = get_logger(__name__)
     logger.info("Starting hora column drop migration...")
 
     try:

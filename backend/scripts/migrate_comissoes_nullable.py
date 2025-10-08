@@ -8,6 +8,9 @@ Run this script to update the database schema.
 import os
 
 from sqlalchemy import create_engine, text
+from app.core.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 
 def run_migration():
@@ -18,7 +21,9 @@ def run_migration():
         "DATABASE_URL", "[REDACTED_DATABASE_URL]"
     )
 
-    print(f"Connecting to database: {database_url}")
+    logger.info(
+        "Connecting to database", extra={"context": {"database_url": database_url}}
+    )
     engine = create_engine(database_url)
 
     try:
@@ -26,7 +31,7 @@ def run_migration():
             # Check if we're using PostgreSQL or SQLite
             if "postgresql" in database_url:
                 # PostgreSQL syntax
-                print("Running PostgreSQL migration...")
+                logger.info("Running PostgreSQL migration...")
                 conn.execute(
                     text(
                         """
@@ -36,10 +41,10 @@ def run_migration():
                     )
                 )
                 conn.commit()
-                print("Migration completed successfully for PostgreSQL.")
+                logger.info("Migration completed successfully for PostgreSQL.")
             else:
                 # SQLite syntax (if needed)
-                print("Running SQLite migration...")
+                logger.info("Running SQLite migration...")
                 # For SQLite, we need to recreate the table
                 conn.execute(
                     text(
@@ -72,10 +77,12 @@ def run_migration():
                 conn.execute(text("DROP TABLE comissoes;"))
                 conn.execute(text("ALTER TABLE comissoes_new RENAME TO comissoes;"))
                 conn.commit()
-                print("Migration completed successfully for SQLite.")
+                logger.info("Migration completed successfully for SQLite.")
 
     except Exception as e:
-        print(f"Migration failed: {e}")
+        logger.error(
+            "Migration failed", extra={"context": {"error": str(e)}}, exc_info=True
+        )
         raise
     finally:
         engine.dispose()

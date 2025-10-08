@@ -12,8 +12,10 @@ from datetime import datetime
 # Add the backend directory to the path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from app.services.extrato_generation import (check_and_generate_extrato,
-                                             generate_extrato)
+from app.services.extrato_generation import check_and_generate_extrato, generate_extrato
+from app.core.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 
 def main():
@@ -26,21 +28,37 @@ def main():
 
     args = parser.parse_args()
 
-    print(f"Manual Extrato Trigger - {datetime.now().isoformat()}")
-    print(f"Parameters: mes={args.mes}, ano={args.ano}, force={args.force}")
+    logger.info(
+        "Manual Extrato Trigger",
+        extra={
+            "context": {
+                "timestamp": datetime.now().isoformat(),
+                "mes": args.mes,
+                "ano": args.ano,
+                "force": args.force,
+            }
+        },
+    )
 
     try:
         if args.mes and args.ano:
-            print(f"Generating extrato for {args.mes}/{args.ano}...")
+            logger.info(
+                "Generating extrato",
+                extra={"context": {"mes": args.mes, "ano": args.ano}},
+            )
             generate_extrato(args.mes, args.ano, force=args.force)
         else:
-            print("Generating extrato for previous month...")
+            logger.info("Generating extrato for previous month")
             check_and_generate_extrato(force=args.force)
 
-        print("✅ Extrato generation completed successfully!")
+        logger.info("Extrato generation completed successfully")
 
     except Exception as e:
-        print(f"❌ ERROR: {str(e)}")
+        logger.error(
+            "Extrato generation error",
+            extra={"context": {"error": str(e)}},
+            exc_info=True,
+        )
         sys.exit(1)
 
 

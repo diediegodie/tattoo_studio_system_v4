@@ -32,6 +32,9 @@ sys.path.insert(0, str(backend_dir))
 
 from app.db.base import Base, Client, Comissao, Gasto, Pagamento, Sessao, User
 from app.db.session import SessionLocal, engine
+from app.core.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 
 def detect_environment():
@@ -70,10 +73,10 @@ def detect_environment():
 
 def reset_database(env_type):
     """Reset the database."""
-    print("🔄 Resetting database...")
+    logger.info("Resetting database", extra={"context": {"action": "reset_db"}})
 
     if env_type == "docker":
-        print("  📦 Using Docker Compose...")
+        logger.info("Using Docker Compose", extra={"context": {"mode": "docker"}})
         try:
             # Stop and remove containers with volumes
             subprocess.run(
@@ -85,13 +88,23 @@ def reset_database(env_type):
                 ["docker-compose", "up", "-d", "db"], cwd=backend_dir.parent, check=True
             )
 
-            print("  ✅ Database reset complete (Docker)")
+            logger.info(
+                "Database reset complete",
+                extra={"context": {"mode": "docker", "status": "ok"}},
+            )
             return True
         except subprocess.CalledProcessError as e:
-            print(f"  ❌ Docker reset failed: {e}")
+            logger.error(
+                "Docker reset failed",
+                extra={"context": {"error": str(e)}},
+                exc_info=True,
+            )
             return False
     else:
-        print("  💻 Using local SQLite database...")
+        logger.info(
+            "Using local SQLite database",
+            extra={"context": {"mode": "local"}},
+        )
         try:
             # For local development, use a local SQLite database
             local_db_path = backend_dir.parent / "tattoo_studio_dev.db"
@@ -108,16 +121,29 @@ def reset_database(env_type):
             Base.metadata.drop_all(bind=local_engine)
             Base.metadata.create_all(bind=local_engine)
 
-            print(f"  ✅ Database reset complete (Local SQLite: {local_db_path})")
+            logger.info(
+                "Database reset complete",
+                extra={
+                    "context": {
+                        "mode": "local",
+                        "status": "ok",
+                        "db_path": str(local_db_path),
+                    }
+                },
+            )
             return True
         except Exception as e:
-            print(f"  ❌ Local reset failed: {e}")
+            logger.error(
+                "Local reset failed",
+                extra={"context": {"error": str(e)}},
+                exc_info=True,
+            )
             return False
 
 
 def seed_test_data():
     """Seed current month test data."""
-    print("🌱 Seeding test data...")
+    logger.info("Seeding test data", extra={"context": {"action": "seed"}})
 
     db = SessionLocal()
     try:
@@ -132,9 +158,10 @@ def seed_test_data():
 
         # Create test client and artist
         test_client = Client(name="João Silva", jotform_submission_id="test123")
-        test_artist = User(
-            name="Ana Tattoo", email="ana.tattoo@test.com", role="artist"
-        )
+        test_artist = User()
+        test_artist.name = "Ana Tattoo"
+        test_artist.email = "ana.tattoo@test.com"
+        test_artist.role = "artist"
         db.add(test_client)
         db.add(test_artist)
         db.commit()
@@ -196,21 +223,37 @@ def seed_test_data():
         db.add(expense)
         db.commit()
 
-        print("  ✅ Test data seeded:")
-        print("    - 1 Cliente, 1 Artista")
-        print("    - 1 Pagamento (R$ 500.00)")
-        print("    - 1 Sessão (R$ 800.00)")
-        print("    - 2 Comissões (R$ 350.00 + R$ 560.00)")
-        print("    - 1 Gasto (R$ 455.00)")
-        print(
-            "    - Expected totals: Receita R$ 1300.00, Comissões R$ 910.00, Despesas R$ 455.00, Líquida R$ 390.00"
+        logger.info(
+            "Test data seeded",
+            extra={
+                "context": {
+                    "counts": {
+                        "clientes": 1,
+                        "artistas": 1,
+                        "pagamentos": 1,
+                        "sessoes": 1,
+                        "comissoes": 2,
+                        "gastos": 1,
+                    },
+                    "expected_totals": {
+                        "receita": 1300.00,
+                        "comissoes": 910.00,
+                        "despesas": 455.00,
+                        "liquida": 390.00,
+                    },
+                }
+            },
         )
 
         return True
 
     except Exception as e:
         db.rollback()
-        print(f"  ❌ Seeding failed: {e}")
+        logger.error(
+            "Seeding failed",
+            extra={"context": {"error": str(e)}},
+            exc_info=True,
+        )
         return False
     finally:
         db.close()
@@ -218,17 +261,28 @@ def seed_test_data():
 
 def seed_edge_cases():
     """Seed optional edge case data (in separate months or scenarios)."""
-    print("🔄 Seeding edge case data...")
+    logger.info(
+        "Seeding edge case data",
+        extra={"context": {"action": "seed_edge_cases"}},
+    )
 
     # For now, we'll keep it simple and just ensure the main test data is there
     # Additional edge cases can be added as separate test scenarios
-    print("  ✅ Edge cases handled in test suite")
+    logger.info("Edge cases handled in test suite")
     return True
 
 
 def run_tests():
     """Run automated tests."""
-    print("🧪 Running automated tests...")
+    logger.info(
+        "Running automated tests",
+        extra={
+            "context": {
+                "action": "pytest",
+                "file": "tests/integration/test_historico.py",
+            }
+        },
+    )
 
     try:
         # Set environment for testing
@@ -257,24 +311,28 @@ def run_tests():
         )
 
         if result.returncode == 0:
-            print("  ✅ All tests passed!")
-            print(result.stdout)
+            logger.info("All tests passed")
             return True
         else:
-            print("  ❌ Tests failed!")
-            print(result.stdout)
-            print(result.stderr)
+            logger.error(
+                "Tests failed",
+                extra={"context": {"stdout": result.stdout, "stderr": result.stderr}},
+            )
             return False
 
     except Exception as e:
-        print(f"  ❌ Test execution failed: {e}")
+        logger.error(
+            "Test execution failed",
+            extra={"context": {"error": str(e)}},
+            exc_info=True,
+        )
         return False
 
 
 def print_debug_logs():
     """Print debug logs if HISTORICO_DEBUG is enabled."""
     if os.getenv("HISTORICO_DEBUG") == "1":
-        print("📋 Debug logs from historico endpoint:")
+        logger.info("Debug logs from historico endpoint")
         # The debug logs will be printed during test execution
         # This is just a placeholder for additional debug info if needed
         pass
@@ -284,14 +342,19 @@ def open_browser():
     """Open the historico page in the default browser."""
     try:
         url = "http://localhost:5000/historico"
-        print(f"🌐 Opening {url} in default browser...")
-        webbrowser.open(url)
-        print("✅ Browser opened successfully")
-    except Exception as e:
-        print(
-            f"⚠️  Could not open browser (this is normal in headless environments): {e}"
+        logger.info(
+            "Opening in default browser",
+            extra={"context": {"url": url}},
         )
-        print("   You can manually visit: http://localhost:5000/historico")
+        webbrowser.open(url)
+        logger.info("Browser opened successfully")
+    except Exception as e:
+        logger.warning(
+            "Could not open browser (this is normal in headless environments)",
+            extra={
+                "context": {"error": str(e), "url": "http://localhost:5000/historico"}
+            },
+        )
 
 
 def main():
@@ -305,12 +368,17 @@ def main():
 
     args = parser.parse_args()
 
-    print("🎨 Tattoo Studio System - Reset, Seed & Test")
-    print("=" * 50)
+    logger.info(
+        "Tattoo Studio System - Reset, Seed & Test",
+        extra={"context": {"delimiter": "=" * 50}},
+    )
 
     # Detect environment
     env_type = detect_environment()
-    print(f"🔍 Environment detected: {env_type}")
+    logger.info(
+        "Environment detected",
+        extra={"context": {"env_type": env_type}},
+    )
 
     success = True
 
@@ -340,15 +408,22 @@ def main():
         open_browser()
 
     # Final status
-    print("=" * 50)
+    logger.info("Final status", extra={"context": {"delimiter": "=" * 50}})
     if success:
-        print("🎉 All operations completed successfully!")
-        print("📊 System ready for manual validation:")
-        print("   - Visit /historico for current month totals")
-        print("   - Visit /extrato for historical data")
+        logger.info(
+            "All operations completed successfully",
+            extra={
+                "context": {
+                    "next_steps": [
+                        "Visit /historico for current month totals",
+                        "Visit /extrato for historical data",
+                    ]
+                }
+            },
+        )
         return 0
     else:
-        print("💥 Some operations failed. Check output above.")
+        logger.error("Some operations failed. Check logs above.")
         return 1
 
 

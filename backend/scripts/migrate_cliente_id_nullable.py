@@ -16,8 +16,11 @@ import sys
 backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, backend_dir)
 
+from app.core.logging_config import get_logger
 from app.db.session import engine
 from sqlalchemy import text
+
+logger = get_logger(__name__)
 
 
 def migrate_cliente_id_nullable():
@@ -41,8 +44,8 @@ def migrate_cliente_id_nullable():
                 )
                 conn.execute(text(alter_sql))
                 conn.commit()
-                print(
-                    "✅ Successfully made cliente_id nullable in pagamentos table (PostgreSQL)"
+                logger.info(
+                    "Successfully made cliente_id nullable in pagamentos table (PostgreSQL)"
                 )
 
             elif db_dialect == "sqlite":
@@ -63,28 +66,30 @@ def migrate_cliente_id_nullable():
                 if (
                     cliente_id_info and cliente_id_info[3] == 1
                 ):  # row[3] is notnull (1=NOT NULL, 0=NULL)
-                    print("⚠️  SQLite detected: cliente_id is currently NOT NULL")
-                    print("⚠️  SQLite doesn't support ALTER COLUMN directly")
-                    print("⚠️  For SQLite, you'll need to:")
-                    print("   1. Stop the application")
-                    print("   2. Create a backup of your database")
-                    print(
+                    logger.warning("SQLite detected: cliente_id is currently NOT NULL")
+                    logger.warning("SQLite doesn't support ALTER COLUMN directly")
+                    logger.warning("For SQLite, you'll need to:")
+                    logger.warning("   1. Stop the application")
+                    logger.warning("   2. Create a backup of your database")
+                    logger.warning(
                         "   3. Recreate tables with the new schema using create_all()"
                     )
-                    print("   4. Or use a more complex migration process")
-                    print(
-                        "⚠️  For now, the model has been updated for new installations"
+                    logger.warning("   4. Or use a more complex migration process")
+                    logger.warning(
+                        "For now, the model has been updated for new installations"
                     )
                     return False
                 else:
-                    print("✅ SQLite: cliente_id already allows NULL or doesn't exist")
+                    logger.info(
+                        "SQLite: cliente_id already allows NULL or doesn't exist"
+                    )
 
             else:
-                print(f"❌ Unsupported database dialect: {db_dialect}")
+                logger.error(f"Unsupported database dialect: {db_dialect}")
                 return False
 
     except Exception as e:
-        print(f"❌ Error during migration: {e}")
+        logger.error(f"Error during migration: {e}")
         return False
 
     return True
@@ -105,10 +110,10 @@ def verify_migration():
                 """
                 result = conn.execute(text(verify_sql)).fetchone()
                 if result and result[1] == "YES":
-                    print("✅ Verification: cliente_id is now nullable")
+                    logger.info("Verification: cliente_id is now nullable")
                     return True
                 else:
-                    print("❌ Verification failed: cliente_id is still NOT NULL")
+                    logger.error("Verification failed: cliente_id is still NOT NULL")
                     return False
 
             elif db_dialect == "sqlite":
@@ -118,27 +123,27 @@ def verify_migration():
                     if (
                         row[1] == "cliente_id" and row[3] == 0
                     ):  # notnull = 0 means NULL allowed
-                        print("✅ Verification: cliente_id allows NULL")
+                        logger.info("Verification: cliente_id allows NULL")
                         return True
-                print("⚠️  Could not verify SQLite migration - check manually")
+                logger.warning("Could not verify SQLite migration - check manually")
                 return True  # Don't fail for SQLite verification
 
     except Exception as e:
-        print(f"❌ Verification error: {e}")
+        logger.error(f"Verification error: {e}")
         return False
 
 
 def main():
-    print("Starting migration: making cliente_id nullable in pagamentos table...")
+    logger.info("Starting migration: making cliente_id nullable in pagamentos table...")
 
     if migrate_cliente_id_nullable():
         if verify_migration():
-            print("🎉 Migration completed successfully!")
-            print("   Payments can now be created without specifying a client.")
+            logger.info("Migration completed successfully!")
+            logger.info("   Payments can now be created without specifying a client.")
         else:
-            print("⚠️  Migration may have completed but verification failed.")
+            logger.warning("Migration may have completed but verification failed.")
     else:
-        print("❌ Migration failed!")
+        logger.error("Migration failed!")
         return 1
 
     return 0

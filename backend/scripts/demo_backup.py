@@ -15,20 +15,14 @@ sys.path.insert(
     0, "/home/diego/documentos/github/projetos/tattoo_studio_system_v4/backend"
 )
 
-# Set up logging for demo
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.StreamHandler(sys.stdout),
-        logging.FileHandler("logs/demo_backup.log", mode="a"),
-    ],
-)
+from app.core.logging_config import get_logger
 
-# Ensure all loggers are captured
-logging.getLogger().setLevel(logging.INFO)
+logger = get_logger(__name__)
 
+from app.core.logging_config import get_logger
 from app.services.backup_service import BackupService
+
+logger = get_logger(__name__)
 
 
 def create_mock_historical_data() -> List[Dict[str, Any]]:
@@ -166,21 +160,19 @@ def create_mock_historical_data() -> List[Dict[str, Any]]:
 
 def demonstrate_backup_functionality():
     """Demonstrate the backup system with mock data."""
-    print("=" * 60)
-    print("BACKUP SYSTEM DEMONSTRATION")
-    print("=" * 60)
+    logger.info("BACKUP SYSTEM DEMONSTRATION", extra={"context": {"section": "header"}})
 
     # Create mock data
-    print("\n1. Creating mock historical data...")
+    logger.info("Creating mock historical data...", extra={"context": {"step": 1}})
     mock_records = create_mock_historical_data()
-    print(f"✓ Created {len(mock_records)} mock records")
+    logger.info("Mock records created", extra={"context": {"count": len(mock_records)}})
 
     # Initialize backup service
-    print("\n2. Initializing backup service...")
+    logger.info("Initializing backup service...", extra={"context": {"step": 2}})
     backup_service = BackupService(backup_base_dir="demo_backups")
 
     # Simulate CSV writing
-    print("\n3. Simulating CSV file creation...")
+    logger.info("Simulating CSV file creation...", extra={"context": {"step": 3}})
     year, month = 2025, 9
     backup_dir = backup_service._get_backup_directory(year, month)
     filename = backup_service._get_backup_filename(year, month)
@@ -197,63 +189,105 @@ def demonstrate_backup_functionality():
                 writer.writeheader()
                 writer.writerows(mock_records)
 
-        print(f"✓ CSV file created: {demo_file_path}")
+        logger.info("CSV file created", extra={"context": {"file": demo_file_path}})
 
         # Get file info
         file_size = os.path.getsize(demo_file_path)
-        print(f"✓ File size: {file_size} bytes")
+        logger.info(
+            "File size",
+            extra={"context": {"file": demo_file_path, "size_bytes": file_size}},
+        )
 
         # Read and validate CSV
-        print("\n4. Validating CSV file...")
+        logger.info(
+            "Validating CSV file...",
+            extra={"context": {"step": 4, "file": demo_file_path}},
+        )
         with open(demo_file_path, "r", encoding="utf-8") as csvfile:
             reader = csv.DictReader(csvfile)
             headers = reader.fieldnames
             rows = list(reader)
 
-        print(f"✓ CSV validation successful:")
-        print(f"  - Headers: {len(headers) if headers else 0}")
-        print(f"  - Data rows: {len(rows)}")
-        print(f"  - Sample headers: {headers[:5] if headers else []}")
+        logger.info(
+            "CSV validation successful",
+            extra={
+                "context": {
+                    "headers_count": len(headers) if headers else 0,
+                    "rows": len(rows),
+                    "sample_headers": headers[:5] if headers else [],
+                }
+            },
+        )
 
         # Show sample data
-        print("\n5. Sample data from CSV:")
+        logger.info("Sample data from CSV", extra={"context": {"step": 5}})
         for i, row in enumerate(rows[:3]):  # Show first 3 rows
-            print(
-                f"  Row {i+1}: {row['type']} - {row.get('cliente_name', 'N/A')} - R$ {row.get('valor', 'N/A')}"
+            logger.info(
+                "Row sample",
+                extra={
+                    "context": {
+                        "row_num": i + 1,
+                        "type": row.get("type"),
+                        "cliente_name": row.get("cliente_name", "N/A"),
+                        "valor": row.get("valor", "N/A"),
+                    }
+                },
             )
 
         # Test backup info functionality
-        print("\n6. Testing backup info functionality...")
+        logger.info(
+            "Testing backup info functionality...", extra={"context": {"step": 6}}
+        )
         info = backup_service.get_backup_info(year, month)
-        print(f"✓ Backup info retrieved:")
-        print(f"  - Exists: {info['exists']}")
-        print(f"  - File path: {info['file_path']}")
-        print(f"  - Record count: {info['record_count']}")
+        logger.info(
+            "Backup info retrieved",
+            extra={
+                "context": {
+                    "exists": info.get("exists"),
+                    "file_path": info.get("file_path"),
+                    "record_count": info.get("record_count"),
+                }
+            },
+        )
 
-        print("\n" + "=" * 60)
-        print("✅ DEMONSTRATION COMPLETED SUCCESSFULLY!")
-        print("=" * 60)
-        print("\nThe backup system is working correctly and ready for production use.")
-        print("When connected to the actual database, it will:")
-        print("- Query real historical data from all tables")
-        print("- Create properly formatted CSV files")
-        print("- Handle errors gracefully with comprehensive logging")
-        print("- Validate backup integrity before allowing data operations")
+        logger.info(
+            "DEMONSTRATION COMPLETED SUCCESSFULLY!",
+            extra={
+                "context": {
+                    "notes": [
+                        "Ready for production use",
+                        "Queries real data",
+                        "CSV formatted",
+                        "Error handling",
+                        "Integrity validation",
+                    ]
+                }
+            },
+        )
 
         return True
 
     except Exception as e:
-        print(f"✗ Demonstration failed: {str(e)}")
+        logger.error(
+            "Demonstration failed",
+            extra={"context": {"error": str(e)}},
+            exc_info=True,
+        )
         return False
 
     finally:
         # Clean up demo files
-        print("\n7. Cleaning up demonstration files...")
+        logger.info(
+            "Cleaning up demonstration files...", extra={"context": {"step": 7}}
+        )
         import shutil
 
         if os.path.exists("demo_backups"):
             shutil.rmtree("demo_backups")
-            print("✓ Demo backup directory removed")
+            logger.info(
+                "Demo backup directory removed",
+                extra={"context": {"dir": "demo_backups"}},
+            )
 
 
 if __name__ == "__main__":

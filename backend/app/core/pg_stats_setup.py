@@ -26,8 +26,11 @@ from typing import List, Dict, Any
 # Add backend to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
+from app.core.logging_config import get_logger
 from app.db.session import SessionLocal
 from sqlalchemy import text
+
+logger = get_logger(__name__)
 
 
 def enable_pg_stat_statements() -> None:
@@ -45,25 +48,44 @@ def enable_pg_stat_statements() -> None:
             ).scalar()
 
             if result:
-                print("✅ pg_stat_statements extension already enabled")
+                logger.info(
+                    "pg_stat_statements already enabled",
+                    extra={"context": {"action": "check"}},
+                )
             else:
                 # Create extension
                 db.execute(text("CREATE EXTENSION IF NOT EXISTS pg_stat_statements"))
                 db.commit()
-                print("✅ pg_stat_statements extension enabled successfully")
+                logger.info(
+                    "pg_stat_statements enabled successfully",
+                    extra={"context": {"action": "enable"}},
+                )
 
             # Verify configuration
             result = db.execute(
                 text("SELECT * FROM pg_stat_statements LIMIT 1")
             ).fetchone()
-            print(f"✅ Extension is working - {result}")
+            logger.info(
+                "Extension is working",
+                extra={"context": {"sample": str(result)}},
+            )
 
         except Exception as e:
-            print(f"❌ Error enabling pg_stat_statements: {e}")
-            print("\nNote: You may need to add to postgresql.conf:")
-            print("  shared_preload_libraries = 'pg_stat_statements'")
-            print("  pg_stat_statements.track = all")
-            print("Then restart PostgreSQL.")
+            logger.error(
+                "Error enabling pg_stat_statements",
+                extra={"context": {"error": str(e)}},
+                exc_info=True,
+            )
+            logger.warning(
+                "PostgreSQL config hints",
+                extra={
+                    "context": {
+                        "shared_preload_libraries": "pg_stat_statements",
+                        "pg_stat_statements.track": "all",
+                        "action": "restart required",
+                    }
+                },
+            )
             raise
 
 
@@ -204,29 +226,38 @@ def reset_statistics() -> None:
     with SessionLocal() as db:
         db.execute(text("SELECT pg_stat_statements_reset()"))
         db.commit()
-        print("✅ pg_stat_statements statistics reset")
+        logger.info(
+            "pg_stat_statements statistics reset",
+            extra={"context": {"action": "reset"}},
+        )
 
 
 def print_query_report(queries: List[Dict[str, Any]], title: str) -> None:
     """Pretty print query statistics."""
-    print(f"\n{'=' * 100}")
-    print(f"{title:^100}")
-    print(f"{'=' * 100}\n")
+    logger.info(
+        "Query Report",
+        extra={"context": {"title": title, "delimiter": "=" * 100}},
+    )
 
     if not queries:
-        print("No queries found.")
+        logger.info("No queries found", extra={"context": {"title": title}})
         return
 
     for i, q in enumerate(queries, 1):
-        print(f"{i}. Calls: {q['calls']:,} | Mean: {q['mean_time_ms']:.2f}ms")
-        if "total_time_ms" in q:
-            print(f"   Total: {q['total_time_ms']:.2f}ms")
-        if "rows" in q:
-            print(f"   Rows: {q['rows']:,}")
-        if "cache_hit_percent" in q:
-            print(f"   Cache Hit: {q['cache_hit_percent']:.1f}%")
-        print(f"   Query: {q['query']}")
-        print()
+        logger.info(
+            "Query stats",
+            extra={
+                "context": {
+                    "index": i,
+                    "calls": q.get("calls"),
+                    "mean_ms": q.get("mean_time_ms"),
+                    "total_ms": q.get("total_time_ms"),
+                    "rows": q.get("rows"),
+                    "cache_hit_percent": q.get("cache_hit_percent"),
+                    "query": q.get("query"),
+                }
+            },
+        )
 
 
 def main():
@@ -283,7 +314,9 @@ def main():
             parser.print_help()
 
     except Exception as e:
-        print(f"❌ Error: {e}")
+        logger.error(
+            "pg_stats_setup error", extra={"context": {"error": str(e)}}, exc_info=True
+        )
         sys.exit(1)
 
 

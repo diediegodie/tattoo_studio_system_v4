@@ -20,13 +20,15 @@ os.environ["DATABASE_URL"] = "sqlite:///tattoo_studio_dev.db"
 from app.db.base import Pagamento, User, Client
 from app.db.session import SessionLocal
 from app.services.search_service import SearchService
+from app.core.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 
 def test_complete_payment_flow_without_client():
     """Test complete payment registration and retrieval without client."""
 
-    print("🧪 COMPREHENSIVE TEST: Payment Registration Without Client")
-    print("=" * 60)
+    logger.info("COMPREHENSIVE TEST: Payment Registration Without Client")
 
     db = SessionLocal()
     success_count = 0
@@ -34,12 +36,15 @@ def test_complete_payment_flow_without_client():
 
     try:
         # TEST 1: Database Schema Validation
-        print("\n1️⃣  Testing Database Schema...")
+        logger.info("Testing Database Schema...")
 
         # Ensure we have a test artist
         artist = db.query(User).filter_by(name="Test Artist").first()
         if not artist:
-            artist = User(name="Test Artist", email="test@example.com", role="artist")
+            artist = User()
+            artist.name = "Test Artist"
+            artist.email = "test@example.com"
+            artist.role = "artist"
             db.add(artist)
             db.commit()
 
@@ -56,13 +61,13 @@ def test_complete_payment_flow_without_client():
         db.commit()
 
         if payment.cliente_id is None:
-            print("   ✅ Database accepts NULL cliente_id")
+            logger.info("Database accepts NULL cliente_id")
             success_count += 1
         else:
-            print("   ❌ Database rejected NULL cliente_id")
+            logger.error("Database rejected NULL cliente_id")
 
         # TEST 2: Controller Logic Simulation
-        print("\n2️⃣  Testing Controller Validation Logic...")
+        logger.info("Testing Controller Validation Logic...")
 
         # Simulate form data with empty cliente_id
         form_data = {
@@ -89,7 +94,7 @@ def test_complete_payment_flow_without_client():
         ]
 
         if all(required_fields) and cliente_id is None:
-            print("   ✅ Controller validation passes without cliente_id")
+            logger.info("Controller validation passes without cliente_id")
             success_count += 1
 
             # Create payment with controller logic
@@ -104,10 +109,10 @@ def test_complete_payment_flow_without_client():
             db.add(payment2)
             db.commit()
         else:
-            print("   ❌ Controller validation failed")
+            logger.error("Controller validation failed")
 
         # TEST 3: Search Functionality
-        print("\n3️⃣  Testing Search Functionality...")
+        logger.info("Testing Search Functionality...")
 
         search_service = SearchService(db)
         results = search_service.search("Comprehensive test")
@@ -120,37 +125,46 @@ def test_complete_payment_flow_without_client():
                     break
 
             if found_payment and found_payment.get("cliente_name") == "":
-                print("   ✅ Search finds payments without clients")
+                logger.info("Search finds payments without clients")
                 success_count += 1
             else:
-                print("   ❌ Search does not properly handle payments without clients")
+                logger.error("Search does not properly handle payments without clients")
         else:
-            print("   ❌ Search did not find test payments")
+            logger.error("Search did not find test payments")
 
         # TEST 4: Historico/List Display
-        print("\n4️⃣  Testing Payment List Display...")
+        logger.info("Testing Payment List Display...")
 
         # Query all payments to simulate Historico view
         all_payments = db.query(Pagamento).order_by(Pagamento.data.desc()).all()
         payments_without_clients = [p for p in all_payments if p.cliente_id is None]
 
         if len(payments_without_clients) >= 2:  # Our test payments
-            print(
-                f"   ✅ Found {len(payments_without_clients)} payments without clients"
+            logger.info(
+                "Found payments without clients",
+                extra={"context": {"count": len(payments_without_clients)}},
             )
             for p in payments_without_clients[:2]:  # Show first 2
                 client_display = (
                     "No client" if p.cliente_id is None else f"Client {p.cliente_id}"
                 )
-                print(
-                    f"      Payment {p.id}: {p.valor} {p.forma_pagamento} - {client_display}"
+                logger.info(
+                    "Payment",
+                    extra={
+                        "context": {
+                            "payment_id": p.id,
+                            "valor": str(p.valor),
+                            "forma_pagamento": p.forma_pagamento,
+                            "client_display": client_display,
+                        }
+                    },
                 )
             success_count += 1
         else:
-            print("   ❌ No payments without clients found in list")
+            logger.error("No payments without clients found in list")
 
         # TEST 5: Data Integrity
-        print("\n5️⃣  Testing Data Integrity...")
+        logger.info("Testing Data Integrity...")
 
         # Verify relationships work correctly with NULL cliente_id
         test_payment = payments_without_clients[0] if payments_without_clients else None
@@ -161,34 +175,43 @@ def test_complete_payment_flow_without_client():
             has_no_client = test_payment.cliente is None
 
             if has_artist and has_no_client:
-                print("   ✅ Relationships work correctly with NULL cliente_id")
-                print(f"      Artist: {test_payment.artista.name}")
-                print(f"      Client: None (as expected)")
+                logger.info(
+                    "Relationships work correctly with NULL cliente_id",
+                    extra={
+                        "context": {
+                            "artist": getattr(test_payment.artista, "name", None),
+                            "client": None,
+                        }
+                    },
+                )
                 success_count += 1
             else:
-                print("   ❌ Relationship integrity issue")
+                logger.error("Relationship integrity issue")
         else:
-            print("   ❌ No test payment available for relationship check")
+            logger.error("No test payment available for relationship check")
 
         # SUMMARY
-        print("\n" + "=" * 60)
-        print(f"🎯 TEST RESULTS: {success_count}/{total_tests} tests passed")
+        logger.info(
+            "TEST RESULTS",
+            extra={"context": {"passed": success_count, "total": total_tests}},
+        )
 
         if success_count == total_tests:
-            print("🎉 ALL TESTS PASSED!")
-            print("✅ Payments can be fully registered and managed without clients")
-            print("✅ Database schema supports optional cliente_id")
-            print("✅ Controller validation works without cliente_id")
-            print("✅ Search includes payments without clients")
-            print("✅ List/Historico displays payments without clients")
-            print("✅ Data relationships maintain integrity")
+            logger.info(
+                "ALL TESTS PASSED: Payments can be fully registered and managed without clients; schema supports nullable cliente_id; controller validation works; search includes payments without clients; list displays correctly; relationships maintain integrity."
+            )
             return True
         else:
-            print(f"❌ {total_tests - success_count} test(s) failed")
+            logger.error(
+                "Some tests failed",
+                extra={"context": {"failed": total_tests - success_count}},
+            )
             return False
 
     except Exception as e:
-        print(f"\n❌ Error during testing: {e}")
+        logger.error(
+            "Error during testing", extra={"context": {"error": str(e)}}, exc_info=True
+        )
         import traceback
 
         traceback.print_exc()
@@ -201,8 +224,8 @@ if __name__ == "__main__":
     success = test_complete_payment_flow_without_client()
 
     if success:
-        print("\n✅ SYSTEM READY: Optional client requirement fully implemented!")
+        logger.info("SYSTEM READY: Optional client requirement fully implemented!")
         sys.exit(0)
     else:
-        print("\n❌ SYSTEM NOT READY: Issues found in implementation")
+        logger.error("SYSTEM NOT READY: Issues found in implementation")
         sys.exit(1)

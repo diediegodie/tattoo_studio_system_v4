@@ -5,7 +5,6 @@ Checks the status of atomic extrato operations and reports health metrics.
 """
 
 import json
-import logging
 import os
 import sys
 from datetime import datetime, timedelta
@@ -14,47 +13,21 @@ from pathlib import Path
 # Add backend to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from app.services.extrato_atomic import \
-    check_and_generate_extrato_with_transaction
+from app.core.logging_config import get_logger
+from app.services.extrato_atomic import check_and_generate_extrato_with_transaction
 from app.services.extrato_core import verify_backup_before_transfer
 
 # Configuration
 LOG_DIR = Path(__file__).parent.parent / "logs"
 STATUS_FILE = LOG_DIR / "atomic_monitor_status.json"
 
+logger = get_logger(__name__)
+
 
 class AtomicMonitor:
     def __init__(self):
-        self.logger = self._setup_logger()
-        self.status = self._load_status()
-
-    def _setup_logger(self):
-        """Setup logging for monitoring operations."""
-        logger = logging.getLogger("atomic_monitor")
-        logger.setLevel(logging.INFO)
-
-        # Create logs directory if it doesn't exist
         LOG_DIR.mkdir(exist_ok=True)
-
-        # File handler
-        fh = logging.FileHandler(LOG_DIR / "atomic_monitor.log")
-        fh.setLevel(logging.INFO)
-
-        # Console handler
-        ch = logging.StreamHandler()
-        ch.setLevel(logging.INFO)
-
-        # Formatter
-        formatter = logging.Formatter(
-            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-        )
-        fh.setFormatter(formatter)
-        ch.setFormatter(formatter)
-
-        logger.addHandler(fh)
-        logger.addHandler(ch)
-
-        return logger
+        self.status = self._load_status()
 
     def _load_status(self):
         """Load previous monitoring status."""
@@ -63,7 +36,11 @@ class AtomicMonitor:
                 with open(STATUS_FILE, "r") as f:
                     return json.load(f)
             except Exception as e:
-                self.logger.error(f"Failed to load status file: {e}")
+                logger.error(
+                    "Failed to load status file",
+                    extra={"context": {"error": str(e)}},
+                    exc_info=True,
+                )
         return {}
 
     def _save_status(self):
@@ -72,17 +49,28 @@ class AtomicMonitor:
             with open(STATUS_FILE, "w") as f:
                 json.dump(self.status, f, indent=2, default=str)
         except Exception as e:
-            self.logger.error(f"Failed to save status file: {e}")
+            logger.error(
+                "Failed to save status file",
+                extra={"context": {"error": str(e)}},
+                exc_info=True,
+            )
 
     def check_backup_status(self, year, month):
         """Check if backup exists and is valid for given month."""
         try:
             backup_ok = verify_backup_before_transfer(year, month)
             status = "OK" if backup_ok else "MISSING"
-            self.logger.info(f"Backup status for {month:02d}/{year}: {status}")
+            logger.info(
+                "Backup status",
+                extra={"context": {"month": month, "year": year, "status": status}},
+            )
             return backup_ok
         except Exception as e:
-            self.logger.error(f"Backup check failed for {month:02d}/{year}: {e}")
+            logger.error(
+                "Backup check failed",
+                extra={"context": {"month": month, "year": year, "error": str(e)}},
+                exc_info=True,
+            )
             return False
 
     def check_recent_operations(self, days=7):
@@ -116,13 +104,17 @@ class AtomicMonitor:
                                 except ValueError:
                                     continue
             except Exception as e:
-                self.logger.error(f"Failed to read log file: {e}")
+                logger.error(
+                    "Failed to read log file",
+                    extra={"context": {"error": str(e)}},
+                    exc_info=True,
+                )
 
         return operations
 
     def run_health_check(self):
         """Run comprehensive health check."""
-        self.logger.info("Starting atomic extrato health check")
+        logger.info("Starting atomic extrato health check")
 
         health_status = {
             "timestamp": datetime.now(),
@@ -172,8 +164,9 @@ class AtomicMonitor:
         self.status["last_health_check"] = health_status
         self._save_status()
 
-        self.logger.info(
-            f"Health check completed. Overall status: {health_status['overall_health']}"
+        logger.info(
+            "Health check completed",
+            extra={"context": {"overall": health_status["overall_health"]}},
         )
 
         return health_status
@@ -181,7 +174,6 @@ class AtomicMonitor:
     def generate_report(self):
         """Generate a human-readable health report."""
         health = self.run_health_check()
-
         report = f"""
 Atomic Extrato Health Report
 Generated: {health['timestamp'].strftime('%Y-%m-%d %H:%M:%S')}
@@ -217,11 +209,16 @@ def main():
     if len(sys.argv) > 1 and sys.argv[1] == "--report":
         # Generate and print report
         report = monitor.generate_report()
-        print(report)
+        logger.info(
+            "Atomic extrato health report", extra={"context": {"report": report}}
+        )
     else:
         # Run health check
         health = monitor.run_health_check()
-        print(f"Health check completed. Status: {health['overall_health']}")
+        logger.info(
+            "Health check completed",
+            extra={"context": {"overall": health["overall_health"]}},
+        )
 
 
 if __name__ == "__main__":

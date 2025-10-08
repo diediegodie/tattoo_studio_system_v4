@@ -27,38 +27,28 @@ import os
 import sys
 import argparse
 import subprocess
-import logging
 from datetime import datetime
 from urllib.parse import urlparse
+from typing import Optional
 
 # Add the backend directory to the Python path
 backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, backend_dir)
 
+from app.core.logging_config import get_logger
 from sqlalchemy import text, create_engine
+from sqlalchemy.engine import Engine
 
-
-# Setup logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.FileHandler(
-            f'migration_cliente_nullable_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log'
-        ),
-        logging.StreamHandler(),
-    ],
-)
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class ProductionMigration:
     """Safe production migration handler."""
 
-    def __init__(self, database_url):
-        self.database_url = database_url
-        self.engine = None
-        self.backup_filename = None
+    def __init__(self, database_url: str):
+        self.database_url: str = database_url
+        self.engine: Optional[Engine] = None
+        self.backup_filename: Optional[str] = None
 
     def validate_environment(self):
         """Validate that we're ready for production migration."""
@@ -78,9 +68,16 @@ class ProductionMigration:
         self.engine = create_engine(self.database_url)
 
         # Test connection
-        with self.engine.connect() as conn:
-            result = conn.execute(text("SELECT version()")).fetchone()
-            logger.info(f"✅ Connected to PostgreSQL: {result[0][:50]}...")
+        try:
+            with self.engine.connect() as conn:
+                result = conn.execute(text("SELECT version()")).fetchone()
+                if result is not None:
+                    logger.info(f"✅ Connected to PostgreSQL: {result[0][:50]}...")
+                else:
+                    logger.warning("No version info returned from database.")
+        except Exception as e:
+            logger.error(f"Failed to connect to database: {e}")
+            raise
 
     def create_backup(self):
         """Create database backup before migration."""
@@ -131,6 +128,11 @@ class ProductionMigration:
 
     def check_current_schema(self):
         """Check current state of cliente_id column."""
+        if self.engine is None:
+            raise RuntimeError(
+                "Database engine not initialized. Call validate_environment first."
+            )
+
         logger.info("🔍 Checking current schema...")
 
         with self.engine.connect() as conn:
@@ -177,6 +179,11 @@ class ProductionMigration:
 
     def execute_migration(self):
         """Execute the actual migration with transaction safety."""
+        if self.engine is None:
+            raise RuntimeError(
+                "Database engine not initialized. Call validate_environment first."
+            )
+
         logger.info("🔧 Executing migration...")
 
         with self.engine.begin() as conn:  # Auto-rollback on exception
@@ -200,9 +207,9 @@ class ProductionMigration:
                     )
                 ).fetchone()
 
-                if result[0] != "YES":
+                if result is None or result[0] != "YES":
                     raise Exception(
-                        "Migration verification failed - column is still NOT NULL"
+                        "Migration verification failed - column is still NOT NULL or result is None"
                     )
 
                 logger.info("✅ Migration verified successfully within transaction")
@@ -216,6 +223,11 @@ class ProductionMigration:
 
     def verify_migration(self):
         """Comprehensive post-migration verification."""
+        if self.engine is None:
+            raise RuntimeError(
+                "Database engine not initialized. Call validate_environment first."
+            )
+
         logger.info("✅ Running post-migration verification...")
 
         with self.engine.connect() as conn:
@@ -230,8 +242,10 @@ class ProductionMigration:
                 )
             ).fetchone()
 
-            if column_info[1] != "YES":
-                raise Exception("Verification failed: cliente_id is still NOT NULL")
+            if column_info is None or column_info[1] != "YES":
+                raise Exception(
+                    "Verification failed: cliente_id is still NOT NULL or column not found"
+                )
 
             # Test NULL insertion
             conn.execute(text("BEGIN;"))
@@ -347,23 +361,22 @@ def main():
 
     # Safety confirmation
     if not args.confirm:
-        print("\n" + "=" * 60)
-        print("🚨 PRODUCTION MIGRATION WARNING")
-        print("=" * 60)
-        print("This will modify your production database schema.")
-        print("Make sure you have:")
-        print("  ✅ Tested on staging environment")
-        print("  ✅ Scheduled maintenance window")
-        print("  ✅ Notified relevant stakeholders")
-        print("  ✅ Verified backup strategy")
-        print(
-            "\nDatabase:",
-            database_url.split("@")[-1] if "@" in database_url else database_url,
+        logger.warning("=" * 60)
+        logger.warning("🚨 PRODUCTION MIGRATION WARNING")
+        logger.warning("=" * 60)
+        logger.warning("This will modify your production database schema.")
+        logger.warning("Make sure you have:")
+        logger.warning("  ✅ Tested on staging environment")
+        logger.warning("  ✅ Scheduled maintenance window")
+        logger.warning("  ✅ Notified relevant stakeholders")
+        logger.warning("  ✅ Verified backup strategy")
+        logger.warning(
+            f"Database: {database_url.split('@')[-1] if '@' in database_url else database_url}"
         )
 
         response = input("\nProceed with migration? (yes/no): ").lower().strip()
         if response != "yes":
-            print("Migration cancelled.")
+            logger.info("Migration cancelled.")
             return 0
 
     # Run migration
