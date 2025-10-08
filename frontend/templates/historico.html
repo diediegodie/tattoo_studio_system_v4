@@ -56,10 +56,12 @@
                                     </tr>
                                 </thead>
                                 <tbody>
+                                    {# Client is optional - display "Não informado" when missing (consistent with
+                                    registration form) #}
                                     {% for p in pagamentos %}
                                     <tr data-id="{{ p.id }}">
                                         <td>{{ p.data.strftime('%d/%m/%Y') if p.data else '' }}</td>
-                                        <td>{{ p.cliente.name if p.cliente else '' }}</td>
+                                        <td>{{ p.cliente.name if p.cliente else 'Não informado' }}</td>
                                         <td>{{ p.artista.name if p.artista else '' }}</td>
                                         <td>{{ 'R$ %.2f' % p.valor if p.valor is not none else '' }}</td>
 
@@ -102,11 +104,14 @@
                                     </tr>
                                 </thead>
                                 <tbody>
+                                    {# Client is optional - display "Não informado" when missing (consistent with
+                                    registration form) #}
                                     {% for c in comissoes %}
                                     <tr data-id="com-{{ c.id }}">
                                         <td>{{ c.created_at.strftime('%d/%m/%Y') if c.created_at else '' }}</td>
                                         <td>{{ c.artista.name if c.artista else '' }}</td>
-                                        <td>{{ c.pagamento.cliente.name if c.pagamento and c.pagamento.cliente else ''
+                                        <td>{{ c.pagamento.cliente.name if c.pagamento and c.pagamento.cliente else 'Não
+                                            informado'
                                             }}</td>
                                         <td>{{ 'R$ %.2f' % c.pagamento.valor if c.pagamento and c.pagamento.valor is not
                                             none else '' }}</td>
@@ -148,10 +153,12 @@
                                     </tr>
                                 </thead>
                                 <tbody>
+                                    {# Client is optional - display "Não informado" when missing (consistent with
+                                    registration form) #}
                                     {% for s in sessoes %}
                                     <tr data-id="sess-{{ s.id }}">
                                         <td>{{ s.data.strftime('%d/%m/%Y') if s.data else '' }}</td>
-                                        <td>{{ s.cliente.name if s.cliente else '' }}</td>
+                                        <td>{{ s.cliente.name if s.cliente else 'Não informado' }}</td>
                                         <td>{{ s.artista.name if s.artista else '' }}</td>
                                         <td>{{ 'R$ %.2f' % s.valor if s.valor is not none else '' }}</td>
                                         <td>{{ s.observacoes or '' }}</td>
@@ -293,7 +300,7 @@
                                             - current_totals['comissoes_total'])) }}</td>
                                     </tr> #}
                                     <tr>
-                                        <td>Receita Líquida (Bruta - Comissões)</td>
+                                        <td>Receita Líquida (Bruta - Comissões - Gastos)</td>
                                         <td>R$ {{ '%.2f' % current_totals['receita_liquida'] }}</td>
                                     </tr>
                                 </tbody>

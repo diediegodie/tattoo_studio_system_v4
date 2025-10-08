@@ -545,8 +545,10 @@ class TestHistoricoEndpoint:
         assert (
             "Test Client" in content
         ), "Client name should appear for payment with client"
-        # The template should show empty string or 'Cliente não encontrado' for payments without clients
-        # We don't check for specific text since the template might handle this differently
+        # The template should show 'Não informado' for payments without clients (consistent with registration form)
+        assert (
+            "Não informado" in content
+        ), "Payment without client should show 'Não informado'"
 
         # Verify payment details are present
         assert (

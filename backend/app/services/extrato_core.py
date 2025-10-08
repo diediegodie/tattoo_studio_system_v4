@@ -578,7 +578,8 @@ def calculate_totals(pagamentos_data, sessoes_data, comissoes_data, gastos_data=
     ]
 
     saldo = receita_total - despesas_total  # commissions shown separately
-    receita_liquida = receita_total - comissoes_total - despesas_total  # for UI display
+    # Receita líquida exibida no histórico: bruta - comissões - gastos
+    receita_liquida = receita_total - comissoes_total - despesas_total
 
     # Debug logging for net revenue calculation
     if os.getenv("HISTORICO_DEBUG", "").lower() in ("1", "true", "yes"):

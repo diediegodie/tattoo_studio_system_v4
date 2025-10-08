@@ -106,9 +106,18 @@ def setup_logging(
     else:
         level = getattr(logging, str(log_level).upper(), logging.INFO)
 
-    # Create logs directory
+    # Create logs directory (with fallback if creation fails)
     log_dir = Path(__file__).parent.parent.parent / "logs"
-    log_dir.mkdir(exist_ok=True)
+    try:
+        log_dir.mkdir(exist_ok=True)
+    except Exception as e:
+        # If we can't create logs directory, log to console only
+        # Use stderr for early initialization warnings
+        print(
+            f"WARNING: Failed to create logs directory: {e}. "
+            "Logging will only go to console.",
+            file=sys.stderr,
+        )
 
     # Root logger configuration
     root_logger = logging.getLogger()
@@ -134,29 +143,60 @@ def setup_logging(
     console_handler.setFormatter(console_formatter)
     root_logger.addHandler(console_handler)
 
-    # File handler with rotation
+    # File handler with rotation (with fallback on failure)
     if log_to_file:
-        file_handler = logging.handlers.RotatingFileHandler(
-            log_dir / "app.log",
-            maxBytes=10 * 1024 * 1024,  # 10 MB
-            backupCount=5,
-            encoding="utf-8",
-        )
-        file_handler.setLevel(level)
         file_formatter = JSONFormatter()  # Always JSON for files
-        file_handler.setFormatter(file_formatter)
-        root_logger.addHandler(file_handler)
 
-        # Separate error log
-        error_handler = logging.handlers.RotatingFileHandler(
-            log_dir / "tattoo_studio_errors.log",
-            maxBytes=10 * 1024 * 1024,  # 10 MB
-            backupCount=5,
-            encoding="utf-8",
-        )
-        error_handler.setLevel(logging.ERROR)
-        error_handler.setFormatter(file_formatter)
-        root_logger.addHandler(error_handler)
+        try:
+            file_handler = logging.handlers.RotatingFileHandler(
+                log_dir / "app.log",
+                maxBytes=10 * 1024 * 1024,  # 10 MB
+                backupCount=5,
+                encoding="utf-8",
+            )
+            file_handler.setLevel(level)
+            file_handler.setFormatter(file_formatter)
+            root_logger.addHandler(file_handler)
+        except Exception as e:
+            # Log to console if file handler fails (disk full, read-only, etc.)
+            # Catch all exceptions to ensure app doesn't crash
+            console_handler.handle(
+                logging.LogRecord(
+                    name="app.logging",
+                    level=logging.WARNING,
+                    pathname=__file__,
+                    lineno=0,
+                    msg=f"Failed to create file handler for app.log: {e}. Falling back to console-only logging.",
+                    args=(),
+                    exc_info=None,
+                )
+            )
+
+        # Separate error log (with independent error handling)
+        try:
+            error_handler = logging.handlers.RotatingFileHandler(
+                log_dir / "tattoo_studio_errors.log",
+                maxBytes=10 * 1024 * 1024,  # 10 MB
+                backupCount=5,
+                encoding="utf-8",
+            )
+            error_handler.setLevel(logging.ERROR)
+            error_handler.setFormatter(file_formatter)
+            root_logger.addHandler(error_handler)
+        except Exception as e:
+            # Log to console if error handler fails
+            # Catch all exceptions to ensure app doesn't crash
+            console_handler.handle(
+                logging.LogRecord(
+                    name="app.logging",
+                    level=logging.WARNING,
+                    pathname=__file__,
+                    lineno=0,
+                    msg=f"Failed to create error file handler: {e}. Error logs will only go to console.",
+                    args=(),
+                    exc_info=None,
+                )
+            )
 
     # Configure SQLAlchemy logging
     if enable_sql_echo:

@@ -52,12 +52,14 @@
 									</tr>
 								</thead>
 								<tbody>
+									{# Client is optional - display "Não informado" when missing (consistent with
+									registration form) #}
 									{% for sessao in sessoes %}
 									<tr data-id="{{ sessao.id }}">
 										<td>{{ sessao.data.strftime('%d/%m/%Y') if sessao.data else '' }}</td>
-										<td>{{ sessao.cliente.name if sessao.cliente else 'Cliente não encontrado' }}
+										<td>{{ sessao.cliente.name if sessao.cliente else 'Não informado' }}
 										</td>
-										<td>{{ sessao.artista.name if sessao.artista else 'Artista não encontrado' }}
+										<td>{{ sessao.artista.name if sessao.artista else '' }}
 										</td>
 										<td>R$ {{ '{:,.2f}'.format(sessao.valor) }}</td>
 										<td>{{ sessao.observacoes }}</td>

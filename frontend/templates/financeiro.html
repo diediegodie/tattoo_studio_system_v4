@@ -52,12 +52,14 @@
                                     </tr>
                                 </thead>
                                 <tbody>
+                                    {# Client is optional - display "Não informado" when missing (consistent with
+                                    registration form) #}
                                     {% for pagamento in pagamentos %}
                                     <tr data-id="{{ pagamento.id }}">
                                         <td>{{ pagamento.data.strftime('%d/%m/%Y') if pagamento.data else '' }}</td>
-                                        <td>{{ pagamento.cliente.name if pagamento.cliente else 'Cliente não encontrado'
+                                        <td>{{ pagamento.cliente.name if pagamento.cliente else 'Não informado'
                                             }}</td>
-                                        <td>{{ pagamento.artista.name if pagamento.artista else 'Artista não encontrado'
+                                        <td>{{ pagamento.artista.name if pagamento.artista else ''
                                             }}</td>
                                         <td>R$ {{ '{:,.2f}'.format(pagamento.valor) }}</td>
                                         <td>{{ pagamento.forma_pagamento }}</td>

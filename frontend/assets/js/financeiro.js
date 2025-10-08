@@ -318,8 +318,9 @@
                 // Expect columns: Data, Cliente, Artista, Valor, Forma de pagamento, Observações, Opções
                 if (cols && cols.length >= 7) {
                   cols[0].textContent = updated.data.data ? new Date(updated.data.data).toLocaleDateString() : '';
-                  cols[1].textContent = (updated.data.cliente && updated.data.cliente.name) ? updated.data.cliente.name : 'Cliente não encontrado';
-                  cols[2].textContent = (updated.data.artista && updated.data.artista.name) ? updated.data.artista.name : 'Artista não encontrado';
+                  // Display "Não informado" when no client is associated (consistent with registration form behavior)
+                  cols[1].textContent = (updated.data.cliente && updated.data.cliente.name) ? updated.data.cliente.name : 'Não informado';
+                  cols[2].textContent = (updated.data.artista && updated.data.artista.name) ? updated.data.artista.name : '';
                   cols[3].textContent = (typeof updated.data.valor !== 'undefined' && updated.data.valor !== null) ? ('R$ ' + Number(updated.data.valor).toFixed(2)) : '';
                   cols[4].textContent = updated.data.forma_pagamento || '';
                   cols[5].textContent = updated.data.observacoes || '';
