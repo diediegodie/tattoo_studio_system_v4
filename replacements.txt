@@ -1,0 +1,24 @@
+# Git Filter-Repo Replacements File
+# This file contains patterns to replace sensitive data in git history
+# Format: literal_string==>replacement_text OR regex:pattern==>replacement
+
+# Database credentials patterns
+regex:postgresql://[^:]+:[^@]+@[^/]+/\w+==>[REDACTED_DATABASE_URL]
+regex:POSTGRES_PASSWORD=.+==>[REDACTED_POSTGRES_PASSWORD]
+regex:DATABASE_URL=.+==>[REDACTED_DATABASE_URL]
+
+# API keys and tokens
+regex:GOOGLE_CLIENT_SECRET=[\w-]+==>[REDACTED_GOOGLE_CLIENT_SECRET]
+regex:JOTFORM_API_KEY=[\w-]+==>[REDACTED_JOTFORM_API_KEY]
+regex:GOOGLE_API_KEY=[\w-]+==>[REDACTED_GOOGLE_API_KEY]
+regex:FLASK_SECRET_KEY=[\w-]+==>[REDACTED_FLASK_SECRET_KEY]
+
+# Generic password patterns
+regex:password["\s]*[:=]["\s]*[^\s"]+==>[REDACTED_PASSWORD]
+regex:secret["\s]*[:=]["\s]*[^\s"]+==>[REDACTED_SECRET]
+regex:api[_-]?key["\s]*[:=]["\s]*[^\s"]+==>[REDACTED_API_KEY]
+regex:access[_-]?token["\s]*[:=]["\s]*[^\s"]+==>[REDACTED_ACCESS_TOKEN]
+
+# AWS credentials (if any)
+regex:AWS_ACCESS_KEY_ID=[\w]+==>[REDACTED_AWS_ACCESS_KEY_ID]
+regex:AWS_SECRET_ACCESS_KEY=[\w/+]+==>[REDACTED_AWS_SECRET_ACCESS_KEY]
