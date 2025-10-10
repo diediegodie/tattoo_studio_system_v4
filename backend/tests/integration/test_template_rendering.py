@@ -20,6 +20,15 @@ class TestClientOptionalTemplates:
         app.config["WTF_CSRF_ENABLED"] = False
         return app
 
+    def test_template_helpers_registered(self, app):
+        """Test that template helpers are properly registered."""
+        with app.app_context():
+            # Check that helpers are available in Jinja environment
+            assert "format_client_name" in app.jinja_env.globals
+            assert "format_currency" in app.jinja_env.globals
+            assert "format_date_br" in app.jinja_env.globals
+            assert "safe_attr" in app.jinja_env.globals
+
     def test_registrar_pagamento_template_has_optional_client_field(self, app):
         """Test that registrar_pagamento template has optional client field."""
         with app.app_context():
@@ -239,4 +248,53 @@ class TestClientOptionalTemplates:
                 # Check that optional nature is clearly indicated
                 assert (
                     "opcional" in rendered.lower()
-                ), "Optional nature should be clearly indicated"
+                ), "Should indicate that client field is optional"
+
+    def test_template_helpers_work_in_templates(self, app):
+        """Test that template helpers work correctly when used in templates."""
+        with app.app_context():
+            with app.test_request_context():
+                from decimal import Decimal
+                from datetime import date
+
+                # Mock payment data to test template helpers
+                mock_client = Mock()
+                mock_client.name = "João Silva"
+
+                mock_artista = Mock()
+                mock_artista.name = "Artist Name"
+
+                pagamentos = [
+                    Mock(
+                        id=1,
+                        valor=Decimal("100.50"),
+                        data=date(2024, 1, 15),
+                        cliente=mock_client,
+                        artista=mock_artista,
+                        forma_pagamento="Dinheiro",
+                        observacoes="Test payment",
+                    ),
+                    Mock(
+                        id=2,
+                        valor=Decimal("200.75"),
+                        data=date(2024, 2, 20),
+                        cliente=None,  # Test null client
+                        artista=mock_artista,
+                        forma_pagamento="Cartão",
+                        observacoes="Payment without client",
+                    ),
+                ]
+
+                template_data = {"pagamentos": pagamentos, "totals": {"total": 301.25}}
+                rendered = app.jinja_env.get_template("financeiro.html").render(
+                    **template_data
+                )
+
+                # Should use helper functions
+                assert "Não informado" in rendered  # format_client_name(None)
+                assert "R$ 100,50" in rendered  # format_currency(100.50)
+                assert "R$ 200,75" in rendered  # format_currency(200.75)
+                assert "15/01/2024" in rendered  # format_date_br(date)
+                assert "20/02/2024" in rendered  # format_date_br(date)
+                assert "João Silva" in rendered  # format_client_name(mock_client)
+                assert "Artist Name" in rendered  # safe_attr(mock_artista, 'name')

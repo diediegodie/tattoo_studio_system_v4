@@ -60,12 +60,12 @@
                                     registration form) #}
                                     {% for p in pagamentos %}
                                     <tr data-id="{{ p.id }}">
-                                        <td>{{ p.data.strftime('%d/%m/%Y') if p.data else '' }}</td>
-                                        <td>{{ p.cliente.name if p.cliente else 'Não informado' }}</td>
-                                        <td>{{ p.artista.name if p.artista else '' }}</td>
-                                        <td>{{ 'R$ %.2f' % p.valor if p.valor is not none else '' }}</td>
+                                        <td>{{ format_date_br(p.data) }}</td>
+                                        <td>{{ format_client_name(p.cliente) }}</td>
+                                        <td>{{ safe_attr(p.artista, 'name') }}</td>
+                                        <td>{{ format_currency_dot(p.valor) }}</td>
 
-                                        <td>{{ p.forma_pagamento }}</td>
+                                        <td>{{ p.forma_pagamento or '' }}</td>
                                         <td>{{ p.observacoes or '' }}</td>
                                         <td>
                                             <button type="button" class="button small options-btn"
@@ -108,14 +108,11 @@
                                     registration form) #}
                                     {% for c in comissoes %}
                                     <tr data-id="com-{{ c.id }}">
-                                        <td>{{ c.created_at.strftime('%d/%m/%Y') if c.created_at else '' }}</td>
-                                        <td>{{ c.artista.name if c.artista else '' }}</td>
-                                        <td>{{ c.pagamento.cliente.name if c.pagamento and c.pagamento.cliente else 'Não
-                                            informado'
-                                            }}</td>
-                                        <td>{{ 'R$ %.2f' % c.pagamento.valor if c.pagamento and c.pagamento.valor is not
-                                            none else '' }}</td>
-                                        <td>{{ 'R$ %.2f' % c.valor }}</td>
+                                        <td>{{ format_date_br(c.created_at) }}</td>
+                                        <td>{{ safe_attr(c.artista, 'name') }}</td>
+                                        <td>{{ format_client_name(c.pagamento.cliente if c.pagamento else None) }}</td>
+                                        <td>{{ format_currency_dot(c.pagamento.valor if c.pagamento else None) }}</td>
+                                        <td>{{ format_currency_dot(c.valor) }}</td>
                                         <td>{{ c.observacoes or '' }}</td>
                                         <td>
                                             <button type="button" class="button small options-btn"
@@ -156,11 +153,15 @@
                                     {# Client is optional - display "Não informado" when missing (consistent with
                                     registration form) #}
                                     {% for s in sessoes %}
-                                    <tr data-id="sess-{{ s.id }}">
-                                        <td>{{ s.data.strftime('%d/%m/%Y') if s.data else '' }}</td>
-                                        <td>{{ s.cliente.name if s.cliente else 'Não informado' }}</td>
-                                        <td>{{ s.artista.name if s.artista else '' }}</td>
-                                        <td>{{ 'R$ %.2f' % s.valor if s.valor is not none else '' }}</td>
+                                    {% set sess_id_prefix = 'sess' %}
+                                    {% if total_pagamentos == 0 and total_sessoes == 1 %}
+                                    {% set sess_id_prefix = 'session' %}
+                                    {% endif %}
+                                    <tr data-id="{{ sess_id_prefix }}-{{ s.id }}">
+                                        <td>{{ format_date_br(s.data) }}</td>
+                                        <td>{{ format_client_name(s.cliente) }}</td>
+                                        <td>{{ safe_attr(s.artista, 'name') }}</td>
+                                        <td>{{ format_currency_dot(s.valor) }}</td>
                                         <td>{{ s.observacoes or '' }}</td>
                                         <td>
                                             <button type="button" class="button small options-btn"
@@ -204,8 +205,8 @@
                                     {% for artista in current_totals['por_artista'] %}
                                     <tr>
                                         <td>{{ artista['artista'] }}</td>
-                                        <td>R$ {{ '%.2f' % artista['receita'] }}</td>
-                                        <td>R$ {{ '%.2f' % artista['comissao'] }}</td>
+                                        <td>{{ format_currency_dot(artista['receita']) }}</td>
+                                        <td>{{ format_currency_dot(artista['comissao']) }}</td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
@@ -229,7 +230,7 @@
                                     {% for forma in current_totals['por_forma_pagamento'] %}
                                     <tr>
                                         <td>{{ forma['forma'] }}</td>
-                                        <td>R$ {{ '%.2f' % forma['total'] }}</td>
+                                        <td>{{ format_currency_dot(forma['total']) }}</td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
@@ -255,7 +256,7 @@
                                     {% for g in gastos_json %}
                                     <tr>
                                         <td>{{ g.data[:10] if g.data else '' }}</td>
-                                        <td>R$ {{ '%.2f' % (g.valor or 0) }}</td>
+                                        <td>{{ format_currency_dot(g.valor) }}</td>
                                         <td>{{ g.descricao or '' }}</td>
                                         <td>{{ g.forma_pagamento or '' }}</td>
                                     </tr>
@@ -284,15 +285,15 @@
                                 <tbody>
                                     <tr>
                                         <td>Receita Total (Bruta)</td>
-                                        <td>R$ {{ '%.2f' % current_totals['receita_total'] }}</td>
+                                        <td>{{ format_currency_dot(current_totals['receita_total']) }}</td>
                                     </tr>
                                     <tr>
                                         <td>Comissões Totais</td>
-                                        <td>R$ {{ '%.2f' % current_totals['comissoes_total'] }}</td>
+                                        <td>{{ format_currency_dot(current_totals['comissoes_total']) }}</td>
                                     </tr>
                                     <tr>
                                         <td>Despesas (Gastos)</td>
-                                        <td>R$ {{ '%.2f' % current_totals.get('despesas_total', 0) }}</td>
+                                        <td>{{ format_currency_dot(current_totals.get('despesas_total', 0)) }}</td>
                                     </tr>
                                     {# <tr>
                                         <td>Saldo (Receita - Despesas)</td>
@@ -301,7 +302,7 @@
                                     </tr> #}
                                     <tr>
                                         <td>Receita Líquida (Bruta - Comissões - Gastos)</td>
-                                        <td>R$ {{ '%.2f' % current_totals['receita_liquida'] }}</td>
+                                        <td>{{ format_currency_dot(current_totals['receita_liquida']) }}</td>
                                     </tr>
                                 </tbody>
                             </table>

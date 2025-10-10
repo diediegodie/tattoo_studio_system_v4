@@ -62,7 +62,8 @@
                                 {% for gasto in gastos_json %}
                                 <tr data-id="{{ gasto.id }}">
                                     <td>{{ gasto.data or '-' }}</td>
-                                    <td>R$ {{ '%.2f' % gasto.valor if gasto.valor is not none else '0.00' }}</td>
+                                    <td>{{ format_currency(gasto.valor) if gasto.valor is not none else
+                                        format_currency(0) }}</td>
                                     <td>{{ gasto.descricao }}</td>
                                     <td>{{ gasto.forma_pagamento }}</td>
                                     <td>

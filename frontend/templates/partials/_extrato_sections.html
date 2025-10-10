@@ -26,13 +26,9 @@
                 {% for pagamento in pagamentos %}
                 <tr>
                     <td>{{ pagamento.data[:10] if pagamento.data else '' }}</td>
-                    <td>{{ pagamento.cliente_name or '' }}</td>
+                    <td>{{ format_client_name(pagamento) }}</td>
                     <td>{{ pagamento.artista_name or '' }}</td>
-                    <td>
-                        {% if pagamento.valor is not none %}
-                        R$ {{ '%.2f' % pagamento.valor }}
-                        {% endif %}
-                    </td>
+                    <td>{{ format_currency(pagamento.valor) }}</td>
                     <td>{{ pagamento.forma_pagamento or '' }}</td>
                     <td>{{ pagamento.observacoes or '' }}</td>
                 </tr>
@@ -67,17 +63,9 @@
                 <tr>
                     <td>{{ comissao.created_at[:10] if comissao.created_at else '' }}</td>
                     <td>{{ comissao.artista_name or '' }}</td>
-                    <td>{{ comissao.cliente_name or '' }}</td>
-                    <td>
-                        {% if comissao.pagamento_valor is not none %}
-                        R$ {{ '%.2f' % comissao.pagamento_valor }}
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if comissao.valor is not none %}
-                        R$ {{ '%.2f' % comissao.valor }}
-                        {% endif %}
-                    </td>
+                    <td>{{ format_client_name(comissao) }}</td>
+                    <td>{{ format_currency(comissao.pagamento_valor) }}</td>
+                    <td>{{ format_currency(comissao.valor) }}</td>
                     <td>{{ comissao.observacoes or '' }}</td>
                 </tr>
                 {% endfor %}
@@ -109,13 +97,9 @@
                 {% for sessao in sessoes %}
                 <tr>
                     <td>{{ sessao.data[:10] if sessao.data else '' }}</td>
-                    <td>{{ sessao.cliente_name or '' }}</td>
+                    <td>{{ format_client_name(sessao) }}</td>
                     <td>{{ sessao.artista_name or '' }}</td>
-                    <td>
-                        {% if sessao.valor is not none %}
-                        R$ {{ '%.2f' % sessao.valor }}
-                        {% endif %}
-                    </td>
+                    <td>{{ format_currency(sessao.valor) }}</td>
                     <td>{{ sessao.observacoes or '' }}</td>
                 </tr>
                 {% endfor %}
@@ -146,8 +130,8 @@
                 {% for artista in totais_por_artista %}
                 <tr>
                     <td>{{ artista.artista }}</td>
-                    <td>R$ {{ '%.2f' % artista.receita }}</td>
-                    <td>R$ {{ '%.2f' % artista.comissao }}</td>
+                    <td>{{ format_currency(artista.receita) }}</td>
+                    <td>{{ format_currency(artista.comissao) }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -174,7 +158,7 @@
                 {% for forma in totais_por_forma %}
                 <tr>
                     <td>{{ forma.forma }}</td>
-                    <td>R$ {{ '%.2f' % forma.total }}</td>
+                    <td>{{ format_currency(forma.total) }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -202,7 +186,7 @@
                 {% for gasto in gastos %}
                 <tr>
                     <td>{{ gasto.data[:10] if gasto.data else '' }}</td>
-                    <td>R$ {{ '%.2f' % gasto.valor }}</td>
+                    <td>{{ format_currency(gasto.valor) }}</td>
                     <td>{{ gasto.descricao or '' }}</td>
                     <td>{{ gasto.forma_pagamento or '' }}</td>
                 </tr>
@@ -229,19 +213,19 @@
             <tbody>
                 <tr>
                     <td>Receita Total (Bruta)</td>
-                    <td>R$ {{ '%.2f' % (totais.receita_total or 0) }}</td>
+                    <td>{{ format_currency(totais.receita_total or 0) }}</td>
                 </tr>
                 <tr>
                     <td>Comissões Totais</td>
-                    <td>R$ {{ '%.2f' % (totais.comissoes_total or 0) }}</td>
+                    <td>{{ format_currency(totais.comissoes_total or 0) }}</td>
                 </tr>
                 <tr>
                     <td>Despesas (Gastos)</td>
-                    <td>R$ {{ '%.2f' % (totais.despesas_total or 0) }}</td>
+                    <td>{{ format_currency(totais.despesas_total or 0) }}</td>
                 </tr>
                 <tr>
                     <td>Receita Líquida (Bruta - Comissões - Gastos)</td>
-                    <td>R$ {{ '%.2f' % (totais.receita_liquida or 0) }}</td>
+                    <td>{{ format_currency(totais.receita_liquida or 0) }}</td>
                 </tr>
             </tbody>
         </table>

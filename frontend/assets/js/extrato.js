@@ -227,7 +227,7 @@
           },
           {
             header: "Cliente",
-            render: (row) => row.cliente_name || ""
+            render: (row) => row.cliente_name || "Não informado"
           },
           {
             header: "Artista",
@@ -267,7 +267,7 @@
           },
           {
             header: "Cliente",
-            render: (row) => row.cliente_name || ""
+            render: (row) => row.cliente_name || "Não informado"
           },
           {
             header: "Valor total",
@@ -299,7 +299,7 @@
           },
           {
             header: "Cliente",
-            render: (row) => row.cliente_name || ""
+            render: (row) => row.cliente_name || "Não informado"
           },
           {
             header: "Artista",

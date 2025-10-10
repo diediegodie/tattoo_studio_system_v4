@@ -1,3 +1,4 @@
+# Invariant: Sessions in Histórico are derived by payment_id; the session status field is irrelevant for display.
 # Changelog - Tattoo Studio System
 
 ## [v4.1.1] - Batch Processing Enhancement (2025-01-XX)

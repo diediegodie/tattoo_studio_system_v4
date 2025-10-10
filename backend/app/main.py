@@ -318,12 +318,84 @@ def create_app():
 
     # Configuration
     app.config["SECRET_KEY"] = os.getenv("FLASK_SECRET_KEY", "dev-secret-change-me")
+    # Surface DATABASE_URL in Flask config so other components (e.g., JSON vs JSONB chooser)
+    # can correctly infer the active dialect. This also helps debugging.
+    app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL", "")
     app.config["GOOGLE_OAUTH_CLIENT_ID"] = os.getenv("GOOGLE_CLIENT_ID")
     app.config["GOOGLE_OAUTH_CLIENT_SECRET"] = os.getenv("GOOGLE_CLIENT_SECRET")
     app.config["LOGIN_DISABLED"] = (
         os.getenv("LOGIN_DISABLED", "false").lower() == "true"
     )
     app.config["SHOW_API_DOCS"] = os.getenv("SHOW_API_DOCS", "false").lower() == "true"
+
+    # Ensure database tables exist early to avoid runtime failures like
+    # "relation 'users' does not exist" or "no such table: extratos".
+    # This is idempotent and safe across SQLite/PostgreSQL in dev/test.
+    try:
+        from app.db.session import create_tables, get_engine
+
+        create_tables()
+        try:
+            # Log basic DB connectivity and target for visibility
+            eng = get_engine()
+            logger.info(
+                "Database ready",
+                extra={
+                    "context": {
+                        "url": str(getattr(eng, "url", "")),
+                        "driver": getattr(
+                            getattr(eng, "dialect", None), "name", "unknown"
+                        ),
+                    }
+                },
+            )
+        except Exception:
+            # Non-fatal: table creation succeeded but introspection/logging failed
+            logger.debug("Engine inspection skipped", exc_info=True)
+    except Exception as e:
+        logger.warning(
+            "Failed to auto-create tables",
+            extra={"context": {"error": str(e)}},
+            exc_info=True,
+        )
+
+    # If primary DB is unreachable (e.g., Postgres password mismatch or container not ready),
+    # provide a development-friendly fallback to the local SQLite DB to avoid blocking login/UI.
+    if not test_database_connection():
+        if not is_production:
+            try:
+                # Compute project_root again from script_dir
+                backend_dir = os.path.dirname(script_dir)
+                project_root = os.path.dirname(backend_dir)
+                sqlite_path = os.path.join(project_root, "tattoo_studio_dev.db")
+                os.environ["DATABASE_URL"] = f"sqlite:///{sqlite_path}"
+                # Update Flask config reference so JSON type selection is consistent
+                app.config["SQLALCHEMY_DATABASE_URI"] = os.environ["DATABASE_URL"]
+                logger.warning(
+                    "Primary DB unavailable; falling back to SQLite dev database",
+                    extra={"context": {"sqlite_path": sqlite_path}},
+                )
+                from app.db.session import create_tables as _ct, get_engine as _ge
+
+                _ct()
+                eng = _ge()
+                logger.info(
+                    "Fallback database ready",
+                    extra={
+                        "context": {
+                            "url": str(getattr(eng, "url", "")),
+                            "driver": getattr(
+                                getattr(eng, "dialect", None), "name", "unknown"
+                            ),
+                        }
+                    },
+                )
+            except Exception as _e:
+                logger.error(
+                    "Failed to initialize fallback SQLite database",
+                    extra={"context": {"error": str(_e)}},
+                    exc_info=True,
+                )
 
     # Initialize Flask-Login
     login_manager = LoginManager()
@@ -428,17 +500,15 @@ def create_app():
     def extrato_for_period(ano, mes):
         from app.db.base import Extrato
         from app.db.session import SessionLocal
-        from app.services.extrato_automation import run_extrato_in_background
 
         if mes < 1 or mes > 12 or ano < 2000 or ano > 2100:
             abort(404)
-
-        run_extrato_in_background()
 
         requested_mes_str = f"{mes:02d}"
         selected_mes_str = requested_mes_str
         selected_ano_str = str(ano)
         bootstrap_data = None
+
         bootstrap_mes_nome = None
         feedback_state = "warning"
         feedback_message = f"Nenhum extrato encontrado para {requested_mes_str}/{ano}."
@@ -605,6 +675,27 @@ def create_app():
 
     # Register OAuth blueprint - name already set at creation
     app.register_blueprint(google_oauth_bp, url_prefix="/auth")
+
+    # Register template helper functions
+    from app.utils.template_helpers import (
+        format_client_name,
+        format_currency,
+        format_currency_dot,
+        format_date_br,
+        safe_attr,
+    )
+
+    app.jinja_env.globals.update(
+        {
+            "format_client_name": format_client_name,
+            "format_currency": format_currency,
+            "format_currency_dot": format_currency_dot,
+            "format_date_br": format_date_br,
+            "safe_attr": safe_attr,
+        }
+    )
+
+    logger.info("Template helper functions registered")
 
     # Initialize background token refresh scheduler
     try:

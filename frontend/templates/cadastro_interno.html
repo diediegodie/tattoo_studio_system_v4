@@ -64,7 +64,8 @@
                                         <td>{{ artist.id }}</td>
                                         <td>{{ artist.name }}</td>
                                         <td>{{ artist.email if artist.email else 'Não informado' }}</td>
-                                        <td>{{ artist.created_at.strftime('%d/%m/%Y %H:%M') if artist.created_at else ''
+                                        <td>{{ format_date_br(artist.created_at, include_time=True) if artist.created_at
+                                            else ''
                                             }}</td>
                                         <td>
                                             <button class="button small options-btn"

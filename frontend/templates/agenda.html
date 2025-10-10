@@ -38,7 +38,7 @@
                                     <span class="client-name"><strong>{{ event.title or 'Evento sem título'
                                             }}</strong></span>
                                     <br>
-                                    <small class="text-muted">{{ event.start_time.strftime('%d/%m/%Y às %H:%M') if
+                                    <small class="text-muted">{{ format_date_br(event.start_time, include_time=True) if
                                         event.start_time else 'Data não definida' }}</small>
                                 </td>
                                 <td>
@@ -77,13 +77,13 @@
                                             {% if event.start_time %}
                                             <tr>
                                                 <td><strong>Data/Hora de Início</strong></td>
-                                                <td>{{ event.start_time.strftime('%d/%m/%Y às %H:%M') }}</td>
+                                                <td>{{ format_date_br(event.start_time, include_time=True) }}</td>
                                             </tr>
                                             {% endif %}
                                             {% if event.end_time %}
                                             <tr>
                                                 <td><strong>Data/Hora de Término</strong></td>
-                                                <td>{{ event.end_time.strftime('%d/%m/%Y às %H:%M') }}</td>
+                                                <td>{{ format_date_br(event.end_time, include_time=True) }}</td>
                                             </tr>
                                             {% endif %}
                                             {% if event.attendees %}

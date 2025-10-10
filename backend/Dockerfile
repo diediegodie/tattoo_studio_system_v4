@@ -16,6 +16,7 @@ RUN apt-get update \
         gcc \
         python3-dev \
         libpq-dev \
+        curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory to where the app code will be

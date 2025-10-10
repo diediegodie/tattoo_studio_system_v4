@@ -60,7 +60,14 @@ class User(UserMixin, Base):
     role: Mapped[str] = mapped_column(
         String(20), nullable=False, default="client"
     )  # 'client', 'artist', 'admin'
-    # Flask-Login integration: is_active is provided by UserMixin
+    # Explicit active flag to support Flask-Login semantics and tests
+    active_flag: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+    @property
+    def is_active(self) -> bool:
+        # Flask-Login expects this property
+        return self.active_flag
+
     created_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

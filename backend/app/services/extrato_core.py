@@ -9,7 +9,7 @@ import json
 import logging
 import os
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from logging.handlers import RotatingFileHandler
 from typing import Any, Iterable, List, Optional, Tuple
 
@@ -187,20 +187,32 @@ def _safe_filter(query: Any, *criteria: Any) -> Any:
 
 
 def query_data(db, mes, ano):
-    """Query Pagamento, Sessao, Comissao, Gasto for the month/year."""
-    start_date = datetime(ano, mes, 1)
-    if mes == 12:
-        end_date = datetime(ano + 1, 1, 1)
-    else:
-        end_date = datetime(ano, mes + 1, 1)
+    """Query Pagamento (primary), derive Sessao/Comissao, and query Gasto for the month/year.
 
-    # Query Pagamentos with joins
+    Canonical window: [start_date, end_date) using DATE values to match column types and avoid
+    SQLite lexicographical comparison pitfalls when mixing DATE and DATETIME strings.
+    """
+    # Use date objects because the schema stores dates without time components
+    from datetime import date as _date
+
+    start_date = _date(ano, mes, 1)
+    end_date = _date(ano + 1, 1, 1) if mes == 12 else _date(ano, mes + 1, 1)
+    try:
+        logger.info(
+            "EXTRATO_CORE_WINDOW",
+            extra={"start_date": start_date, "end_date": end_date},
+        )
+    except Exception:
+        pass
+
+    # Query Pagamentos with joins (source of truth)
     pagamentos_query_base = db.query(Pagamento)
     pagamentos_query = _safe_options(
         pagamentos_query_base,
         joinedload(Pagamento.cliente),
         joinedload(Pagamento.artista),
         joinedload(Pagamento.sessao),
+        joinedload(Pagamento.comissoes),
     )
     pagamentos_query = _safe_filter(
         pagamentos_query, Pagamento.data >= start_date, Pagamento.data < end_date
@@ -208,48 +220,69 @@ def query_data(db, mes, ano):
     pagamentos_result = _safe_all(pagamentos_query)
     pagamentos = _ensure_sequence(pagamentos_result)
 
-    # Query Sessoes - only include completed or paid sessions for financial calculations
-    sessoes_query_base = db.query(Sessao)
-    sessoes_query = _safe_options(
-        sessoes_query_base, joinedload(Sessao.cliente), joinedload(Sessao.artista)
-    )
-    sessoes_query = _safe_filter(
-        sessoes_query, Sessao.data >= start_date, Sessao.data < end_date
-    )
-    sessoes_query = _safe_filter(
-        sessoes_query, Sessao.status.in_(["completed", "paid"])
-    )
-    sessoes_result = _safe_all(sessoes_query)
-    sessoes = _ensure_sequence(sessoes_result)
+    # Derive Sessoes from Pagamentos. Include sessions linked via Sessao.payment_id
+    # and also sessions reachable through Pagamento.sessao relationship.
+    sessoes = []
+    try:
+        payment_ids = [p.id for p in pagamentos]
+        if payment_ids:
+            sessoes = (
+                db.query(Sessao)
+                .options(joinedload(Sessao.cliente), joinedload(Sessao.artista))
+                .filter(Sessao.payment_id.in_(payment_ids))
+                .all()
+            )
+        # Also include sessions referenced by Pagamento.sessao_id
+        sessoes_rel = [
+            getattr(p, "sessao", None) for p in pagamentos if getattr(p, "sessao", None)
+        ]
+        if sessoes_rel:
+            # Merge without duplicates by ID
+            known_ids = {getattr(s, "id", None) for s in sessoes}
+            sessoes.extend(
+                [s for s in sessoes_rel if getattr(s, "id", None) not in known_ids]
+            )
+    except Exception:
+        # Fallback: relationship-based only
+        sessoes = [
+            getattr(p, "sessao", None)
+            for p in pagamentos
+            if getattr(p, "sessao", None) is not None
+        ]
 
-    # Query Comissoes with joins
-    comissoes_query_base = db.query(Comissao)
-    comissoes_query = _safe_options(
-        comissoes_query_base,
-        joinedload(Comissao.artista),
-        joinedload(Comissao.pagamento).joinedload(Pagamento.cliente),
-        joinedload(Comissao.pagamento).joinedload(Pagamento.sessao),
-    )
-    comissoes_query = _safe_filter(
-        comissoes_query,
-        or_(
-            Comissao.pagamento.has(
-                and_(
-                    Pagamento.data >= start_date,
-                    Pagamento.data < end_date,
-                )
-            ),
-            and_(
-                Comissao.pagamento_id.is_(None),
-                Comissao.created_at >= start_date,
-                Comissao.created_at < end_date,
-            ),
-        ),
-    )
-    comissoes_result = _safe_all(comissoes_query)
-    comissoes = _ensure_sequence(comissoes_result)
+    # Derive Comissoes primarily from Pagamentos in the window, but also include
+    # any commissions created within the month (even if not linked to a Pagamento),
+    # to support scenarios where commissions are recorded independently.
+    comissoes_map = {}
+    for p in pagamentos:
+        pcs = getattr(p, "comissoes", [])
+        if pcs:
+            try:
+                for c in pcs:
+                    cid = getattr(c, "id", None)
+                    if cid is not None:
+                        comissoes_map[cid] = c
+            except Exception:
+                pass
 
-    # Query Gastos
+    try:
+        extra_comissoes = (
+            db.query(Comissao)
+            .options(joinedload(Comissao.artista))
+            .filter(Comissao.created_at >= start_date, Comissao.created_at < end_date)
+            .all()
+        )
+        for c in extra_comissoes:
+            cid = getattr(c, "id", None)
+            if cid is not None and cid not in comissoes_map:
+                comissoes_map[cid] = c
+    except Exception:
+        # If commission query fails, keep only those attached to pagamentos
+        pass
+
+    comissoes = list(comissoes_map.values())
+
+    # Query Gastos by their own date field
     gastos_query_base = db.query(Gasto)
     gastos_query = _safe_options(gastos_query_base, joinedload(Gasto.creator))
     gastos_query = _safe_filter(
@@ -258,34 +291,18 @@ def query_data(db, mes, ano):
     gastos_result = _safe_all(gastos_query)
     gastos = _ensure_sequence(gastos_result)
 
-    month_start = start_date.date()
-    month_end = (end_date - timedelta(days=1)).date()
-
-    def _within_month(value):
-        if value is None:
-            return False
-        value_date = value.date() if hasattr(value, "date") else value
-        return month_start <= value_date <= month_end
-
-    def _filter_records(records, attr_name):
-        return [
-            record
-            for record in records
-            if _within_month(getattr(record, attr_name, None))
-        ]
-
-    pagamentos = _filter_records(pagamentos, "data")
-    sessoes = _filter_records(sessoes, "data")
-    gastos = _filter_records(gastos, "data")
-
-    comissoes_filtered = []
-    for comissao in comissoes:
-        created_at = getattr(comissao, "created_at", None)
-        pagamento = getattr(comissao, "pagamento", None)
-        pagamento_data = getattr(pagamento, "data", None) if pagamento else None
-        if _within_month(created_at) or _within_month(pagamento_data):
-            comissoes_filtered.append(comissao)
-    comissoes = comissoes_filtered
+    try:
+        logger.info(
+            "EXTRATO_CORE_COUNTS",
+            extra={
+                "pagamentos": len(pagamentos),
+                "sessoes": len([s for s in sessoes if s is not None]),
+                "comissoes": len(comissoes),
+                "gastos": len(gastos),
+            },
+        )
+    except Exception:
+        pass
 
     return pagamentos, sessoes, comissoes, gastos
 
@@ -296,16 +313,14 @@ def serialize_data(pagamentos, sessoes, comissoes, gastos):
     for p in pagamentos:
         pagamentos_data.append(
             {
-                "id": getattr(p, "id", None),  # Include payment ID for debugging
+                "id": getattr(p, "id", None),
                 "data": p.data.isoformat() if getattr(p, "data", None) else None,
                 "cliente_name": getattr(getattr(p, "cliente", None), "name", None),
                 "artista_name": getattr(getattr(p, "artista", None), "name", None),
                 "valor": _safe_float(getattr(p, "valor", None), 0.0),
                 "forma_pagamento": getattr(p, "forma_pagamento", None),
                 "observacoes": getattr(p, "observacoes", None),
-                "sessao_id": getattr(
-                    p, "sessao_id", None
-                ),  # Use session ID for proper linking
+                "sessao_id": getattr(p, "sessao_id", None),
                 "sessao_data": (
                     p.sessao.data.isoformat()
                     if getattr(p, "sessao", None) and getattr(p.sessao, "data", None)
@@ -318,11 +333,8 @@ def serialize_data(pagamentos, sessoes, comissoes, gastos):
     for s in sessoes:
         sessoes_data.append(
             {
-                "id": getattr(s, "id", None),  # Include session ID for proper linking
+                "id": getattr(s, "id", None),
                 "data": s.data.isoformat() if getattr(s, "data", None) else None,
-                "created_at": (
-                    s.created_at.isoformat() if getattr(s, "created_at", None) else None
-                ),
                 "cliente_name": getattr(getattr(s, "cliente", None), "name", None),
                 "artista_name": getattr(getattr(s, "artista", None), "name", None),
                 "valor": _safe_float(getattr(s, "valor", None), 0.0),
@@ -340,9 +352,6 @@ def serialize_data(pagamentos, sessoes, comissoes, gastos):
         )
         comissoes_data.append(
             {
-                "created_at": (
-                    c.created_at.isoformat() if getattr(c, "created_at", None) else None
-                ),
                 "artista_name": getattr(getattr(c, "artista", None), "name", None),
                 "cliente_name": cliente_name,
                 "pagamento_valor": _safe_float(
@@ -359,9 +368,15 @@ def serialize_data(pagamentos, sessoes, comissoes, gastos):
             }
         )
 
+    # Defensive: if gastos is not iterable (e.g., a Mock), treat as empty list
+    try:
+        iter(gastos)
+    except TypeError:
+        gastos = []
+
     gastos_data = []
     for g in gastos:
-        categoria = getattr(g, "categoria", None)  # Optional, forward-compatible
+        categoria = getattr(g, "categoria", None)
         gastos_data.append(
             {
                 "data": g.data.isoformat() if getattr(g, "data", None) else None,

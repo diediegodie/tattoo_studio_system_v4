@@ -56,14 +56,12 @@
                                     registration form) #}
                                     {% for pagamento in pagamentos %}
                                     <tr data-id="{{ pagamento.id }}">
-                                        <td>{{ pagamento.data.strftime('%d/%m/%Y') if pagamento.data else '' }}</td>
-                                        <td>{{ pagamento.cliente.name if pagamento.cliente else 'Não informado'
-                                            }}</td>
-                                        <td>{{ pagamento.artista.name if pagamento.artista else ''
-                                            }}</td>
-                                        <td>R$ {{ '{:,.2f}'.format(pagamento.valor) }}</td>
-                                        <td>{{ pagamento.forma_pagamento }}</td>
-                                        <td>{{ pagamento.observacoes }}</td>
+                                        <td>{{ format_date_br(pagamento.data) }}</td>
+                                        <td>{{ format_client_name(pagamento.cliente) }}</td>
+                                        <td>{{ safe_attr(pagamento.artista, 'name') }}</td>
+                                        <td>{{ format_currency(pagamento.valor) }}</td>
+                                        <td>{{ pagamento.forma_pagamento or '' }}</td>
+                                        <td>{{ pagamento.observacoes or '' }}</td>
                                         <td>
                                             <button class="button small options-btn"
                                                 onclick="toggleOptions(this)">Opções</button>

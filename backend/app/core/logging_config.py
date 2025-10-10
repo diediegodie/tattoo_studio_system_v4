@@ -151,7 +151,7 @@ def setup_logging(
 
         try:
             file_handler = logging.handlers.RotatingFileHandler(
-                log_dir / "app.log",
+                log_dir / "tattoo_studio.log",
                 maxBytes=10 * 1024 * 1024,  # 10 MB
                 backupCount=5,
                 encoding="utf-8",
@@ -168,7 +168,7 @@ def setup_logging(
                     level=logging.WARNING,
                     pathname=__file__,
                     lineno=0,
-                    msg=f"Failed to create file handler for app.log: {e}. Falling back to console-only logging.",
+                    msg=f"Failed to create file handler for tattoo_studio.log: {e}. Falling back to console-only logging.",
                     args=(),
                     exc_info=None,
                 )
@@ -231,7 +231,7 @@ def setup_logging(
 
     # Flask request/response logging (only if app is provided)
     if app is not None:
-        app.config.setdefault("ALERT_LOG_PATH", str(log_dir / "app.log"))
+        app.config.setdefault("ALERT_LOG_PATH", str(log_dir / "tattoo_studio.log"))
         app.config.setdefault("ALERT_DASHBOARD_DEFAULT_LIMIT", 50)
         app.config.setdefault("ALERT_DASHBOARD_MAX_LIMIT", 200)
 

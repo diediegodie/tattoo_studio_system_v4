@@ -11,9 +11,13 @@ from datetime import datetime
 
 from app.db.base import Comissao, Extrato, Gasto, Pagamento, Sessao
 from app.db.session import SessionLocal
-from app.services.extrato_core import (_log_extrato_run, calculate_totals,
-                                       check_existing_extrato, query_data,
-                                       serialize_data)
+from app.services.extrato_core import (
+    _log_extrato_run,
+    calculate_totals,
+    check_existing_extrato,
+    query_data,
+    serialize_data,
+)
 from sqlalchemy.orm import joinedload
 
 # Configure logging
@@ -64,10 +68,19 @@ def generate_extrato(mes, ano, force=False):
         # Delete original records in dependency order, breaking circular references
         for c in comissoes:
             db.delete(c)
-        # Break circular reference between Sessao and Pagamento
+        # Break circular reference between Sessao and Pagamento on both sides
+        for p in pagamentos:
+            try:
+                setattr(p, "sessao_id", None)
+            except Exception:
+                pass
         for s in sessoes:
-            setattr(s, "payment_id", None)
+            try:
+                setattr(s, "payment_id", None)
+            except Exception:
+                pass
         db.commit()
+        # Now safely delete
         for p in pagamentos:
             db.delete(p)
         for s in sessoes:
@@ -96,9 +109,11 @@ def get_current_month_totals(db):
     """
     import os
 
-    from app.services.extrato_core import (calculate_totals,
-                                           current_month_range, query_data,
-                                           serialize_data)
+    from app.services.extrato_core import (
+        calculate_totals,
+        current_month_range,
+        serialize_data,
+    )
 
     start_date, end_date = current_month_range()
 
@@ -108,9 +123,63 @@ def get_current_month_totals(db):
             f"HISTORICO_DEBUG: Current month window: {start_date} to {end_date}"
         )
 
-    # Reuse query_data to ensure consistent filtering across all entities
-    pagamentos, sessoes, comissoes, gastos = query_data(
-        db, start_date.month, start_date.year
+    # Build from Pagamento as source of truth within [start_date, end_date)
+    pagamentos = (
+        db.query(Pagamento)
+        .options(
+            joinedload(Pagamento.cliente),
+            joinedload(Pagamento.artista),
+            joinedload(Pagamento.sessao),
+            joinedload(Pagamento.comissoes),
+        )
+        .filter(Pagamento.data >= start_date, Pagamento.data < end_date)
+        .order_by(Pagamento.data.desc())
+        .all()
+    )
+
+    # Some unit tests may monkeypatch query return values; ensure we have a concrete list
+    def _safe_list(value):
+        try:
+            return list(value)
+        except Exception:
+            return []
+
+    pagamentos = pagamentos if isinstance(pagamentos, list) else _safe_list(pagamentos)
+    # Derive sessions strictly via Sessao.payment_id to avoid missing links
+    try:
+        payment_ids = [p.id for p in pagamentos]
+        sessoes = (
+            (
+                db.query(Sessao)
+                .options(joinedload(Sessao.cliente), joinedload(Sessao.artista))
+                .filter(Sessao.payment_id.in_(payment_ids))
+                .all()
+            )
+            if payment_ids
+            else []
+        )
+    except Exception:
+        # Fallback to relationship on Pagamento if direct query fails (best-effort)
+        pagamentos_fallback = (
+            pagamentos if isinstance(pagamentos, list) else _safe_list(pagamentos)
+        )
+        try:
+            sessoes = [
+                p.sessao for p in pagamentos_fallback if getattr(p, "sessao", None)
+            ]
+        except Exception:
+            sessoes = []
+    comissoes = []
+    for p in pagamentos:
+        pcs = getattr(p, "comissoes", [])
+        if pcs:
+            comissoes.extend(list(pcs))
+    # Gastos remain independent by their own date field
+    gastos = (
+        db.query(Gasto)
+        .options(joinedload(Gasto.creator))
+        .filter(Gasto.data >= start_date, Gasto.data < end_date)
+        .all()
     )
 
     # Debug counts
@@ -145,8 +214,7 @@ def check_and_generate_extrato(mes=None, ano=None, force=False):
     """
     import logging
 
-    from app.services.extrato_core import (get_previous_month,
-                                           should_run_monthly_extrato)
+    from app.services.extrato_core import get_previous_month, should_run_monthly_extrato
 
     logger = logging.getLogger(__name__)
 

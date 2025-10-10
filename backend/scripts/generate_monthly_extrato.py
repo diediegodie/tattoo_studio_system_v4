@@ -22,7 +22,7 @@ Requirements:
 import argparse
 import json
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from app.core.logging_config import get_logger
 from app.db.base import Client, Comissao, Extrato, Gasto, Pagamento, Sessao, User
@@ -61,53 +61,67 @@ def check_existing_extrato(db, mes, ano, force):
 
 
 def query_data(db, mes, ano):
-    """Query Pagamento, Sessao, Comissao, Gasto for the month/year."""
-    start_date = datetime(ano, mes, 1)
-    if mes == 12:
-        end_date = datetime(ano + 1, 1, 1)
-    else:
-        end_date = datetime(ano, mes + 1, 1)
+    """Query Pagamento (primary), derive Sessao/Comissao, and query Gasto for the month/year.
 
-    # Query Pagamentos with joins
+    Canonical window: [start_date, end_date) in UTC to avoid off-by-one issues.
+    """
+    TZ = timezone.utc
+    start_date = datetime(ano, mes, 1, tzinfo=TZ)
+    end_date = (
+        datetime(ano + 1, 1, 1, tzinfo=TZ)
+        if mes == 12
+        else datetime(ano, mes + 1, 1, tzinfo=TZ)
+    )
+    try:
+        logger.info(
+            "EXTRATO_SCRIPT_WINDOW",
+            extra={"start_date": start_date, "end_date": end_date, "timezone": "UTC"},
+        )
+    except Exception:
+        pass
+
+    # Query Pagamentos with joins (source of truth)
     pagamentos = (
         db.query(Pagamento)
         .options(
             joinedload(Pagamento.cliente),
             joinedload(Pagamento.artista),
             joinedload(Pagamento.sessao),
+            joinedload(Pagamento.comissoes),
         )
         .filter(Pagamento.data >= start_date, Pagamento.data < end_date)
+        .order_by(Pagamento.data.asc())
         .all()
     )
 
-    # Query Sessoes
-    sessoes = (
-        db.query(Sessao)
-        .options(joinedload(Sessao.cliente), joinedload(Sessao.artista))
-        .filter(Sessao.data >= start_date, Sessao.data < end_date)
-        .all()
-    )
-
-    # Query Comissoes with joins - filter by pagamento date, not created_at
-    comissoes = (
-        db.query(Comissao)
-        .join(Pagamento, Comissao.pagamento_id == Pagamento.id)
-        .options(
-            joinedload(Comissao.artista),
-            joinedload(Comissao.pagamento).joinedload(Pagamento.cliente),
-            joinedload(Comissao.pagamento).joinedload(Pagamento.sessao),
-        )
-        .filter(Pagamento.data >= start_date, Pagamento.data < end_date)
-        .all()
-    )
+    # Derive Sessao and Comissao strictly from Pagamentos
+    sessoes = [p.sessao for p in pagamentos if getattr(p, "sessao", None)]
+    comissoes = []
+    for p in pagamentos:
+        pcs = getattr(p, "comissoes", [])
+        if pcs:
+            comissoes.extend(list(pcs))
 
     # Query Gastos
     gastos = (
         db.query(Gasto)
         .options(joinedload(Gasto.creator))
         .filter(Gasto.data >= start_date, Gasto.data < end_date)
+        .order_by(Gasto.data.asc())
         .all()
     )
+    try:
+        logger.info(
+            "EXTRATO_SCRIPT_COUNTS",
+            extra={
+                "pagamentos": len(pagamentos),
+                "sessoes": len([s for s in sessoes if s is not None]),
+                "comissoes": len(comissoes),
+                "gastos": len(gastos),
+            },
+        )
+    except Exception:
+        pass
 
     return pagamentos, sessoes, comissoes, gastos
 

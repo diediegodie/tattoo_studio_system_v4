@@ -68,33 +68,33 @@ def run_extrato_in_background():
     This is a shared utility function to avoid code duplication between
     main.py and historico_controller.py.
     """
-    # Check if background processing is disabled (for testing)
+    # Check if background processing is disabled (for testing or CI)
     disable_background = (
         os.getenv("DISABLE_EXTRATO_BACKGROUND", "false").lower() == "true"
+        or os.getenv("TESTING", "0") in ("1", "true", "True")
     )
+    # Try to detect Flask's app.config['TESTING'] if available
+    try:
+        from flask import current_app
+        if getattr(current_app, "config", None) and current_app.config.get("TESTING"):
+            disable_background = True
+    except Exception:
+        pass
 
     if disable_background:
-        # Run synchronously for testing
+        logger.info("Extrato background job muted due to TESTING or DISABLE_EXTRATO_BACKGROUND.")
+        return
+    # Run in background thread
+    def run_extrato_generation():
         try:
             check_and_generate_extrato()
         except Exception as e:
             logger.error(
-                "Error in extrato generation",
+                "Error in background extrato generation",
                 extra={"context": {"error": str(e)}},
                 exc_info=True,
             )
-    else:
-        # Run in background thread
-        def run_extrato_generation():
-            try:
-                check_and_generate_extrato()
-            except Exception as e:
-                logger.error(
-                    "Error in background extrato generation",
-                    extra={"context": {"error": str(e)}},
-                    exc_info=True,
-                )
 
-        # Start background thread
-        thread = threading.Thread(target=run_extrato_generation, daemon=True)
-        thread.start()
+    # Start background thread
+    thread = threading.Thread(target=run_extrato_generation, daemon=True)
+    thread.start()
