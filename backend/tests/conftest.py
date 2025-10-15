@@ -39,17 +39,19 @@ print("Configuring test environment in conftest.py...")
 setup_test_environment()
 
 # Ensure application models are imported and tables are created for the test DB.
+# IMPORTANT: Import only via 'app.db.*' to avoid loading the same module twice under
+# different names, which would create separate in-memory SQLite engines.
 try:
     import importlib
 
-    # Import models so Base.metadata is populated
-    importlib.import_module("db.base")
+    # Import models so Base.metadata is populated (single canonical import path)
+    importlib.import_module("app.db.base")
 
-    # Call create_tables on the session module (safe no-op if not present)
-    db_session_mod = importlib.import_module("db.session")
-    if hasattr(db_session_mod, "create_tables"):
-        print("Creating database tables for tests...")
-        db_session_mod.create_tables()
+    # Call create_tables on the app.db.session module (safe no-op if not present)
+    app_db_session_mod = importlib.import_module("app.db.session")
+    if hasattr(app_db_session_mod, "create_tables"):
+        print("Creating database tables for tests (app.db.session)...")
+        app_db_session_mod.create_tables()
         print("Database tables created successfully")
 except Exception as e:
     # Don't fail test collection for table creation problems; show a warning.
@@ -166,7 +168,7 @@ def mock_user_repository(mock_db_session):
     repo.get_by_google_id = Mock()
     repo.create = Mock()
     repo.update = Mock()
-    repo.set_[REDACTED_PASSWORD]
+    repo.set_password = Mock()
     return repo
 
 
@@ -180,7 +182,7 @@ def mock_user_service(mock_user_repository):
 
     service.repo = mock_user_repository
     service.create_or_update_from_google = Mock()
-    service.set_[REDACTED_PASSWORD]
+    service.set_password = Mock()
     service.authenticate_local = Mock()
     return service
 

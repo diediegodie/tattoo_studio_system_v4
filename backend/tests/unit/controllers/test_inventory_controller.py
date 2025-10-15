@@ -1,6 +1,7 @@
 from unittest.mock import Mock, patch
 
 import pytest
+
 # Ensure test imports are configured
 from tests.config import setup_test_imports
 
@@ -80,7 +81,7 @@ class TestInventoryControllerEndpoints:
         from app.db.base import User
 
         mock_user = User(
-            id=1, email="test@example.com", name="Test User", is_active=True
+            id=1, email="test@example.com", name="Test User", active_flag=True
         )
 
         with patch("flask_login.utils._get_user", return_value=mock_user), patch(
@@ -112,7 +113,7 @@ class TestInventoryControllerEndpoints:
         from db.base import User
 
         mock_user = User(
-            id=1, email="test@example.com", name="Test User", is_active=True
+            id=1, email="test@example.com", name="Test User", active_flag=True
         )
 
         created = InventoryItem(id=2, nome="New Item", quantidade=5, observacoes="")

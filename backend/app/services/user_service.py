@@ -67,12 +67,12 @@ class UserService:
 
         return self.repo.create(new_user)
 
-    def set_password(self, user_id: int, [REDACTED_PASSWORD] -> bool:
+    def set_password(self, user_id: int, password: str) -> bool:
         """Set a password for a user (for local authentication).
 
         Args:
             user_id: The user's ID
-            [REDACTED_PASSWORD] text password to hash and store
+            password: Plain text password to hash and store
 
         Returns:
             True if successful, False if user not found
@@ -91,12 +91,12 @@ class UserService:
 
         return False
 
-    def authenticate_local(self, email: str, [REDACTED_PASSWORD] -> Optional[DomainUser]:
+    def authenticate_local(self, email: str, password: str) -> Optional[DomainUser]:
         """Authenticate a user with email and password.
 
         Args:
             email: User's email address
-            [REDACTED_PASSWORD] text password
+            password: Plain text password
 
         Returns:
             User domain entity if authentication successful, None otherwise

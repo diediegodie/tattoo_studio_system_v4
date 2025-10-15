@@ -10,11 +10,11 @@ from passlib.hash import bcrypt
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
-def hash_password([REDACTED_PASSWORD] -> str:
+def hash_password(password: str) -> str:
     """Hash a password using bcrypt.
 
     Args:
-        [REDACTED_PASSWORD] text password to hash
+        password: Plain text password to hash
 
     Returns:
         Hashed password string
@@ -22,12 +22,12 @@ def hash_password([REDACTED_PASSWORD] -> str:
     return pwd_context.hash(password)
 
 
-def verify_password(plain_[REDACTED_PASSWORD] hashed_[REDACTED_PASSWORD] -> bool:
+def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a password against its hash.
 
     Args:
-        plain_[REDACTED_PASSWORD] text password to verify
-        hashed_[REDACTED_PASSWORD] hash to verify against
+        plain_password: Plain text password to verify
+        hashed_password: Hashed password to verify against
 
     Returns:
         True if password matches, False otherwise

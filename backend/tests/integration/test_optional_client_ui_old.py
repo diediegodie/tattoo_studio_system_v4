@@ -24,7 +24,7 @@ def app():
     app.config["SECRET_KEY"] = "test-secret-key"
     app.config["LOGIN_DISABLED"] = True
     app.config["WTF_CSRF_ENABLED"] = False  # Disable CSRF for testing
-    
+
     with app.app_context():
         yield app
 
@@ -35,7 +35,9 @@ class TestPaymentFormRendering:
     def test_registrar_pagamento_form_client_field_optional(self, app):
         """Test that payment form renders with client field marked as optional."""
         with app.test_client() as client:
-            with patch("app.controllers.financeiro_controller.SessionLocal") as mock_session:
+            with patch(
+                "app.controllers.financeiro_controller.SessionLocal"
+            ) as mock_session:
                 with patch("flask_login.current_user") as mock_user:
                     # Mock authenticated user
                     mock_user.is_authenticated = True
@@ -44,11 +46,11 @@ class TestPaymentFormRendering:
                     # Mock database session and queries
                     mock_db = Mock()
                     mock_session.return_value = mock_db
-                    
+
                     # Mock clients query
                     mock_db.query.return_value.all.return_value = [
                         Mock(id=1, name="Test Client 1"),
-                        Mock(id=2, name="Test Client 2")
+                        Mock(id=2, name="Test Client 2"),
                     ]
 
                     # Make GET request to payment form
@@ -211,21 +213,29 @@ class TestPaymentListRendering:
         mock_payments = [
             Mock(
                 id=1,
-                data="2024-01-15",
+                data=date(2024, 1, 15),
                 valor=100.00,
                 cliente_id=None,
                 cliente=None,
-                artista=Mock(name="Artist 1"),
             ),
             Mock(
                 id=2,
-                data="2024-01-16",
+                data=date(2024, 1, 16),
                 valor=150.00,
                 cliente_id=1,
                 cliente=Mock(name="Test Client"),
-                artista=Mock(name="Artist 2"),
             ),
         ]
+        # Ensure artists have a .name attribute and relationships won't break iteration
+        artist1 = Mock()
+        artist1.name = "Artist 1"
+        artist2 = Mock()
+        artist2.name = "Artist 2"
+        mock_payments[0].artista = artist1
+        mock_payments[1].artista = artist2
+        for p in mock_payments:
+            p.comissoes = []
+            p.sessao = None
 
         with app.test_client() as client:
             with patch(
@@ -236,12 +246,47 @@ class TestPaymentListRendering:
                 ) as mock_user:
                     mock_user.is_authenticated = True
 
-                    # Mock database query
+                    # Mock database query with full sticky chain and per-model responses
                     mock_db = Mock()
                     mock_session.return_value = mock_db
-                    mock_db.query.return_value.options.return_value.order_by.return_value.all.return_value = (
-                        mock_payments
-                    )
+                    # Avoid Mock iteration errors in totals/historico generation
+                    for p in mock_payments:
+                        p.comissoes = []
+                        p.sessao = None
+
+                    def make_q(return_list, count_value=None):
+                        q = Mock()
+                        q.options.return_value = q
+                        q.filter.return_value = q
+                        q.filter_by.return_value = q
+                        q.order_by.return_value = q
+                        q.distinct.return_value = q
+                        q.offset.return_value = q
+                        q.limit.return_value = q
+                        q.all.return_value = return_list
+                        q.count.return_value = (
+                            len(return_list) if count_value is None else count_value
+                        )
+                        return q
+
+                    pagamentos_q = make_q(mock_payments)
+                    sessoes_q = make_q([])
+                    gastos_q = make_q([])
+                    default_q = make_q([])
+
+                    def query_side_effect(model):
+                        name = getattr(model, "__name__", str(model))
+                        if "Pagamento" in name:
+                            return pagamentos_q
+                        if "Sessao" in name or "sesso" in name.lower():
+                            return sessoes_q
+                        if "Gasto" in name:
+                            return gastos_q
+                        if "InstrumentedAttribute" in name or "Column" in name:
+                            return default_q
+                        return default_q
+
+                    mock_db.query.side_effect = query_side_effect
 
                     # Get historico page
                     response = client.get("/historico/")
@@ -268,44 +313,47 @@ class TestPaymentListRendering:
 
     def test_extrato_includes_payments_without_client(self, app):
         """Test that extrato display includes payments without clients."""
-        # Mock extrato data with null client payments
-        mock_extrato_data = {
-            "pagamentos": [
-                {
-                    "id": 1,
-                    "valor": 100.00,
-                    "cliente_id": 1,
-                    "cliente_name": "Test Client",
-                },
-                {"id": 2, "valor": 150.00, "cliente_id": None, "cliente_name": None},
-            ],
-            "totals": {"receita_bruta": 250.00},
-        }
-
         with app.test_client() as client:
-            with patch(
-                "app.controllers.extrato_controller.generate_extrato"
-            ) as mock_generate:
-                with patch(
-                    "app.controllers.extrato_controller.current_user"
-                ) as mock_user:
-                    mock_user.is_authenticated = True
-                    mock_generate.return_value = mock_extrato_data
+            # Patch the actual route dependency used by /extrato/<ano>/<mes>
+            # so it returns an Extrato-like record with serialized JSON fields
+            with patch("app.db.session.SessionLocal") as mock_session:
+                # Build a fake Extrato record
+                extrato_record = Mock()
+                extrato_record.mes = 1
+                extrato_record.ano = 2024
+                extrato_record.pagamentos = (
+                    "["
+                    '{"id": 1, "data": "2024-01-15T00:00:00", "valor": 100.0, "cliente_id": 1, "cliente_name": "Test Client", "artista_name": "Artist A", "forma_pagamento": "Dinheiro"},'
+                    '{"id": 2, "data": "2024-01-16T00:00:00", "valor": 150.0, "cliente_id": null, "cliente_name": null, "artista_name": "Artist B", "forma_pagamento": "Cartão"}'
+                    "]"
+                )
+                extrato_record.sessoes = "[]"
+                extrato_record.comissoes = "[]"
+                extrato_record.gastos = "[]"
+                # Totais keys must match template expectations
+                extrato_record.totais = '{"receita_total": 250.0, "comissoes_total": 0.0, "despesas_total": 0.0, "receita_liquida": 250.0}'
 
-                    # Get extrato page
-                    response = client.get("/extrato/2024/1")
+                # Mock SessionLocal context manager and query execution
+                mock_db = Mock()
+                mock_session.return_value.__enter__.return_value = mock_db
+                exec_result = Mock()
+                exec_result.scalar_one_or_none.return_value = extrato_record
+                mock_db.execute.return_value = exec_result
 
-                    if response.status_code == 200:
-                        html_content = response.get_data(as_text=True)
+                # Get extrato page
+                response = client.get("/extrato/2024/1")
 
-                        # Verify extrato includes both payment types
-                        assert "100" in html_content
-                        assert "150" in html_content
-                        assert "250" in html_content  # Total
+                if response.status_code == 200:
+                    html_content = response.get_data(as_text=True)
 
-                        # Verify null client payments are included
-                        assert "Test Client" in html_content
-                        # Should have some indication for payments without clients
+                    # Verify extrato includes both payment types
+                    assert "100" in html_content
+                    assert "150" in html_content
+                    assert "250" in html_content  # Total
+
+                    # Verify data-bootstrap JSON includes client name
+                    assert "Test Client" in html_content
+                    # Should have some indication for payments without clients
 
 
 class TestFormValidationUI:

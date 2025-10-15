@@ -10,6 +10,7 @@ from typing import Optional
 from unittest.mock import Mock, patch
 
 import pytest
+
 # Test configuration and imports
 from tests.config.test_paths import ensure_domain_imports
 
@@ -51,8 +52,8 @@ class TestUserServicePasswordManagement:
             pytest.skip("Required modules not available")
 
         user_id = 1
-        [REDACTED_PASSWORD]"
-        hashed_[REDACTED_PASSWORD]"
+        password = "password123"
+        hashed_password = "hashed-password"
 
         # Mock user exists
         existing_user = DomainUser(
@@ -62,7 +63,8 @@ class TestUserServicePasswordManagement:
         mock_hash.return_value = hashed_password
 
         # Mock the repository to be a UserRepository instance
-        mock_repo.set_[REDACTED_PASSWORD]
+        mock_repo.set_password = Mock()
+        mock_repo.set_password.return_value = True
 
         # Mock isinstance to return True
         with patch("app.services.user_service.isinstance", return_value=True):

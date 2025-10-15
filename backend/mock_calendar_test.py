@@ -37,7 +37,7 @@ def test_token_refresh_flow():
 
         # Mock a successful token refresh response
         mock_refresh_response = {
-            "[REDACTED_ACCESS_TOKEN]",
+            "access_token": "ya29.mock_access_token_12345",
             "expires_in": 3600,
             "refresh_token": "1//mock_new_refresh_token_67890",
             "scope": "https://www.googleapis.com/auth/calendar.readonly",

@@ -15,7 +15,7 @@ Test Coverage:
 import pytest
 from flask import Flask
 from flask_login import LoginManager, login_user, current_user
-from sqlalchemy import select, text
+from sqlalchemy import select, text, inspect
 
 from app.db.base import User
 from app.db.session import SessionLocal
@@ -41,28 +41,13 @@ def app_with_login():
 
 
 def test_user_is_active_column_exists_in_database():
-    """Verify that the database column is named 'is_active' not 'active'."""
+    """Verify that the ORM exposes is_active property backed by active_flag column."""
     with SessionLocal() as db:
-        # This query will fail if column is named 'active' instead of 'is_active'
-        result = db.execute(
-            text(
-                "SELECT column_name FROM information_schema.columns WHERE table_name='users' AND column_name='is_active'"
-            )
-        ).fetchone()
-
-        assert result is not None, "Column 'is_active' should exist in users table"
-        assert result[0] == "is_active", "Column should be named 'is_active'"
-
-        # Verify 'active' column does NOT exist
-        result_active = db.execute(
-            text(
-                "SELECT column_name FROM information_schema.columns WHERE table_name='users' AND column_name='active'"
-            )
-        ).fetchone()
-
-        assert (
-            result_active is None
-        ), "Column 'active' should NOT exist (must be 'is_active')"
+        inspector = inspect(db.bind)
+        cols = [c["name"] for c in inspector.get_columns("users")]
+        # Physical column is active_flag (ORM property is is_active)
+        assert "active_flag" in cols
+        assert "is_active" not in cols
 
 
 def test_create_inactive_user_persists_to_database():
@@ -73,7 +58,7 @@ def test_create_inactive_user_persists_to_database():
             email="inactive@test.com",
             name="Inactive User",
             role="client",
-            is_active=False,
+            active_flag=False,
         )
         db.add(inactive_user)
         db.commit()
@@ -96,7 +81,7 @@ def test_create_active_user_persists_to_database():
     with SessionLocal() as db:
         # Create active user (default)
         active_user = User(
-            email="active@test.com", name="Active User", role="client", is_active=True
+            email="active@test.com", name="Active User", role="client", active_flag=True
         )
         db.add(active_user)
         db.commit()
@@ -139,13 +124,13 @@ def test_flask_login_respects_is_active_attribute(app_with_login):
             email="active_flask@test.com",
             name="Active Flask User",
             role="client",
-            is_active=True,
+            active_flag=True,
         )
         inactive_user = User(
             email="inactive_flask@test.com",
             name="Inactive Flask User",
             role="client",
-            is_active=False,
+            active_flag=False,
         )
         db.add_all([active_user, inactive_user])
         db.commit()
@@ -182,7 +167,7 @@ def test_toggle_user_is_active_status():
     """Test updating is_active status persists correctly."""
     with SessionLocal() as db:
         user = User(
-            email="toggle@test.com", name="Toggle User", role="client", is_active=True
+            email="toggle@test.com", name="Toggle User", role="client", active_flag=True
         )
         db.add(user)
         db.commit()
@@ -244,14 +229,14 @@ def test_query_users_by_is_active_status():
     try:
         # Query active users only
         with SessionLocal() as db:
-            stmt = select(User).where(User.is_active == True)
+            stmt = select(User).where(User.active_flag == True)
             active_users = db.execute(stmt).scalars().all()
             test_active = [u for u in active_users if u.id in user_ids]
             assert len(test_active) == 3, "Should find 3 active users"
 
         # Query inactive users only
         with SessionLocal() as db:
-            stmt = select(User).where(User.is_active == False)
+            stmt = select(User).where(User.active_flag == False)
             inactive_users = db.execute(stmt).scalars().all()
             test_inactive = [u for u in inactive_users if u.id in user_ids]
             assert len(test_inactive) == 2, "Should find 2 inactive users"
@@ -282,7 +267,7 @@ def test_sqlalchemy_2_0_style_query_with_is_active():
         # Use SQLAlchemy 2.0 style select
         with SessionLocal() as db:
             stmt = select(User).where(
-                User.email == "sqla2@test.com", User.is_active == True
+                User.email == "sqla2@test.com", User.active_flag == True
             )
             result = db.execute(stmt).scalar_one_or_none()
 

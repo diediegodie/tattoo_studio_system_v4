@@ -55,8 +55,9 @@ class GoogleCalendarService(ICalendarService):
             logger.info(f"DEBUG: Date range: {start_date} to {end_date}")
 
             # Get access token for user
-            [REDACTED_ACCESS_TOKEN]
-            if not [REDACTED_ACCESS_TOKEN]"DEBUG: No access token found for user {user_id}")
+            access_token = self._get_user_access_token(user_id)
+            if not access_token:
+                logger.warning(f"DEBUG: No access token found for user {user_id}")
                 return []
 
             # DEBUG: Log token status (safely)
@@ -193,8 +194,9 @@ class GoogleCalendarService(ICalendarService):
 
         try:
             # Get access token for user
-            [REDACTED_ACCESS_TOKEN]
-            if not [REDACTED_ACCESS_TOKEN]
+            access_token = self._get_user_access_token(str(event_details.user_id))
+            if not access_token:
+                logger.warning(
                     f"No access token found for user {event_details.user_id}"
                 )
                 return None

@@ -5,7 +5,6 @@ from decimal import Decimal
 from typing import Any, Optional
 
 from flask_dance.consumer.storage.sqla import OAuthConsumerMixin
-from flask_login import UserMixin
 from sqlalchemy import (
     JSON,
     Boolean,
@@ -42,7 +41,8 @@ def get_json_type():
         return JSON
 
 
-class User(UserMixin, Base):
+# Explicitly implement Flask-Login interface without inheriting UserMixin
+class User(Base):
     """User model for authentication"""
 
     __tablename__ = "users"
@@ -68,12 +68,36 @@ class User(UserMixin, Base):
         # Flask-Login expects this property
         return self.active_flag
 
+    @is_active.setter
+    def is_active(self, value: bool) -> None:
+        """Allow tests and callers to set is_active while persisting to active_flag.
+
+        This maintains backward-compatible semantics with Flask-Login and
+        enables SQLAlchemy model construction with is_active=... as used in tests.
+        """
+        self.active_flag = bool(value)
+
     created_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
     updated_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), onupdate=func.now()
     )
+
+    # Flask-Login required methods/properties - ensure explicit behavior
+    def get_id(self):
+        """Return user identifier for Flask-Login"""
+        return str(self.id)
+
+    @property
+    def is_authenticated(self):
+        """Return True if user is authenticated (identity exists)."""
+        return True
+
+    @property
+    def is_anonymous(self):
+        """Return True if user is anonymous (never for persisted users)."""
+        return False
 
 
 # ------------------- ESTOQUE (INVENTORY) -------------------
@@ -98,23 +122,8 @@ class Inventory(Base):
         DateTime(timezone=True), onupdate=func.now()
     )
 
-    # Flask-Login required methods - explicit implementation
-    def get_id(self):
-        """Return user identifier for Flask-Login"""
-        return str(self.id)
-
-    @property
-    def is_authenticated(self):
-        """Return True if user is authenticated"""
-        return True
-
-    @property
-    def is_anonymous(self):
-        """Return True if user is anonymous"""
-        return False
-
     def __repr__(self):
-        return f"<User(id={self.id}, email='{self.email}', name='{self.name}')"
+        return f"<Inventory(id={self.id}, nome='{self.nome}', quantidade={self.quantidade})>"
 
 
 class OAuth(OAuthConsumerMixin, Base):

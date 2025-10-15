@@ -39,21 +39,22 @@ load_dotenv()
 # This blueprint is registered with url_prefix="/auth", so the absolute callback
 # will always resolve to /auth/google/authorized locally and in Docker.
 google_client_id = os.getenv("GOOGLE_CLIENT_ID")
-google_client_[REDACTED_SECRET]"GOOGLE_CLIENT_SECRET")
+google_client_secret = os.getenv("GOOGLE_CLIENT_SECRET")
 
-if not google_client_id or not google_client_[REDACTED_SECRET]
+if not google_client_id or not google_client_secret:
+    logger.warning(
         "Google OAuth credentials missing",
         extra={
             "context": {
                 "has_client_id": bool(google_client_id),
-                "has_client_[REDACTED_SECRET]
+                "has_client_secret": bool(google_client_secret),
             }
         },
     )
 
 google_oauth_bp = make_google_blueprint(
     client_id=google_client_id,
-    client_[REDACTED_SECRET]
+    client_secret=google_client_secret,
     scope=[
         "email",
         "profile",

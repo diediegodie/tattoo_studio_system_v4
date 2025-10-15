@@ -24,13 +24,13 @@ class GoogleCalendarRepository(IGoogleCalendarRepository):
         self.base_url = "https://www.googleapis.com/calendar/v3"
 
     def fetch_events(
-        self, [REDACTED_ACCESS_TOKEN] start_date: datetime, end_date: datetime
+        self, access_token: str, start_date: datetime, end_date: datetime
     ) -> List[dict]:
         """
         Fetch events from Google Calendar API.
 
         Args:
-            [REDACTED_ACCESS_TOKEN] OAuth access token
+            access_token: OAuth access token
             start_date: Start of date range
             end_date: End of date range
 
@@ -109,12 +109,12 @@ class GoogleCalendarRepository(IGoogleCalendarRepository):
             logger.error(f"Unexpected error fetching calendar events: {str(e)}")
             return []
 
-    def create_event(self, [REDACTED_ACCESS_TOKEN] event_data: dict) -> Optional[str]:
+    def create_event(self, access_token: str, event_data: dict) -> Optional[str]:
         """
         Create an event in Google Calendar.
 
         Args:
-            [REDACTED_ACCESS_TOKEN] OAuth access token
+            access_token: OAuth access token
             event_data: Event data dictionary
 
         Returns:
@@ -126,14 +126,17 @@ class GoogleCalendarRepository(IGoogleCalendarRepository):
                 "Content-Type": "application/json",
             }
 
+            # Ensure payload matches Google Calendar API schema
+            formatted = self._format_event_for_google(event_data)
+
             response = requests.post(
                 f"{self.base_url}/calendars/primary/events",
                 headers=headers,
-                json=event_data,
+                json=formatted,
                 timeout=30,
             )
 
-            if response.status_code == 200:
+            if response.status_code in (200, 201):
                 created_event = response.json()
                 return created_event.get("id")
             elif response.status_code == 401:
@@ -154,12 +157,12 @@ class GoogleCalendarRepository(IGoogleCalendarRepository):
             logger.error(f"Unexpected error creating calendar event: {str(e)}")
             return None
 
-    def validate_token(self, [REDACTED_ACCESS_TOKEN] -> bool:
+    def validate_token(self, access_token: str) -> bool:
         """
         Validate Google access token by making a test request.
 
         Args:
-            [REDACTED_ACCESS_TOKEN] OAuth access token
+            access_token: OAuth access token
 
         Returns:
             True if token is valid, False otherwise

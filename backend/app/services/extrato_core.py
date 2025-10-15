@@ -604,6 +604,8 @@ def calculate_totals(pagamentos_data, sessoes_data, comissoes_data, gastos_data=
 
     return {
         "receita_total": receita_total,
+        # Backward-compat: some tests expect 'total_pagamentos' as an alias for receita_total
+        "total_pagamentos": receita_total,
         "comissoes_total": comissoes_total,
         "despesas_total": despesas_total,
         "saldo": saldo,

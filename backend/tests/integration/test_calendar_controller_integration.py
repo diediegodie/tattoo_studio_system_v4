@@ -10,7 +10,7 @@ from unittest.mock import Mock, patch
 from uuid import uuid4
 
 import pytest
-from db.base import Client, Sessao, User
+from app.db.base import Client, Sessao, User
 
 
 @pytest.fixture
@@ -52,7 +52,7 @@ class TestCalendarControllerGoogleIntegration:
             name="Calendar Test Artist",
             email=f"calendar_artist_{unique_id}@example.com",
             role="artist",
-            is_active=True,
+            active_flag=True,
         )
         db_session.add(artist)
         db_session.commit()

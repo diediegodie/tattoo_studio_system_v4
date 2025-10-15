@@ -271,17 +271,17 @@ class IGoogleCalendarRepository(ABC):
 
     @abstractmethod
     def fetch_events(
-        self, [REDACTED_ACCESS_TOKEN] start_date: datetime, end_date: datetime
+        self, access_token: str, start_date: datetime, end_date: datetime
     ) -> List[dict]:
         """Fetch events from Google Calendar API."""
         pass
 
     @abstractmethod
-    def create_event(self, [REDACTED_ACCESS_TOKEN] event_data: dict) -> Optional[str]:
+    def create_event(self, access_token: str, event_data: dict) -> Optional[str]:
         """Create an event in Google Calendar."""
         pass
 
     @abstractmethod
-    def validate_token(self, [REDACTED_ACCESS_TOKEN] -> bool:
+    def validate_token(self, access_token: str) -> bool:
         """Validate Google access token."""
         pass

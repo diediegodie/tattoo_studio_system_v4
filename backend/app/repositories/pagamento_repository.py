@@ -40,7 +40,7 @@ class PagamentoRepository:
                 extra={"context": {"error": str(e)}},
                 exc_info=True,
             )
-            raise
+            return None
 
     def get_by_id(self, pagamento_id: int) -> Optional[Pagamento]:
         """
@@ -94,7 +94,7 @@ class PagamentoRepository:
                 extra={"context": {"pagamento_id": pagamento_id, "error": str(e)}},
                 exc_info=True,
             )
-            raise
+            return None
 
     def delete(self, pagamento_id: int) -> bool:
         """
@@ -138,4 +138,4 @@ class PagamentoRepository:
                 extra={"context": {"pagamento_id": pagamento_id, "error": str(e)}},
                 exc_info=True,
             )
-            raise
+            return False

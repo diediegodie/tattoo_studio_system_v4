@@ -355,7 +355,7 @@ def postgres_db():
     pg_host = os.environ.get("POSTGRES_HOST", "localhost")
     pg_port = os.environ.get("POSTGRES_PORT", "5432")
     pg_user = os.environ.get("POSTGRES_USER", "admin")
-    pg_[REDACTED_PASSWORD]"POSTGRES_PASSWORD", "secret123")
+    pg_password = os.environ.get("POSTGRES_PASSWORD", "secret123")
     pg_database = os.environ.get("POSTGRES_DB", "tattoo_studio")
 
     # Create a temporary database name
@@ -533,7 +533,7 @@ def login_client(app):
                                 email="test@example.com",
                                 name="Test User",
                                 google_id="test_google_id",
-                                is_active=True,
+                                active_flag=True,
                             )
                             db.add(test_user)
                             db.commit()

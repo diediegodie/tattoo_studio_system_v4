@@ -19,8 +19,8 @@ from app.utils.client_utils import normalize_display_name
 class JotFormService(IJotFormService):
     """JotForm API service implementing your existing logic."""
 
-    def __init__(self, [REDACTED_API_KEY] form_id: str):
-        self.[REDACTED_API_KEY]
+    def __init__(self, api_key: str, form_id: str):
+        self.api_key = api_key
         self.form_id = form_id
         self.base_url = "https://api.jotform.com"
 

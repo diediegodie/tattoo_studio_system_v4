@@ -11,18 +11,27 @@ from dataclasses import dataclass
 from unittest.mock import Mock, patch
 
 import pytest
-from tests.fixtures.auth_fixtures import (auth_headers_expired,
-                                          auth_headers_invalid,
-                                          auth_headers_valid, auth_test_helper,
-                                          authentication_scenarios,
-                                          expired_jwt_token, invalid_jwt_token,
-                                          mock_authenticated_user, oauth_mock,
-                                          valid_jwt_token)
+from tests.fixtures.auth_fixtures import (
+    auth_headers_expired,
+    auth_headers_invalid,
+    auth_headers_valid,
+    auth_test_helper,
+    authentication_scenarios,
+    expired_jwt_token,
+    invalid_jwt_token,
+    mock_authenticated_user,
+    oauth_mock,
+    valid_jwt_token,
+)
+
 # Import integration fixtures
-from tests.fixtures.integration_fixtures import (app, authenticated_client,
-                                                 client,
-                                                 database_transaction_isolator,
-                                                 db_session)
+from tests.fixtures.integration_fixtures import (
+    app,
+    authenticated_client,
+    client,
+    database_transaction_isolator,
+    db_session,
+)
 
 
 @dataclass
@@ -198,7 +207,7 @@ class TestAuthenticationSecurityIntegration:
         for i in range(5):
             response = client.post(
                 "/auth/login",
-                json={"email": "test@example.com", "[REDACTED_PASSWORD]"wrong_password_{i}"},
+                json={"email": "test@example.com", "password": f"wrong_password_{i}"},
             )
             # store full response so we can inspect Location on redirects
             failed_attempts.append(response)
@@ -247,7 +256,7 @@ class TestAuthenticationSecurityIntegration:
 
         for payload in malicious_payloads:
             response = client.post(
-                "/auth/login", json={"email": payload, "[REDACTED_PASSWORD]
+                "/auth/login", json={"email": payload, "password": "invalid"}
             )
 
             # Should reject malicious input safely
@@ -365,7 +374,7 @@ class TestAuthenticationPerformance:
 
             response = client.post(
                 "/auth/login",
-                json={"email": f"user{i}@example.com", "[REDACTED_PASSWORD]"},
+                json={"email": f"user{i}@example.com", "password": "password"},
             )
 
             end_time = time.time()

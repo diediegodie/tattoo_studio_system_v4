@@ -286,7 +286,7 @@ class AuthTestHelper:
         return {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
 
     @staticmethod
-    def extract_token_payload(token, [REDACTED_SECRET]"):
+    def extract_token_payload(token, secret="test-secret"):
         """Extract payload from JWT token for testing."""
         try:
             return jwt.decode(token, secret, algorithms=["HS256"])
@@ -357,7 +357,7 @@ def database_auth_setup(db_session):
             "email": email,
             "name": f"Test User {email}",
             "google_id": f'google_{email.split("@")[0]}',
-            "is_active": is_active,
+            "active_flag": is_active,
             "role": role,
             "created_at": datetime.now(timezone.utc),
             "updated_at": datetime.now(timezone.utc),

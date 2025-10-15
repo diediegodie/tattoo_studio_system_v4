@@ -1,0 +1,18 @@
+{
+    "cliente": "Client",
+    "clientes": "Clients",
+    "artista": "Artist",
+    "artistas": "Artists",
+    "sessao": "Session",
+    "sessoes": "Sessions",
+    "pagamento": "Payment",
+    "pagamentos": "Payments",
+    "comissao": "Commission",
+    "comissoes": "Commissions",
+    "gasto": "Expense",
+    "gastos": "Expenses",
+    "historico": "History",
+    "extrato": "Statement",
+    "financeiro": "Financial",
+    "alternar": "Toggle"
+}

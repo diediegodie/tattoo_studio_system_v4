@@ -35,7 +35,7 @@ class TestRegressionFlowComprehensive:
             id=101,
             email="artist_com@studio.com",
             name="Artist Com Comissão",
-            is_active=True,
+            active_flag=True,
             role="artist",
         )
 
@@ -43,7 +43,7 @@ class TestRegressionFlowComprehensive:
             id=102,
             email="artist_zero@studio.com",
             name="Artist Zero Comissão",
-            is_active=True,
+            active_flag=True,
             role="artist",
         )
 
@@ -51,7 +51,7 @@ class TestRegressionFlowComprehensive:
             id=103,
             email="owner@studio.com",
             name="Studio Owner",
-            is_active=True,
+            active_flag=True,
             role="admin",
         )
 
@@ -78,11 +78,13 @@ class TestRegressionFlowComprehensive:
             status="finalizada",
         )
 
+        # Note: Sessao.cliente_id is NOT NULL in schema; keep a valid client here
+        # while allowing the related payment to have cliente_id=None (walk-in payment)
         session_without_client = Sessao(
             id=302,
             data=today,
             artista_id=102,  # Artist with zero commission
-            cliente_id=None,  # No client (walk-in)
+            cliente_id=201,  # Use existing client to satisfy NOT NULL constraint
             valor=150.00,
             status="finalizada",
         )
@@ -334,6 +336,7 @@ class TestRegressionFlowComprehensive:
                 "artista_name": "Artist Com Comissão",
                 "cliente_name": "Cliente Regular",
                 "forma_pagamento": "cartao",
+                "sessao_id": 301,
             },
             {
                 "id": 402,
@@ -342,6 +345,7 @@ class TestRegressionFlowComprehensive:
                 "artista_name": "Artist Zero Comissão",
                 "cliente_name": None,  # Walk-in
                 "forma_pagamento": "dinheiro",
+                "sessao_id": 302,
             },
             {
                 "id": 403,
@@ -350,6 +354,7 @@ class TestRegressionFlowComprehensive:
                 "artista_name": "Studio Owner",
                 "cliente_name": "Cliente Regular",
                 "forma_pagamento": "pix",
+                "sessao_id": 303,
             },
             {
                 "id": 404,
@@ -358,6 +363,7 @@ class TestRegressionFlowComprehensive:
                 "artista_name": "Artist Com Comissão",
                 "cliente_name": None,
                 "forma_pagamento": "cartao",
+                "sessao_id": None,
             },
         ]
 
@@ -570,7 +576,6 @@ class TestRegressionFlowComprehensive:
         extrato = Extrato(
             mes=mes,
             ano=ano,
-            data_geracao=datetime.now(),
             pagamentos=pagamentos_data,
             comissoes=comissoes_data,
             sessoes=sessoes_data,

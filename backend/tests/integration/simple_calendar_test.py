@@ -22,9 +22,10 @@ def test_basic_integration():
     # Test 1: Environment Configuration
     print("\n1. Testing environment...")
     client_id = os.getenv("GOOGLE_CLIENT_ID")
-    client_[REDACTED_SECRET]"GOOGLE_CLIENT_SECRET")
+    client_secret = os.getenv("GOOGLE_CLIENT_SECRET")
 
-    if client_id and client_[REDACTED_SECRET]"✅ Google OAuth credentials found")
+    if client_id and client_secret:
+        print("✅ Google OAuth credentials found")
         print(f"   Client ID: {client_id[:20]}...")
     else:
         print("❌ Missing Google OAuth credentials")
@@ -35,8 +36,8 @@ def test_basic_integration():
     try:
         from app.controllers.calendar_controller import calendar_bp
         from app.services.google_calendar_service import GoogleCalendarService
-        from domain.entities import CalendarEvent
-        from domain.interfaces import ICalendarService
+        from app.domain.entities import CalendarEvent
+        from app.domain.interfaces import ICalendarService
 
         print("✅ All calendar modules import successfully")
     except Exception as e:

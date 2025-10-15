@@ -49,7 +49,7 @@ class OAuthTokenService:
                         "provider": provider,
                         "provider_user_id": provider_user_id,
                         "token_type": type(token).__name__,
-                        "has_[REDACTED_ACCESS_TOKEN]
+                        "has_access_token": (
                             "access_token" in token
                             if isinstance(token, dict)
                             else False
@@ -185,11 +185,12 @@ class OAuthTokenService:
                         else token_value
                     )
                     if token_data and isinstance(token_data, dict):
-                        [REDACTED_ACCESS_TOKEN]"access_token")
+                        access_token = token_data.get("access_token")
                         expires_at = token_data.get("expires_at")
                         refresh_token = token_data.get("refresh_token")
 
-                        if [REDACTED_ACCESS_TOKEN] Check if token is expired (with 5-minute safety buffer)
+                        if access_token:
+                            # Check if token is expired (with 5-minute safety buffer)
                             now = datetime.now(timezone.utc)
                             if expires_at:
                                 if isinstance(expires_at, str):
@@ -278,16 +279,17 @@ class OAuthTokenService:
 
             # Get client credentials from config
             client_id = current_app.config.get("GOOGLE_OAUTH_CLIENT_ID")
-            client_[REDACTED_SECRET]"GOOGLE_OAUTH_CLIENT_SECRET")
+            client_secret = current_app.config.get("GOOGLE_OAUTH_CLIENT_SECRET")
 
-            if not client_id or not client_[REDACTED_SECRET]"Google OAuth client credentials not configured")
+            if not client_id or not client_secret:
+                logger.error("Google OAuth client credentials not configured")
                 return None
 
             # Make refresh request to Google OAuth endpoint
             token_url = "https://oauth2.googleapis.com/token"
             data = {
                 "client_id": client_id,
-                "client_[REDACTED_SECRET]
+                "client_secret": client_secret,
                 "refresh_token": refresh_token,
                 "grant_type": "refresh_token",
             }
@@ -296,10 +298,11 @@ class OAuthTokenService:
 
             if response.status_code == 200:
                 new_token_data = response.json()
-                new_[REDACTED_ACCESS_TOKEN]"access_token")
+                new_access_token = new_token_data.get("access_token")
                 expires_in = new_token_data.get("expires_in", 3600)  # Default 1 hour
 
-                if new_[REDACTED_ACCESS_TOKEN] Calculate new expiration date
+                if new_access_token:
+                    # Calculate new expiration date
                     expires_at = datetime.now(timezone.utc) + timedelta(
                         seconds=expires_in
                     )
@@ -361,8 +364,9 @@ class OAuthTokenService:
             True if token is valid, False otherwise
         """
         try:
-            [REDACTED_ACCESS_TOKEN]
-            if not [REDACTED_ACCESS_TOKEN] False
+            access_token = self.get_user_access_token(user_id)
+            if not access_token:
+                return False
 
             # Test token validity with a simple API call
             import requests
@@ -399,8 +403,9 @@ class OAuthTokenService:
             True if revocation successful, False otherwise
         """
         try:
-            [REDACTED_ACCESS_TOKEN]
-            if not [REDACTED_ACCESS_TOKEN]"No token to revoke for user {user_id}")
+            access_token = self.get_user_access_token(user_id)
+            if not access_token:
+                logger.info(f"No token to revoke for user {user_id}")
                 return True
 
             # Revoke token with Google
@@ -438,10 +443,15 @@ class OAuthTokenService:
 
     def get_authorization_url(self) -> str:
         """
-        Get Google OAuth authorization URL.
+        Get Google OAuth authorization URL for manual/testing flows.
+
+        Note:
+            - The primary OAuth flow is handled by the Flask-Dance blueprint configured in
+              `app.main`. This helper is intended for manual testing or diagnostics and may
+              use scopes that differ slightly from the production blueprint configuration.
 
         Returns:
-            Authorization URL for redirecting user
+            Authorization URL for redirecting user (manual usage only)
         """
         try:
             # This would typically be handled by Flask-Dance blueprint

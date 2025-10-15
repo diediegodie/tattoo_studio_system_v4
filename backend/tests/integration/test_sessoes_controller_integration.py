@@ -34,7 +34,7 @@ class TestSessoesControllerGoogleIntegration:
             name="Test Artist",
             email=f"artist_{uuid.uuid4().hex[:8]}@example.com",
             role="artist",
-            is_active=True,
+            active_flag=True,
         )
         db_session.add(artist)
         db_session.commit()
@@ -189,10 +189,7 @@ class TestSessoesControllerGoogleIntegration:
                 assert response.status_code == 302
                 assert "/sessoes/list" in response.location
 
-                sess = (
-                    db_session.query(Sessao)
-                    .first()
-                )
+                sess = db_session.query(Sessao).first()
                 assert sess is not None
                 assert sess.google_event_id is None
                 assert sess.valor == Decimal("200.00")

@@ -39,7 +39,7 @@ class TestOptionalClientDatabaseIntegration:
             name="Integration Test Artist",
             email=f"integration_artist_{unique_id}@example.com",
             role="artist",
-            is_active=True,
+            active_flag=True,
         )
         postgres_db.add(artist)
         postgres_db.commit()

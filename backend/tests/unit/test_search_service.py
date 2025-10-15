@@ -57,13 +57,17 @@ class TestSearchService:
 
     def test_search_pagamentos(self, search_service, mock_db):
         """Test searching pagamentos."""
-        # Mock all queries to return empty results
+        # Mock the chained query methods used by _search_pagamentos
         mock_query = Mock()
         mock_db.query.return_value = mock_query
+        # outerjoin -> join -> filter -> order_by -> all
+        mock_query.outerjoin.return_value = mock_query
         mock_query.join.return_value = mock_query
         mock_query.filter.return_value = mock_query
         mock_query.order_by.return_value = mock_query
         mock_query.all.return_value = []
+        # If any raw executes happen, ensure fetchall is iterable
+        mock_db.execute.return_value.fetchall.return_value = []
 
         results = search_service.search("maria")
 

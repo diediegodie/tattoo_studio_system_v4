@@ -12,7 +12,7 @@ import pytest
 def test_postgres_fixture_works(postgres_db):
     """Test that the postgres_db fixture creates a working database connection."""
     # Import models
-    from db.base import Client, Sessao, User
+    from app.db.base import Client, Sessao, User
 
     # Create test data
     client = Client(
@@ -25,7 +25,7 @@ def test_postgres_fixture_works(postgres_db):
         name="Fixture Test Artist",
         email="fixture_artist@example.com",
         role="artist",
-        is_active=True,
+        active_flag=True,
     )
     postgres_db.add(artist)
     postgres_db.flush()
@@ -56,7 +56,7 @@ def test_postgres_fixture_works(postgres_db):
 @pytest.mark.postgres
 def test_postgres_unique_constraint_on_google_event_id(postgres_db):
     """Test that the unique constraint on google_event_id works in PostgreSQL."""
-    from db.base import Client, Sessao, User
+    from app.db.base import Client, Sessao, User
     from sqlalchemy.exc import IntegrityError
 
     # Create test data
@@ -70,7 +70,7 @@ def test_postgres_unique_constraint_on_google_event_id(postgres_db):
         name="Constraint Test Artist",
         email="constraint_artist@example.com",
         role="artist",
-        is_active=True,
+        active_flag=True,
     )
     postgres_db.add(artist)
     postgres_db.flush()

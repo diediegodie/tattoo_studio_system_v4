@@ -55,14 +55,15 @@ def auth_callback():
 def set_password():
     """Set or reset a local password for a user.
 
-    Expected JSON: {"user_id": int, "[REDACTED_PASSWORD]"}
+    Expected JSON: {"user_id": int, "password": str}
     Requires a valid user_id and password.
     """
     data = request.get_json(silent=True) or {}
     user_id = data.get("user_id")
-    [REDACTED_PASSWORD]"password")
+    password = data.get("password")
 
-    if not user_id or not [REDACTED_PASSWORD] jsonify({"error": "missing_fields"}), 400
+    if not user_id or not password:
+        return jsonify({"error": "missing_fields"}), 400
 
     db = SessionLocal()
     try:
@@ -84,14 +85,15 @@ def set_password():
 def local_login():
     """Local email/password login fallback.
 
-    Expected JSON: {"email": "..", "[REDACTED_PASSWORD]"}
+    Expected JSON: {"email": str, "password": str}
     Returns JWT token on success.
     """
     data = request.get_json(silent=True) or {}
     email = data.get("email")
-    [REDACTED_PASSWORD]"password")
+    password = data.get("password")
 
-    if not email or not [REDACTED_PASSWORD] jsonify({"error": "missing_fields"}), 400
+    if not email or not password:
+        return jsonify({"error": "missing_fields"}), 400
 
     db = SessionLocal()
     try:

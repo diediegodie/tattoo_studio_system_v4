@@ -358,6 +358,9 @@ class TestHistoricoTemplate:
                     artist = Mock()
                     artist.name = "Artista Test"
                     payment1.artista = artist
+                    # Avoid Mock iteration errors in totals generation
+                    payment1.comissoes = []
+                    payment1.sessao = None
                     mock_payments.append(payment1)
 
                     # Payment without client
@@ -369,10 +372,47 @@ class TestHistoricoTemplate:
                     payment2.observacoes = "Sem cliente"
                     payment2.cliente = None  # No client
                     payment2.artista = artist
+                    # Avoid Mock iteration errors in totals generation
+                    payment2.comissoes = []
+                    payment2.sessao = None
                     mock_payments.append(payment2)
 
-                    # Mock the database query to return test payments
-                    mock_db.query.return_value.all.return_value = mock_payments
+                    # Provide isolated query mocks per model so multiple .all() calls work
+                    def make_q(return_list, count_value=None):
+                        q = Mock()
+                        q.options.return_value = q
+                        q.filter.return_value = q
+                        q.filter_by.return_value = q
+                        q.order_by.return_value = q
+                        q.distinct.return_value = q
+                        q.offset.return_value = q
+                        q.limit.return_value = q
+                        # Always return the provided list for any all() call
+                        q.all.return_value = return_list
+                        q.count.return_value = (
+                            len(return_list) if count_value is None else count_value
+                        )
+                        return q
+
+                    pagamentos_q = make_q(mock_payments)
+                    sessoes_q = make_q([])
+                    gastos_q = make_q([])
+                    default_q = make_q([])
+
+                    def query_side_effect(model):
+                        name = getattr(model, "__name__", str(model))
+                        if "Pagamento" in name:
+                            return pagamentos_q
+                        if "Sessao" in name or "sesso" in name.lower():
+                            return sessoes_q
+                        if "Gasto" in name:
+                            return gastos_q
+                        # Also handle db.query(Sessao.id) and similar attribute cases
+                        if "InstrumentedAttribute" in name or "Column" in name:
+                            return default_q
+                        return default_q
+
+                    mock_db.query.side_effect = query_side_effect
 
                     response = client.get("/historico/")
 
@@ -420,7 +460,44 @@ class TestHistoricoTemplate:
                         artist.name = "Artist"
                         p.artista = artist
 
-                    mock_db.query.return_value.all.return_value = payments
+                    # Avoid Mock iteration errors in totals generation
+                    for p in payments:
+                        p.comissoes = []
+                        p.sessao = None
+
+                    def make_q(return_list, count_value=None):
+                        q = Mock()
+                        q.options.return_value = q
+                        q.filter.return_value = q
+                        q.filter_by.return_value = q
+                        q.order_by.return_value = q
+                        q.distinct.return_value = q
+                        q.offset.return_value = q
+                        q.limit.return_value = q
+                        q.all.return_value = return_list
+                        q.count.return_value = (
+                            len(return_list) if count_value is None else count_value
+                        )
+                        return q
+
+                    pagamentos_q = make_q(payments)
+                    sessoes_q = make_q([])
+                    gastos_q = make_q([])
+                    default_q = make_q([])
+
+                    def query_side_effect(model):
+                        name = getattr(model, "__name__", str(model))
+                        if "Pagamento" in name:
+                            return pagamentos_q
+                        if "Sessao" in name or "sesso" in name.lower():
+                            return sessoes_q
+                        if "Gasto" in name:
+                            return gastos_q
+                        if "InstrumentedAttribute" in name or "Column" in name:
+                            return default_q
+                        return default_q
+
+                    mock_db.query.side_effect = query_side_effect
 
                     response = client.get("/historico/")
 

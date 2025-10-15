@@ -82,7 +82,7 @@ def test_mask_sensitive_parameters(monkeypatch, instrumented_engine):
     with instrumented_engine.connect() as conn:
         conn.execute(
             text("SELECT :email AS email, :password AS password"),
-            {"email": "user@example.com", "[REDACTED_PASSWORD]"},
+            {"email": "user@example.com", "password": "supersecret"},
         )
 
     assert len(records) == 1

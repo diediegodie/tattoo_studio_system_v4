@@ -6,14 +6,27 @@ This module tests local authentication operations:
 - Error handling when user doesn't exist
 """
 
-from typing import Optional
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Optional
 from unittest.mock import Mock
 
+
 import pytest
+
 # Test configuration and imports
 from tests.config.test_paths import ensure_domain_imports
 
 ensure_domain_imports()
+
+DomainEntities = pytest.importorskip("app.domain.entities")
+UserServiceModule = pytest.importorskip("app.services.user_service")
+Factories = pytest.importorskip("tests.factories.repository_factories")
+
+DomainUser = DomainEntities.User
+UserService = UserServiceModule.UserService
+UserRepositoryFactory = Factories.UserRepositoryFactory
+
 
 try:
     from app.domain.entities import User as DomainUser
@@ -24,6 +37,16 @@ try:
 except ImportError as e:
     print(f"Warning: Could not import required modules: {e}")
     IMPORTS_AVAILABLE = False
+
+    @pytest.fixture(autouse=True)
+    def _skip_if_imports_unavailable():
+        """Automatically skip tests in this module if required imports failed.
+
+        This avoids repeating `if not IMPORTS_AVAILABLE: pytest.skip(...)` inside
+        each test and keeps the test output clear when optional modules aren't present.
+        """
+        if not IMPORTS_AVAILABLE:
+            pytest.skip("Required modules not available")
 
 
 @pytest.fixture
@@ -50,7 +73,7 @@ class TestUserServiceAuthentication:
             pytest.skip("Required modules not available")
 
         email = "user@example.com"
-        [REDACTED_PASSWORD]"
+        password = "password123"
 
         # Mock user exists
         existing_user = DomainUser(id=1, email=email, name="Test User", is_active=True)

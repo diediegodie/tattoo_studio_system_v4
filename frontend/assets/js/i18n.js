@@ -24,8 +24,8 @@ async function loadI18n() {
 
     for (const lang of langCodes) {
         try {
-            console.log(`🔄 Trying to load i18n file: /static/i18n/${lang}.json`);
-            const response = await fetch(`/static/i18n/${lang}.json`);
+            console.log(`🔄 Trying to load i18n file: /assets/i18n/${lang}.json`);
+            const response = await fetch(`/assets/i18n/${lang}.json`);
 
             if (response.ok) {
                 i18n = await response.json();

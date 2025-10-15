@@ -19,7 +19,7 @@ from app.domain.entities import User as DomainUser
 from app.repositories.user_repo import UserRepository
 
 DEFAULT_TOKEN: Dict[str, object] = {
-    "[REDACTED_ACCESS_TOKEN]",
+    "access_token": "test-access-token",
     "refresh_token": "test-refresh-token",
     "token_type": "Bearer",
     "expires_at": 1_750_000_000,
@@ -143,7 +143,7 @@ def test_google_oauth_login_success_existing_user(client, db_session):
     assert response.status_code == 302
     assert response.headers["Location"].endswith("/index")
     set_cookie_header = response.headers.get("Set-Cookie", "")
-    assert "[REDACTED_ACCESS_TOKEN]" in set_cookie_header
+    assert "access_token=" in set_cookie_header
 
     # Confirm the authenticated user can access a protected route
     index_response = client.get("/index")
