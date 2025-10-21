@@ -118,8 +118,8 @@ def setup_logging(
     log_dir = Path(__file__).parent.parent.parent / "logs"
     early_warnings = []
     try:
-        log_dir.mkdir(exist_ok=True)
-    except Exception as e:
+        log_dir.mkdir(parents=True, exist_ok=True)
+    except (PermissionError, OSError) as e:
         # Defer warning until console handler is configured to avoid print()
         early_warnings.append(
             f"Failed to create logs directory: {e}. Logging will only go to console."

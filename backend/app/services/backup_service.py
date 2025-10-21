@@ -48,6 +48,11 @@ class BackupService:
         try:
             logs_dir.mkdir(parents=True, exist_ok=True)
             logger.info(f"Created logs directory: {logs_dir}")
+        except PermissionError:
+            # Fallback: logs will only go to console
+            logger.warning(
+                f"Cannot create logs directory at {logs_dir} due to permissions. Logs will only go to console."
+            )
         except Exception:
             # Avoid crashing if directory creation fails (e.g., permissions)
             logger.warning("Failed to ensure logs directory exists", exc_info=True)

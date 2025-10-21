@@ -35,21 +35,34 @@ logger = logging.getLogger(__name__)
 
 # Ensure logs directory exists (absolute path inside container)
 LOG_DIR = Path(__file__).resolve().parents[2] / "logs"
-LOG_DIR.mkdir(parents=True, exist_ok=True)
+try:
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+except PermissionError:
+    # Fallback: logs will only go to console
+    logger.warning(
+        f"Cannot create logs directory at {LOG_DIR} due to permissions. Logs will only go to console."
+    )
+    pass
 
 # Add rotating file handler for extrato operations
-extrato_handler = RotatingFileHandler(
-    LOG_DIR / "extrato_operations.log",
-    maxBytes=10 * 1024 * 1024,  # 10MB
-    backupCount=5,
-)
-extrato_handler.setFormatter(
-    logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(correlation_id)s - %(message)s",
-        defaults={"correlation_id": "N/A"},
+try:
+    extrato_handler = RotatingFileHandler(
+        LOG_DIR / "extrato_operations.log",
+        maxBytes=10 * 1024 * 1024,  # 10MB
+        backupCount=5,
     )
-)
-logger.addHandler(extrato_handler)
+    extrato_handler.setFormatter(
+        logging.Formatter(
+            "%(asctime)s - %(name)s - %(levelname)s - %(correlation_id)s - %(message)s",
+            defaults={"correlation_id": "N/A"},
+        )
+    )
+    logger.addHandler(extrato_handler)
+except (PermissionError, FileNotFoundError):
+    # If we can't create the file handler, just use console logging
+    logger.warning(
+        "Could not create file handler for extrato operations. Using console logging only."
+    )
 logger.setLevel(logging.INFO)
 
 
