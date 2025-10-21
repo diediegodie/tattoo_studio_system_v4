@@ -1,0 +1,116 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  DOCKER_BUILDKIT: 1
+  COMPOSE_DOCKER_CLI_BUILD: 1
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2  # Fetch last 2 commits to detect changes
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Check if requirements.txt changed
+        id: requirements-check
+        run: |
+          if git diff --name-only HEAD^ HEAD | grep -q "requirements.txt"; then
+            echo "Requirements.txt has changed"
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "build_args=--no-cache" >> $GITHUB_OUTPUT
+          else
+            echo "Requirements.txt has not changed"
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "build_args=" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Build Docker image
+        run: |
+          if [ "${{ steps.requirements-check.outputs.changed }}" = "true" ]; then
+            echo "Building with --no-cache due to requirements.txt change"
+            docker compose build --no-cache app
+          else
+            echo "Building with cache"
+            docker compose build app
+          fi
+      
+      - name: Start services
+        run: docker compose up -d
+      
+      - name: Wait for services to be healthy
+        run: |
+          echo "Waiting for services to be healthy..."
+          timeout 60 bash -c 'until docker compose ps | grep -q "healthy"; do sleep 2; done'
+      
+      - name: Run tests
+        run: docker compose run --rm app pytest -v
+      
+      - name: Check logs for errors
+        if: failure()
+        run: docker compose logs
+      
+      - name: Stop services
+        if: always()
+        run: docker compose down -v
+
+  lint:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8 black
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+      
+      - name: Lint with flake8
+        run: |
+          # Stop build if there are Python syntax errors or undefined names
+          flake8 backend/app --count --select=E9,F63,F7,F82 --show-source --statistics
+          # Exit-zero treats all errors as warnings
+          flake8 backend/app --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+      
+      - name: Check code formatting with black
+        run: |
+          black --check backend/app
+
+  security-scan:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+      
+      - name: Upload Trivy results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'

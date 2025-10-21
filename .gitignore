@@ -12,7 +12,7 @@
 /.idea/
 /.vscode/
 .docs/
-.github/
+.github/instructions/
 *.pyc
 *.pyo
 *.pyd
