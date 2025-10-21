@@ -20,7 +20,12 @@ jobs:
       LOG_TO_FILE: "0"
       DISABLE_EXTRATO_BACKGROUND: "true"
       LOGIN_DISABLED: "false"
+      # Database configuration (for both db and app services)
+      POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+      POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
       DATABASE_URL: postgresql://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@db:5432/${{ secrets.POSTGRES_DB }}
+      # Application secrets
       FLASK_SECRET_KEY: ${{ secrets.CI_FLASK_SECRET_KEY }}
       JWT_SECRET_KEY: ${{ secrets.CI_JWT_SECRET_KEY }}
       JOTFORM_API_KEY: ${{ secrets.CI_JOTFORM_API_KEY }}
