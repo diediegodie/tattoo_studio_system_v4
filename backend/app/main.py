@@ -298,6 +298,15 @@ def create_app():
         static_folder=static_folder,
     )
 
+    # Add long-lived cache headers for static assets
+    @app.after_request
+    def add_cache_headers(response):
+        p = request.path or ""
+        # long cache for versioned static assets
+        if p.startswith("/assets/") or p.startswith("/static/"):
+            response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        return response
+
     # Configure structured logging (after app creation so we can register hooks)
     from app.core.logging_config import setup_logging
     import logging
@@ -501,15 +510,6 @@ def create_app():
         os.getenv("LOGIN_DISABLED", "false").lower() == "true"
     )
     app.config["SHOW_API_DOCS"] = os.getenv("SHOW_API_DOCS", "false").lower() == "true"
-
-    # Static assets caching policy: long-lived immutable cache for versioned assets
-    @app.after_request
-    def add_cache_headers(response):
-        p = request.path or ""
-        # Apply only to static asset paths
-        if p.startswith("/assets/") or p.startswith("/static/"):
-            response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
-        return response
 
     # Ensure database tables exist early to avoid runtime failures like
     # "relation 'users' does not exist" or "no such table: extratos".
