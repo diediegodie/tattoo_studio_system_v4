@@ -13,11 +13,14 @@ from datetime import datetime
 from app.db.base import Comissao, Extrato, Gasto, Pagamento, Sessao
 from app.db.session import SessionLocal
 from app.services.extrato_automation import _log_extrato_run
-from app.services.extrato_core import (calculate_totals,
-                                       check_existing_extrato,
-                                       delete_historical_records_atomic,
-                                       query_data, serialize_data,
-                                       verify_backup_before_transfer)
+from app.services.extrato_core import (
+    calculate_totals,
+    check_existing_extrato,
+    delete_historical_records_atomic,
+    query_data,
+    serialize_data,
+    verify_backup_before_transfer,
+)
 from app.services.undo_service import UndoService
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import joinedload

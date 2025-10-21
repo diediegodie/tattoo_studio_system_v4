@@ -3,9 +3,12 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Tuple, Union
 
-from app.controllers.financeiro_helpers import (_get_user_service,
-                                                _maybe_await, _safe_redirect,
-                                                _safe_render)
+from app.controllers.financeiro_helpers import (
+    _get_user_service,
+    _maybe_await,
+    _safe_redirect,
+    _safe_render,
+)
 from app.db.base import Client, Comissao, Pagamento, Sessao
 from app.db.session import SessionLocal
 from flask import Blueprint, flash, redirect, render_template, request, url_for

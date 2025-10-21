@@ -12,10 +12,17 @@ Following SOLID principles:
 """
 
 from .entities import Appointment, InventoryItem, User
-from .interfaces import (IAppointmentReader, IAppointmentRepository,
-                         IAppointmentWriter, IInventoryReader,
-                         IInventoryRepository, IInventoryWriter, IUserReader,
-                         IUserRepository, IUserWriter)
+from .interfaces import (
+    IAppointmentReader,
+    IAppointmentRepository,
+    IAppointmentWriter,
+    IInventoryReader,
+    IInventoryRepository,
+    IInventoryWriter,
+    IUserReader,
+    IUserRepository,
+    IUserWriter,
+)
 
 __all__ = [
     # Domain entities

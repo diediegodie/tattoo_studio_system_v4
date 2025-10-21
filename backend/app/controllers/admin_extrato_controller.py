@@ -13,8 +13,7 @@ from datetime import datetime
 
 from app.db.base import Extrato, ExtratoRunLog
 from app.db.session import SessionLocal
-from app.services.extrato_atomic import \
-    generate_extrato_with_atomic_transaction
+from app.services.extrato_atomic import generate_extrato_with_atomic_transaction
 from app.services.extrato_core import get_previous_month
 from app.services.undo_service import UndoService
 from flask import Blueprint, current_app, jsonify, request

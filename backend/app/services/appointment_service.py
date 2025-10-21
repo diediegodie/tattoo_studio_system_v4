@@ -7,8 +7,11 @@ from typing import List, Optional
 
 from app.domain.entities import Appointment as DomainAppointment
 from app.domain.interfaces import IAppointmentRepository, IUserRepository
-from app.schemas.dtos import (AppointmentCreateRequest, AppointmentResponse,
-                              AppointmentUpdateRequest)
+from app.schemas.dtos import (
+    AppointmentCreateRequest,
+    AppointmentResponse,
+    AppointmentUpdateRequest,
+)
 
 
 class AppointmentService:

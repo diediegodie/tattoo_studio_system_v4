@@ -69,21 +69,24 @@ def run_extrato_in_background():
     main.py and historico_controller.py.
     """
     # Check if background processing is disabled (for testing or CI)
-    disable_background = (
-        os.getenv("DISABLE_EXTRATO_BACKGROUND", "false").lower() == "true"
-        or os.getenv("TESTING", "0") in ("1", "true", "True")
-    )
+    disable_background = os.getenv(
+        "DISABLE_EXTRATO_BACKGROUND", "false"
+    ).lower() == "true" or os.getenv("TESTING", "0") in ("1", "true", "True")
     # Try to detect Flask's app.config['TESTING'] if available
     try:
         from flask import current_app
+
         if getattr(current_app, "config", None) and current_app.config.get("TESTING"):
             disable_background = True
     except Exception:
         pass
 
     if disable_background:
-        logger.info("Extrato background job muted due to TESTING or DISABLE_EXTRATO_BACKGROUND.")
+        logger.info(
+            "Extrato background job muted due to TESTING or DISABLE_EXTRATO_BACKGROUND."
+        )
         return
+
     # Run in background thread
     def run_extrato_generation():
         try:

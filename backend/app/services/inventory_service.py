@@ -1,7 +1,6 @@
 from typing import Optional
 
-from app.core.interfaces.repository_interface import \
-    InventoryRepositoryInterface
+from app.core.interfaces.repository_interface import InventoryRepositoryInterface
 from app.core.interfaces.service_interface import InventoryServiceInterface
 from app.domain.entities import InventoryItem
 
