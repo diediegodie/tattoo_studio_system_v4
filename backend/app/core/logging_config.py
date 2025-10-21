@@ -23,6 +23,7 @@ Usage:
 import json
 import logging
 import logging.handlers
+import os
 import sys
 import time
 from datetime import datetime, timezone
@@ -97,9 +98,16 @@ def setup_logging(
         app: Flask application instance (required for request/response hooks)
         log_level: Logging level (can be int like logging.INFO or string "INFO")
         enable_sql_echo: Enable SQLAlchemy query logging
-        log_to_file: Write logs to rotating file
+        log_to_file: Write logs to rotating file (can be overridden by LOG_TO_FILE env var)
         use_json_format: Use JSON format instead of console format
     """
+    # Override log_to_file with environment variable if set
+    # LOG_TO_FILE=0 in production (Render) to stream JSON logs only to stdout
+    # LOG_TO_FILE=1 in development to keep file rotation
+    log_to_file_env = os.getenv("LOG_TO_FILE")
+    if log_to_file_env is not None:
+        log_to_file = log_to_file_env == "1"
+
     # Determine log level
     if isinstance(log_level, int):
         level = log_level

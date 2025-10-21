@@ -11,7 +11,8 @@ import os
 import sys
 
 from app.core.logging_config import get_logger
-from sqlalchemy import create_engine, text
+from app.db.session import get_engine
+from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
 logger = get_logger(__name__)
@@ -20,11 +21,9 @@ logger = get_logger(__name__)
 def add_google_event_id_column():
     """Add google_event_id column to sessoes table if it doesn't exist."""
     try:
-        # Get database URL from environment or use default
+        # Use centralized engine with proper pooling and observability
+        engine = get_engine()
         database_url = os.environ.get("DATABASE_URL", "sqlite:///app.db")
-
-        # Create engine
-        engine = create_engine(database_url)
 
         # Check if column already exists
         with engine.connect() as conn:

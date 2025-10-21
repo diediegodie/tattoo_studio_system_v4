@@ -315,7 +315,7 @@ def create_app():
         app=app,  # Pass app to register request/response hooks
         log_level=logging.INFO if is_production else logging.DEBUG,
         enable_sql_echo=not is_production,  # SQL echo in dev only
-        log_to_file=True,
+        # log_to_file controlled by LOG_TO_FILE env var (1=files, 0=stdout only)
         use_json_format=is_production,  # JSON logs in production, colored in dev
     )
 
@@ -897,6 +897,35 @@ def create_app():
                     }
                 ),
                 500,
+            )
+
+    # Sentry Test Route (Staging Only)
+    # Only available when DEBUG_SENTRY_TEST=1 and not in production
+    # Used to validate Sentry integration before production deployment
+    if os.getenv("DEBUG_SENTRY_TEST") == "1" and os.getenv("FLASK_ENV") != "production":
+
+        @app.route("/__sentry-test")
+        def sentry_test():
+            """
+            Staging-only route to test Sentry error tracking.
+
+            Raises a RuntimeError to verify that exceptions are properly
+            captured and reported to Sentry dashboard.
+
+            Usage:
+                1. Set DEBUG_SENTRY_TEST=1 in staging environment
+                2. Set SENTRY_DSN to your Sentry project DSN
+                3. Access /__sentry-test endpoint
+                4. Verify event appears in Sentry dashboard
+
+            Security: This route is NOT registered in production (ENV=production)
+            """
+            logger.warning(
+                "Sentry test route triggered - this should appear in Sentry",
+                extra={"context": {"route": "/__sentry-test", "purpose": "testing"}},
+            )
+            raise RuntimeError(
+                "Sentry test exception - if you see this in Sentry, integration is working!"
             )
 
     @app.route("/db-test")

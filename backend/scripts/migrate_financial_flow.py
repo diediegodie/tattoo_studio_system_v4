@@ -15,7 +15,8 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from app.core.logging_config import get_logger
-from sqlalchemy import create_engine, text
+from app.db.session import get_engine
+from sqlalchemy import text
 
 logger = get_logger(__name__)
 
@@ -26,7 +27,8 @@ def run_migration():
     if not database_url:
         raise ValueError("DATABASE_URL environment variable not set")
 
-    engine = create_engine(database_url)
+    # Use centralized engine with proper pooling and observability
+    engine = get_engine()
 
     with engine.connect() as conn:
         try:

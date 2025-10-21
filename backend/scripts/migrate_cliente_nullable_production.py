@@ -36,7 +36,8 @@ backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, backend_dir)
 
 from app.core.logging_config import get_logger
-from sqlalchemy import text, create_engine
+from app.db.session import get_engine
+from sqlalchemy import text
 from sqlalchemy.engine import Engine
 
 logger = get_logger(__name__)
@@ -64,8 +65,8 @@ class ProductionMigration:
                 f"Only PostgreSQL is supported for production. Got: {parsed.scheme}"
             )
 
-        # Create engine
-        self.engine = create_engine(self.database_url)
+        # Use centralized engine with proper pooling and observability
+        self.engine = get_engine()
 
         # Test connection
         try:
@@ -105,7 +106,8 @@ class ProductionMigration:
 
         # Set password via environment
         env = os.environ.copy()
-        if parsed.[REDACTED_PASSWORD]"PGPASSWORD"] = parsed.password
+        if parsed.password:
+            env["PGPASSWORD"] = parsed.password
 
         try:
             result = subprocess.run(
@@ -139,7 +141,7 @@ class ProductionMigration:
             # Check if pagamentos table exists
             table_check = conn.execute(
                 text(
-                    """
+            """
                 SELECT EXISTS (
                     SELECT FROM information_schema.tables 
                     WHERE table_name = 'pagamentos'

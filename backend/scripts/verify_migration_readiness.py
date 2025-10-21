@@ -19,8 +19,9 @@ from urllib.parse import urlparse
 backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, backend_dir)
 
-from sqlalchemy import text, create_engine
+from sqlalchemy import text
 from app.core.logging_config import get_logger
+from app.db.session import get_engine
 
 logger = get_logger(__name__)
 
@@ -30,7 +31,8 @@ def check_database_connection(database_url):
     logger.info("Checking database connection")
 
     try:
-        engine = create_engine(database_url)
+        # Use centralized engine with proper pooling and observability
+        engine = get_engine()
         with engine.connect() as conn:
             # Basic connection test
             version_result = conn.execute(text("SELECT version()")).fetchone()
@@ -263,7 +265,7 @@ def main():
             "Export your production database URL first",
             extra={
                 "context": {
-                    "example": "export [REDACTED_DATABASE_URL]
+                    "example": "export DATABASE_URL='postgresql://user:password@host:port/dbname'"
                 }
             },
         )

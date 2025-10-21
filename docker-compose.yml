@@ -47,6 +47,7 @@ services:
       - FLASK_SECRET_KEY=${FLASK_SECRET_KEY:-dev-secret-change-me}
       - LIMITER_STORAGE_URI=redis://redis:6379/3
       - DEBUG_METRICS=1  # Enable Prometheus metrics in development mode
+      - DEBUG_SENTRY_TEST=${DEBUG_SENTRY_TEST:-0}  # Enable Sentry test route in staging
       - GIT_SHA=${GIT_SHA:-}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}

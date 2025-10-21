@@ -7,8 +7,9 @@ Run this script to update the database schema.
 
 import os
 
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 from app.core.logging_config import get_logger
+from app.db.session import get_engine
 
 logger = get_logger(__name__)
 
@@ -16,15 +17,14 @@ logger = get_logger(__name__)
 def run_migration():
     """Update the comissoes table to allow NULL pagamento_id values."""
 
-    # Get database URL from environment, with fallback for local development
-    database_url = os.getenv(
-        "DATABASE_URL", "[REDACTED_DATABASE_URL]"
-    )
+    # Get database URL from environment for logging purposes
+    database_url = os.getenv("DATABASE_URL", "[REDACTED_DATABASE_URL]")
 
     logger.info(
         "Connecting to database", extra={"context": {"database_url": database_url}}
     )
-    engine = create_engine(database_url)
+    # Use centralized engine with proper pooling and observability
+    engine = get_engine()
 
     try:
         with engine.connect() as conn:
