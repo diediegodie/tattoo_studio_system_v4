@@ -55,6 +55,19 @@ jobs:
             echo "build_args=" >> $GITHUB_OUTPUT
           fi
       
+      - name: Create .env file for CI
+        run: |
+          echo "POSTGRES_USER=${{ secrets.POSTGRES_USER }}" >> .env
+          echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" >> .env
+          echo "POSTGRES_DB=${{ secrets.POSTGRES_DB }}" >> .env
+          echo "FLASK_SECRET_KEY=${{ secrets.CI_FLASK_SECRET_KEY }}" >> .env
+          echo "JWT_SECRET_KEY=${{ secrets.CI_JWT_SECRET_KEY }}" >> .env
+          echo "JOTFORM_API_KEY=${{ secrets.CI_JOTFORM_API_KEY }}" >> .env
+          echo "JOTFORM_FORM_ID=${{ secrets.CI_JOTFORM_FORM_ID }}" >> .env
+          echo "GOOGLE_CLIENT_ID=${{ secrets.CI_GOOGLE_CLIENT_ID }}" >> .env
+          echo "GOOGLE_CLIENT_SECRET=${{ secrets.CI_GOOGLE_CLIENT_SECRET }}" >> .env
+        working-directory: ${{ github.workspace }}
+      
       - name: Build Docker image
         run: |
           if [ "${{ steps.requirements-check.outputs.changed }}" = "true" ]; then
