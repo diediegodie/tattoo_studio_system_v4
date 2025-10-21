@@ -15,11 +15,13 @@ from flask import (
     jsonify,
     redirect,
     render_template,
+    request,
     session,
     url_for,
+    current_app,
 )
 from flask_dance.consumer import oauth_authorized
-from flask_dance.contrib.google import google, make_google_blueprint
+from flask_dance.contrib.google import make_google_blueprint
 from flask_login import (
     LoginManager,
     current_user,
@@ -118,8 +120,8 @@ def google_logged_in(blueprint, token):
         service = UserService(repo)
         oauth_service = OAuthTokenService()
 
-        # Get domain user for business logic
-        domain_user = service.create_or_update_from_google(google_info)
+        # Create or update user from Google info (ensures user exists in database)
+        service.create_or_update_from_google(google_info)
 
         # Get database user for Flask-Login
         db_user = repo.get_db_by_google_id(google_user_id)
@@ -170,12 +172,15 @@ def google_logged_in(blueprint, token):
 
         # After successful OAuth login, redirect user to the appropriate page
         response = redirect(next_url)
+
+        # Use global cookie config for secure flag (production vs development)
+        secure_flag = current_app.config.get("SESSION_COOKIE_SECURE", False)
         response.set_cookie(
             "access_token",
             jwt_token,
             max_age=604800,  # 7 days (increased from 24 hours)
             httponly=True,
-            secure=False,  # Set to True in production with HTTPS
+            secure=secure_flag,
             samesite="Lax",
         )
         return response
@@ -196,7 +201,7 @@ def test_database_connection():
     """Test database connection"""
     try:
         with engine.connect() as connection:
-            result = connection.execute(text("SELECT 1"))
+            connection.execute(text("SELECT 1"))
             return True
     except Exception as e:
         logger.error(
@@ -317,8 +322,176 @@ def create_app():
         },
     )
 
+    # Sentry Integration (Task 9 - Logging and Observability)
+    # Initialize Sentry for error tracking and performance monitoring
+    sentry_dsn = os.getenv("SENTRY_DSN")
+    if sentry_dsn:
+        import sentry_sdk
+        from sentry_sdk.integrations.flask import FlaskIntegration
+        from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+
+        sentry_sdk.init(
+            dsn=sentry_dsn,
+            environment=env,
+            release=os.getenv("GIT_SHA", "unknown"),
+            integrations=[
+                FlaskIntegration(),
+                SqlalchemyIntegration(),
+            ],
+            traces_sample_rate=0.1,  # 10% of transactions for performance monitoring
+            profiles_sample_rate=0.1,  # 10% of transactions for profiling
+            send_default_pii=False,  # Don't send PII by default
+        )
+        logger.info(
+            "Sentry initialized",
+            extra={
+                "context": {
+                    "environment": env,
+                    "release": os.getenv("GIT_SHA", "unknown"),
+                    "traces_sample_rate": 0.1,
+                }
+            },
+        )
+    else:
+        logger.info(
+            "Sentry not initialized (SENTRY_DSN not set)",
+            extra={"context": {"environment": env}},
+        )
+
+    # Prometheus Metrics (Task 9 - Logging and Observability)
+    # Expose /metrics endpoint for Prometheus scraping
+    # MUST be initialized BEFORE limiter to avoid being rate-limited
+    from prometheus_flask_exporter import PrometheusMetrics
+
+    metrics = PrometheusMetrics(app)
+    # Add custom app_info metric with version (only if not already registered)
+    try:
+        metrics.info(
+            "app_info",
+            "Application information",
+            version=os.getenv("GIT_SHA", "unknown"),
+            environment=env,
+        )
+    except ValueError as e:
+        # Metric already registered (happens when create_app called multiple times)
+        logger.debug(
+            "app_info metric already registered",
+            extra={"context": {"error": str(e)}},
+        )
+    logger.info(
+        "Prometheus metrics initialized",
+        extra={"context": {"metrics_endpoint": "/metrics"}},
+    )
+
     # Configuration
     app.config["SECRET_KEY"] = os.getenv("FLASK_SECRET_KEY", "dev-secret-change-me")
+
+    # Initialize Flask-Limiter (rate limiting) with environment-aware storage
+    # Import global limiter instance configured for decorators
+    from app.core.limiter_config import limiter
+
+    storage_uri = (
+        "redis://redis:6379/3"
+        if is_production
+        else os.getenv("LIMITER_STORAGE_URI", "memory://")
+    )
+    # Configure storage URI via app config and bind limiter
+    app.config["RATELIMIT_STORAGE_URI"] = storage_uri
+    # Exempt monitoring endpoints from rate limiting (Prometheus scraper access)
+    app.config["RATELIMIT_EXEMPT_PATHS"] = ["/metrics", "/health", "/pool-metrics"]
+    limiter.init_app(app)
+
+    # Production validation: fail fast if weak secrets are used
+    if is_production:
+        weak_secrets = ["dev-secret-change-me", "dev-jwt-secret-change-me", "secret123"]
+        secret_key = app.config["SECRET_KEY"]
+        if secret_key in weak_secrets or len(secret_key) < 32:
+            raise ValueError(
+                "Production deployment requires strong SECRET_KEY (min 32 chars). "
+                "Set FLASK_SECRET_KEY environment variable."
+            )
+
+    # HTTPS Enforcement (Task 3 - Production Security)
+    # Fail fast if insecure OAuth transport is enabled in production
+    if is_production and os.getenv("OAUTHLIB_INSECURE_TRANSPORT") == "1":
+        raise RuntimeError(
+            "OAUTHLIB_INSECURE_TRANSPORT must not be enabled in production. "
+            "Set to 0 or remove from environment."
+        )
+
+    # Cookie and Session Hardening (Task 1 - Production Security)
+    # In production (FLASK_ENV=production), cookies should use secure flag
+    app.config.setdefault("SESSION_COOKIE_SECURE", is_production)
+    app.config.setdefault("SESSION_COOKIE_HTTPONLY", True)
+    app.config.setdefault("SESSION_COOKIE_SAMESITE", "Lax")
+    app.config.setdefault("REMEMBER_COOKIE_SECURE", is_production)
+    app.config.setdefault("REMEMBER_COOKIE_HTTPONLY", True)
+
+    # CSRF Protection (Task 2 - Production Security)
+    # Protect all forms from Cross-Site Request Forgery attacks
+    from app.core.csrf_config import csrf
+
+    csrf.init_app(app)
+
+    # CSRF Configuration
+    app.config["WTF_CSRF_TIME_LIMIT"] = None  # Tokens don't expire (better UX)
+    app.config["WTF_CSRF_SSL_STRICT"] = is_production  # Require HTTPS in production
+    app.config["WTF_CSRF_ENABLED"] = True  # Explicitly enable (default, but clear)
+
+    # HTTPS Enforcement with Talisman (Task 3 & 7 - Production Security)
+    # Force HTTPS, add HSTS, XFO, XCTO, CSP, Referrer-Policy, and Permissions-Policy headers
+    if is_production:
+        from flask_talisman import Talisman
+
+        # Content Security Policy as required for Task 7
+        csp = {
+            "default-src": ["'self'"],
+            "script-src": ["'self'"],
+            "object-src": ["'none'"],
+        }
+
+        # Initialize Talisman with most headers
+        talisman = Talisman(
+            app,
+            # Content Security Policy
+            content_security_policy=csp,
+            content_security_policy_nonce_in=["script-src"],
+            # HTTPS enforcement
+            force_https=True,  # Enforce HTTPS in production
+            # Strict-Transport-Security (HSTS)
+            # Note: HSTS header only appears on HTTPS responses, not HTTP redirects
+            strict_transport_security=True,
+            strict_transport_security_max_age=63072000,  # 2 years (as required)
+            strict_transport_security_include_subdomains=True,
+            strict_transport_security_preload=True,
+            # X-Frame-Options
+            frame_options="DENY",
+            # Referrer-Policy
+            referrer_policy="no-referrer",
+        )
+
+        # WSGI middleware to override Permissions-Policy header
+        # Talisman hardcodes browsing-topics=() with no option to customize
+        # This middleware runs AFTER all Flask processing including Talisman
+        original_wsgi_app = app.wsgi_app
+
+        def permissions_policy_middleware(environ, start_response):
+            def custom_start_response(status, headers, exc_info=None):
+                # Override Permissions-Policy header in response
+                headers_list = list(headers)
+                for i, (name, value) in enumerate(headers_list):
+                    if name.lower() == "permissions-policy":
+                        headers_list[i] = (
+                            "Permissions-Policy",
+                            "camera=(), microphone=(), geolocation=()",
+                        )
+                        break
+                return start_response(status, headers_list, exc_info)
+
+            return original_wsgi_app(environ, custom_start_response)
+
+        app.wsgi_app = permissions_policy_middleware
+
     # Surface DATABASE_URL in Flask config so other components (e.g., JSON vs JSONB chooser)
     # can correctly infer the active dialect. This also helps debugging.
     app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL", "")
@@ -328,6 +501,15 @@ def create_app():
         os.getenv("LOGIN_DISABLED", "false").lower() == "true"
     )
     app.config["SHOW_API_DOCS"] = os.getenv("SHOW_API_DOCS", "false").lower() == "true"
+
+    # Static assets caching policy: long-lived immutable cache for versioned assets
+    @app.after_request
+    def add_cache_headers(response):
+        p = request.path or ""
+        # Apply only to static asset paths
+        if p.startswith("/assets/") or p.startswith("/static/"):
+            response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        return response
 
     # Ensure database tables exist early to avoid runtime failures like
     # "relation 'users' does not exist" or "no such table: extratos".
@@ -398,6 +580,18 @@ def create_app():
                     exc_info=True,
                 )
 
+    # HTTP → HTTPS Redirect Fallback (Task 3 - Production Security)
+    # Render terminates TLS at edge and sets X-Forwarded-Proto header
+    # This ensures any HTTP requests are redirected to HTTPS
+    @app.before_request
+    def enforce_https_redirect():
+        if (
+            is_production
+            and request.headers.get("X-Forwarded-Proto", "http") != "https"
+        ):
+            url = request.url.replace("http://", "https://", 1)
+            return redirect(url, code=301)
+
     # Initialize Flask-Login
     login_manager = LoginManager()
     login_manager.init_app(app)
@@ -405,7 +599,7 @@ def create_app():
     login_manager.login_message = "Por favor, faça login para acessar esta página."
 
     # Import models after app creation
-    from app.db.base import OAuth, User
+    from app.db.base import User
 
     @login_manager.user_loader
     def load_user(user_id):
@@ -432,7 +626,16 @@ def create_app():
 
         # Clear JWT cookie as well
         response = redirect(url_for("login_page"))
-        response.set_cookie("access_token", "", expires=0)
+        # Use environment-aware secure flag consistent with global config
+        secure_flag = app.config.get("SESSION_COOKIE_SECURE", False)
+        response.set_cookie(
+            "access_token",
+            "",
+            expires=0,
+            httponly=True,
+            secure=secure_flag,
+            samesite="Lax",
+        )
         return response
 
     @app.route("/index")
@@ -555,7 +758,10 @@ def create_app():
                     selected_ano_str = str(record_ano)
                     bootstrap_mes_nome = record_mes_nome
                     feedback_state = "success"
-                    feedback_message = f"Extrato de {record_mes_nome}/{record_ano} carregado automaticamente."
+                    feedback_message = (
+                        f"Extrato de {record_mes_nome}/{record_ano} "
+                        "carregado automaticamente."
+                    )
                 except json.JSONDecodeError as err:
                     app.logger.error(
                         "Erro ao desserializar extrato para exibição: %s", err
@@ -616,6 +822,81 @@ def create_app():
                 "database": "connected" if db_status else "disconnected",
             }
         ), (200 if db_status else 503)
+
+    @app.route("/pool-metrics")
+    def pool_metrics():
+        """
+        SQLAlchemy connection pool metrics endpoint (Task 9).
+
+        Returns JSON with pool statistics for monitoring.
+        Useful for tracking connection usage, detecting leaks, and capacity planning.
+        """
+        from app.db.session import get_engine
+
+        try:
+            engine = get_engine()
+            pool = engine.pool
+
+            # Get pool status string and parse it
+            status_str = pool.status()
+
+            # Parse the status string (format: "Pool size: X  Connections in pool: Y Current Overflow: Z Current Checked out connections: W")
+            # Use Dict[str, Union[str, int, float]] to allow mixed types
+            from typing import Dict, Union
+
+            pool_stats: Dict[str, Union[str, int, float]] = {
+                "status": "healthy",
+                "pool_status": status_str,
+            }
+
+            # Extract metrics from status string
+            import re
+
+            size_match = re.search(r"Pool size:\s*(\d+)", status_str)
+            in_pool_match = re.search(r"Connections in pool:\s*(\d+)", status_str)
+            overflow_match = re.search(r"Current Overflow:\s*(-?\d+)", status_str)
+            checked_out_match = re.search(
+                r"Current Checked out connections:\s*(\d+)", status_str
+            )
+
+            if size_match:
+                pool_stats["pool_size"] = int(size_match.group(1))
+            if in_pool_match:
+                pool_stats["connections_in_pool"] = int(in_pool_match.group(1))
+            if overflow_match:
+                pool_stats["overflow"] = int(overflow_match.group(1))
+            if checked_out_match:
+                pool_stats["checked_out"] = int(checked_out_match.group(1))
+
+            # Calculate utilization if we have the data
+            if "pool_size" in pool_stats and "checked_out" in pool_stats:
+                pool_size_val = pool_stats["pool_size"]
+                checked_out_val = pool_stats["checked_out"]
+                if isinstance(pool_size_val, int) and isinstance(checked_out_val, int):
+                    if pool_size_val > 0:
+                        pool_stats["utilization_percent"] = round(
+                            (checked_out_val / pool_size_val) * 100, 2
+                        )
+                    else:
+                        pool_stats["utilization_percent"] = 0.0
+
+            return jsonify(pool_stats), 200
+
+        except Exception as e:
+            logger.error(
+                "Failed to retrieve pool metrics",
+                extra={"context": {"error": str(e)}},
+            )
+            return (
+                jsonify(
+                    {
+                        "status": "error",
+                        "message": "Failed to retrieve pool metrics",
+                        "error": str(e),
+                    }
+                ),
+                500,
+            )
 
     @app.route("/db-test")
     def database_test():
@@ -738,11 +1019,13 @@ def create_app():
                         except Exception as e:
                             failed_count += 1
                             logger.error(
-                                f"Error refreshing token for user {oauth_record.user_id}: {str(e)}"
+                                f"Error refreshing token for user "
+                                f"{oauth_record.user_id}: {str(e)}"
                             )
 
                     logger.info(
-                        f"Background token refresh completed: {refreshed_count} successful, {failed_count} failed"
+                        f"Background token refresh completed: "
+                        f"{refreshed_count} successful, {failed_count} failed"
                     )
 
             except Exception as e:
