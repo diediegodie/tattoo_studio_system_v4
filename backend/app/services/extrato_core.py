@@ -8,6 +8,7 @@ including data querying, serialization, calculation, and validation.
 import json
 import logging
 import os
+from pathlib import Path
 import uuid
 from datetime import datetime, timedelta, timezone
 from logging.handlers import RotatingFileHandler
@@ -32,12 +33,13 @@ from sqlalchemy.orm import joinedload
 # Configure logging
 logger = logging.getLogger(__name__)
 
-# Ensure logs directory exists
-os.makedirs("backend/logs", exist_ok=True)
+# Ensure logs directory exists (absolute path inside container)
+LOG_DIR = Path(__file__).resolve().parents[2] / "logs"
+LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 # Add rotating file handler for extrato operations
 extrato_handler = RotatingFileHandler(
-    "backend/logs/extrato_operations.log",
+    LOG_DIR / "extrato_operations.log",
     maxBytes=10 * 1024 * 1024,  # 10MB
     backupCount=5,
 )

@@ -6,6 +6,7 @@ Following SOLID principles with single responsibility for backup operations.
 import csv
 import logging
 import os
+from pathlib import Path
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -43,10 +44,13 @@ class BackupService:
 
     def _ensure_logs_directory_exists(self) -> None:
         """Create logs directory if it doesn't exist."""
-        logs_dir = "logs"
-        if not os.path.exists(logs_dir):
-            os.makedirs(logs_dir)
+        logs_dir = Path(__file__).resolve().parents[2] / "logs"
+        try:
+            logs_dir.mkdir(parents=True, exist_ok=True)
             logger.info(f"Created logs directory: {logs_dir}")
+        except Exception:
+            # Avoid crashing if directory creation fails (e.g., permissions)
+            logger.warning("Failed to ensure logs directory exists", exc_info=True)
 
     def _get_backup_directory(self, year: int, month: int) -> str:
         """

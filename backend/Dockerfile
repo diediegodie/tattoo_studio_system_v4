@@ -34,8 +34,9 @@ COPY ./backend/app ./app
 COPY ../frontend/templates ./frontend/templates
 COPY ../frontend/assets ./frontend/assets
 
-# Create non-root user for security
+# Create non-root user for security and ensure logs directory exists with proper ownership
 RUN adduser --disabled-password --gecos '' appuser \
+    && mkdir -p /app/backend/logs \
     && chown -R appuser:appuser /app
 USER appuser
 

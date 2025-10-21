@@ -62,8 +62,10 @@ services:
       - ./backend:/app/backend
       - ./frontend:/app/frontend
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
     networks:
       - tattoo_network
   # Redis for rate limiting and caching
