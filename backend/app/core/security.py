@@ -37,7 +37,30 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 # JWT configuration
 def get_jwt_secret_key():
-    return os.getenv("JWT_SECRET_KEY", "dev-jwt-secret-change-me")
+    """Get JWT secret key with production validation.
+
+    In production (FLASK_ENV=production), this function validates that:
+    - JWT_SECRET_KEY is set and not using weak defaults
+    - Secret is at least 32 characters long
+
+    Raises:
+        ValueError: If production deployment uses weak or missing JWT secret
+
+    Returns:
+        JWT secret key from environment or development default
+    """
+    secret = os.getenv("JWT_SECRET_KEY", "dev-jwt-secret-change-me")
+    is_production = os.getenv("FLASK_ENV") == "production"
+
+    if is_production:
+        weak_secrets = ["dev-jwt-secret-change-me", "dev-secret-change-me", "secret123"]
+        if secret in weak_secrets or len(secret) < 32:
+            raise ValueError(
+                "Production deployment requires strong JWT_SECRET_KEY (min 32 chars). "
+                "Set JWT_SECRET_KEY environment variable."
+            )
+
+    return secret
 
 
 JWT_ALGORITHM = "HS256"

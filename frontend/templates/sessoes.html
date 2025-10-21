@@ -65,16 +65,18 @@
 											<button class="button small options-btn"
 												onclick="toggleOptions(this)">Opções</button>
 											<span class="options-actions">
-												<button class="button small finish-btn" data-id="{{ sessao.id }}"
-													data-data="{{ sessao.data.strftime('%Y-%m-%d') if sessao.data else '' }}"
-													data-cliente-id="{{ sessao.cliente.id if sessao.cliente else '' }}"
-													data-artista-id="{{ sessao.artista.id if sessao.artista else '' }}"
-													data-valor="{{ sessao.valor }}"
-													data-observacoes="{{ sessao.observacoes or '' }}">Finalizar</button>
-												<button class="button small edit-sessao-btn"
-													data-id="{{ sessao.id }}">Editar</button>
-												<button class="button small delete-sessao-btn"
-													data-id="{{ sessao.id }}">Excluir</button>
+												{# Finalizar button triggers JS fetch to /sessoes/finalizar/<id> (not a
+													form, no CSRF token). CSRF is exempted at the route level. #}
+													<button class="button small finish-btn" data-id="{{ sessao.id }}"
+														data-data="{{ sessao.data.strftime('%Y-%m-%d') if sessao.data else '' }}"
+														data-cliente-id="{{ sessao.cliente.id if sessao.cliente else '' }}"
+														data-artista-id="{{ sessao.artista.id if sessao.artista else '' }}"
+														data-valor="{{ sessao.valor }}"
+														data-observacoes="{{ sessao.observacoes or '' }}">Finalizar</button>
+													<button class="button small edit-sessao-btn"
+														data-id="{{ sessao.id }}">Editar</button>
+													<button class="button small delete-sessao-btn"
+														data-id="{{ sessao.id }}">Excluir</button>
 											</span>
 										</td>
 									</tr>
@@ -100,7 +102,7 @@
 	</div>
 
 	{% include 'partials/_base_scripts.html' %}
-	<script src="{{ url_for('static', filename='js/sessoes.js') }}"></script>
+	<script src="{{ url_for('static', filename='js/sessoes.js', v=config.get('GIT_SHA','')) }}"></script>
 
 </body>
 

@@ -19,6 +19,7 @@
                     <!-- Formulário de Registro de Gasto -->
                     <div class="box">
                         <form method="post" action="{{ url_for('gastos.create_gasto') }}" class="row gtr-uniform">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
                             <div class="col-3 col-12-xsmall">
                                 <label for="data">Data</label>
                                 <input type="date" id="data" name="data" required />
@@ -94,7 +95,7 @@
     </div>
 
     {% include 'partials/_base_scripts.html' %}
-    <script src="{{ url_for('static', filename='js/gastos.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/gastos.js', v=config.get('GIT_SHA','')) }}"></script>
 </body>
 
 </html>

@@ -18,16 +18,19 @@ def api_response(
     return jsonify({"success": success, "message": message, "data": data}), status_code
 
 
+from app.core.csrf_config import csrf
 from app.db.session import SessionLocal
 from app.domain.entities import InventoryItem
 from app.repositories.inventory_repository import InventoryRepository
 from app.services.inventory_service import InventoryService
 from flask_login import current_user, login_required
+from app.core.limiter_config import limiter
 
 inventory_bp = Blueprint("inventory", __name__, url_prefix="/inventory")
 
 
 @inventory_bp.route("/", methods=["GET"])
+@limiter.limit("100 per minute")
 @login_required
 def list_inventory():
     """List all inventory items."""
@@ -62,6 +65,7 @@ def list_inventory():
 
 
 @inventory_bp.route("/", methods=["POST"])
+@limiter.limit("30 per minute")
 @login_required
 def add_inventory():
     """Add a new inventory item."""
@@ -115,6 +119,8 @@ def add_inventory():
 
 
 @inventory_bp.route("/<int:item_id>", methods=["PUT"])
+@limiter.limit("30 per minute")
+@csrf.exempt  # JSON API - uses JWT authentication
 @login_required
 def update_inventory(item_id):
     """Update an inventory item."""
@@ -158,6 +164,8 @@ def update_inventory(item_id):
 
 
 @inventory_bp.route("/<int:item_id>", methods=["DELETE"])
+@limiter.limit("30 per minute")
+@csrf.exempt  # JSON API - uses JWT authentication
 @login_required
 def delete_inventory(item_id):
     """Delete an inventory item."""
@@ -181,6 +189,7 @@ def delete_inventory(item_id):
 
 
 @inventory_bp.route("/<int:item_id>/quantity", methods=["PATCH"])
+@limiter.limit("30 per minute")
 @login_required
 def change_quantity(item_id):
     """Change quantity of an inventory item."""

@@ -11,6 +11,7 @@ from app.controllers.sessoes_controller import sessoes_bp
 from app.controllers.sessoes_helpers import _get_user_service
 from app.core.validation import SessaoValidator
 from app.db.base import Client, Sessao
+from app.core.csrf_config import csrf
 from flask import flash, redirect, render_template, request, url_for
 from flask_login import login_required
 from sqlalchemy.exc import IntegrityError
@@ -204,18 +205,19 @@ def nova_sessao() -> Union[str, Response]:
     except Exception as err:  # pragma: no cover - unexpected failure path
         logger.error("Error in nova_sessao: %s", err)
         flash("Erro interno do servidor.", "error")
-        try:
-            return _render_nova_sessao_form(db)
-        except Exception:
-            return Response("", status=500)
+        if db:
+            try:
+                return _render_nova_sessao_form(db)
+            except Exception:
+                return Response("", status=500)
+        return Response("", status=500)
     finally:
         if db:
             db.close()
 
-    return redirect(url_for("sessoes.nova_sessao"))
-
 
 @sessoes_bp.route("/finalizar/<int:sessao_id>", methods=["POST"])
+@csrf.exempt
 @login_required
 def finalizar_sessao(sessao_id: int) -> Response:
     """Mark session as completed and redirect to payment registration."""

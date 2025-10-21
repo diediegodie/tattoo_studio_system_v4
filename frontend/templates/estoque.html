@@ -99,7 +99,7 @@
 		}
 		document.addEventListener('DOMContentLoaded', updateLockerControls);
 	</script>
-	<script src="{{ url_for('static', filename='js/inventory.js') }}"></script>
+	<script src="{{ url_for('static', filename='js/inventory.js', v=config.get('GIT_SHA','')) }}"></script>
 </body>
 
 </html>

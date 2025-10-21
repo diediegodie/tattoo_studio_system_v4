@@ -5,8 +5,9 @@
     <title>{{ page_title|default('Alma Negra - System') }}</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
-    <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/x-icon">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}" />
-    <script src="{{ url_for('static', filename='js/common.js') }}"></script>
+    <link rel="icon" href="{{ url_for('static', filename='favicon.png', v=config.get('GIT_SHA','')) }}"
+        type="image/x-icon">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css', v=config.get('GIT_SHA','')) }}" />
+    <script src="{{ url_for('static', filename='js/common.js', v=config.get('GIT_SHA','')) }}"></script>
     {% block extra_head %}{% endblock %}
 </head>

@@ -4,14 +4,25 @@ These routes show different authentication patterns.
 """
 
 from app.core.auth_decorators import get_current_user, jwt_required
-from flask import (Blueprint, g, jsonify, make_response, render_template,
-                   request)
+from flask import (
+    Blueprint,
+    g,
+    jsonify,
+    make_response,
+    render_template,
+    request,
+    current_app,
+)
 from flask_login import current_user, login_required, logout_user
+from app.core.csrf_config import csrf
+from app.core.limiter_config import limiter
 
 # Create a blueprint for API routes
 api_bp = Blueprint("api", __name__, url_prefix="/api")
 
 
+@csrf.exempt
+@limiter.limit("30 per minute")
 @api_bp.route("/logout", methods=["POST"])
 def api_logout():
     """Logout endpoint: clears JWT cookie and session."""
@@ -22,11 +33,20 @@ def api_logout():
         pass
     # Prepare response to clear JWT cookie
     response = make_response(jsonify({"message": "Logout realizado com sucesso."}))
-    response.set_cookie("access_token", "", expires=0)
+    secure_flag = current_app.config.get("SESSION_COOKIE_SECURE", False)
+    response.set_cookie(
+        "access_token",
+        "",
+        expires=0,
+        httponly=True,
+        secure=secure_flag,
+        samesite="Lax",
+    )
     return response
 
 
 @api_bp.route("/profile", methods=["GET"])
+@limiter.limit("100 per minute")
 @jwt_required
 def get_user_profile():
     """Get current user profile (JWT required).
@@ -52,6 +72,7 @@ def get_user_profile():
 
 
 @api_bp.route("/dashboard", methods=["GET"])
+@limiter.limit("100 per minute")
 @login_required
 def dashboard():
     """Dashboard that works with both session and JWT auth.
@@ -74,6 +95,7 @@ def dashboard():
 
 
 @api_bp.route("/public", methods=["GET"])
+@limiter.limit("100 per minute")
 def public_endpoint():
     """Public endpoint with optional authentication.
 

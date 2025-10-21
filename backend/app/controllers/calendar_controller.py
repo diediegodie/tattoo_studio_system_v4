@@ -8,9 +8,9 @@ from datetime import datetime, timedelta
 
 from app.domain.interfaces import ICalendarService
 from app.services.google_calendar_service import GoogleCalendarService
-from flask import (Blueprint, flash, jsonify, redirect, render_template,
-                   request, url_for)
+from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
+from app.core.csrf_config import csrf
 
 logger = logging.getLogger(__name__)
 
@@ -173,6 +173,7 @@ def get_events():
         )
 
 
+@csrf.exempt
 @calendar_bp.route("/api/sync", methods=["POST"])
 @login_required
 def sync_calendar():
@@ -224,6 +225,7 @@ def sync_calendar():
         )
 
 
+@csrf.exempt
 @calendar_bp.route("/api/create-event", methods=["POST"])
 @login_required
 def create_event():

@@ -35,6 +35,7 @@
                     <section>
                         <form id="registrar-pagamento-form" method="post"
                             action="{{ url_for('financeiro.registrar_pagamento') }}" class="form-container">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
                             <!-- Hidden field for session linkage; prefer POSTed value when re-rendering -->
                             <input type="hidden" name="sessao_id"
                                 value="{{ request.form.get('sessao_id') or sessao_id or '' }}">

@@ -1,0 +1,44 @@
+{% set page_title = 'Admin Extrato' %}
+{% include 'partials/_head.html' %}
+
+<body>
+    <div id="wrapper">
+        <div id="main">
+            <div class="inner">
+                <header class="main">
+                    <h1>Administração de Extrato</h1>
+                </header>
+                <section>
+                    <h2>Transferir Extrato</h2>
+                    <form method="POST" action="{{ url_for('admin_extrato.trigger_manual_transfer') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                        <label for="mes">Mês:</label>
+                        <input type="number" name="mes" min="1" max="12" required>
+                        <label for="ano">Ano:</label>
+                        <input type="number" name="ano" min="2000" max="2100" required>
+                        <label for="force">Forçar:</label>
+                        <input type="checkbox" name="force" value="true">
+                        <button type="submit" class="button primary">Transferir</button>
+                    </form>
+                </section>
+                <section>
+                    <h2>Reverter Última Transferência</h2>
+                    <form method="POST" action="{{ url_for('admin_extrato.revert_last_transfer') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                        <label for="snapshot_id">Snapshot ID (opcional):</label>
+                        <input type="text" name="snapshot_id">
+                        <label for="mes">Mês (opcional):</label>
+                        <input type="number" name="mes" min="1" max="12">
+                        <label for="ano">Ano (opcional):</label>
+                        <input type="number" name="ano" min="2000" max="2100">
+                        <button type="submit" class="button danger">Reverter</button>
+                    </form>
+                </section>
+            </div>
+        </div>
+        {% include 'partials/_sidebar.html' %}
+    </div>
+    {% include 'partials/_base_scripts.html' %}
+</body>
+
+</html>

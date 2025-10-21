@@ -13,6 +13,8 @@ from app.repositories.pagamento_repository import PagamentoRepository
 from flask import Blueprint, jsonify, request
 from flask_login import login_required
 from sqlalchemy.orm import joinedload
+from app.core.csrf_config import csrf
+from app.core.limiter_config import limiter
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +23,7 @@ from app.controllers.financeiro_controller import financeiro_bp
 
 
 @financeiro_bp.route("/api", methods=["GET"])
+@limiter.limit("100 per minute")
 @login_required
 def api_list_pagamentos():
     """Return JSON array of payments."""
@@ -82,6 +85,7 @@ def api_list_pagamentos():
 
 
 @financeiro_bp.route("/api/<int:pagamento_id>", methods=["GET"])
+@limiter.limit("100 per minute")
 @login_required
 def api_get_pagamento(pagamento_id: int):
     """Get a single payment by ID."""
@@ -137,6 +141,8 @@ def api_get_pagamento(pagamento_id: int):
             db.close()
 
 
+@csrf.exempt
+@limiter.limit("30 per minute")
 @financeiro_bp.route("/api/<int:pagamento_id>", methods=["PUT"])
 @login_required
 def api_update_pagamento(pagamento_id: int):
@@ -211,8 +217,7 @@ def api_update_pagamento(pagamento_id: int):
             "observacoes": getattr(updated, "observacoes", None),
             "created_at": (
                 updated.created_at.isoformat()
-                if hasattr(updated, "created_at")
-                and updated.created_at is not None
+                if hasattr(updated, "created_at") and updated.created_at is not None
                 else None
             ),
         }
@@ -228,6 +233,8 @@ def api_update_pagamento(pagamento_id: int):
             db.close()
 
 
+@csrf.exempt
+@limiter.limit("30 per minute")
 @financeiro_bp.route("/api/<int:pagamento_id>", methods=["DELETE"])
 @login_required
 def api_delete_pagamento(pagamento_id: int):

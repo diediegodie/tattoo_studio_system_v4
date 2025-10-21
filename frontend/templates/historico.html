@@ -321,11 +321,11 @@
 
     {% include 'partials/_base_scripts.html' %}
     <!-- Utility scripts required by financeiro/sessoes/historico -->
-    <script src="{{ url_for('static', filename='js/utils/dom-helpers.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/utils/resource-client.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/financeiro.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/sessoes.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/historico.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/utils/dom-helpers.js', v=config.get('GIT_SHA','')) }}"></script>
+    <script src="{{ url_for('static', filename='js/utils/resource-client.js', v=config.get('GIT_SHA','')) }}"></script>
+    <script src="{{ url_for('static', filename='js/financeiro.js', v=config.get('GIT_SHA','')) }}"></script>
+    <script src="{{ url_for('static', filename='js/sessoes.js', v=config.get('GIT_SHA','')) }}"></script>
+    <script src="{{ url_for('static', filename='js/historico.js', v=config.get('GIT_SHA','')) }}"></script>
 
 </body>
 

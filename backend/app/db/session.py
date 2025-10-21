@@ -31,9 +31,7 @@ def get_engine():
     constructed."""
     global _engine
     global _database_url
-    database_url = os.getenv(
-        "DATABASE_URL", "[REDACTED_DATABASE_URL]"
-    )
+    database_url = os.getenv("DATABASE_URL", "[REDACTED_DATABASE_URL]")
     # If engine not created yet or DATABASE_URL changed, (re)create engine
     if _engine is None or _database_url != database_url:
         # Dispose previous engine if present
@@ -42,7 +40,36 @@ def get_engine():
                 _engine.dispose()
             except Exception:
                 pass
-        _engine = create_engine(database_url)
+        # Configure engine with production-ready pooling for PostgreSQL.
+        # For non-Postgres URLs (e.g., SQLite in tests), fall back to a minimal config.
+        try:
+            from sqlalchemy.engine.url import make_url
+
+            url = make_url(database_url)
+            is_postgres = url.drivername.startswith(
+                "postgresql"
+            ) or url.drivername.startswith("postgres")
+        except Exception:
+            # If URL parsing fails, assume non-Postgres to avoid passing incompatible connect_args
+            is_postgres = False
+
+        if is_postgres:
+            # Optimized engine configuration for production PostgreSQL
+            _engine = create_engine(
+                database_url,
+                pool_size=20,  # Handles ~4 Gunicorn workers × 5 connections
+                max_overflow=40,  # Allows burst capacity
+                pool_pre_ping=True,  # Detects and refreshes stale connections
+                pool_recycle=3600,  # Recycle connections every hour to avoid idle timeouts
+                connect_args={
+                    "application_name": "tattoo_studio",  # Visible in pg_stat_activity
+                    "connect_timeout": 10,  # Fail fast on connection issues
+                },
+                echo=False,  # Controlled by logging config; keep SQL echo off by default
+            )
+        else:
+            # Default safe engine for other backends (e.g., SQLite in-memory during tests)
+            _engine = create_engine(database_url, echo=False)
         register_query_timing(_engine)
         _database_url = database_url
     return _engine

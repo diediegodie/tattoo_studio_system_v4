@@ -1,8 +1,8 @@
-<script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
-<script src="{{ url_for('static', filename='js/browser.min.js') }}"></script>
-<script src="{{ url_for('static', filename='js/breakpoints.min.js') }}"></script>
-<script src="{{ url_for('static', filename='js/util.js') }}"></script>
-<script src="{{ url_for('static', filename='js/i18n.js') }}"></script>
-<script src="{{ url_for('static', filename='js/modal.js') }}"></script>
-<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+<script src="{{ url_for('static', filename='js/jquery.min.js', v=config.get('GIT_SHA','')) }}"></script>
+<script src="{{ url_for('static', filename='js/browser.min.js', v=config.get('GIT_SHA','')) }}"></script>
+<script src="{{ url_for('static', filename='js/breakpoints.min.js', v=config.get('GIT_SHA','')) }}"></script>
+<script src="{{ url_for('static', filename='js/util.js', v=config.get('GIT_SHA','')) }}"></script>
+<script src="{{ url_for('static', filename='js/i18n.js', v=config.get('GIT_SHA','')) }}"></script>
+<script src="{{ url_for('static', filename='js/modal.js', v=config.get('GIT_SHA','')) }}"></script>
+<script src="{{ url_for('static', filename='js/main.js', v=config.get('GIT_SHA','')) }}"></script>
 {% block extra_scripts %}{% endblock %}

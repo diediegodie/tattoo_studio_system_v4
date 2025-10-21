@@ -1,16 +1,19 @@
 from typing import Dict
 
+from app.core.csrf_config import csrf
 from app.core.security import create_user_token
 from app.db.session import SessionLocal
 from app.repositories.user_repo import UserRepository
 from app.services.user_service import UserService
-from flask import Blueprint, jsonify, make_response, request
-from flask_login import current_user, login_required
+from flask import Blueprint, current_app, jsonify, make_response, request
+from flask_login import login_required
+from app.core.limiter_config import limiter
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 
 
 @auth_bp.route("/callback", methods=["POST"])
+@csrf.exempt  # JSON API - uses JWT authentication
 def auth_callback():
     """Accepts a Google token payload (as JSON) and creates/updates the user.
 
@@ -31,7 +34,19 @@ def auth_callback():
 
         user = service.create_or_update_from_google(google_info)
 
-        token = create_user_token(user.id, user.email)  # type: ignore
+        # Validate user was created/found with valid ID
+        if user is None or user.id is None:
+            return (
+                jsonify(
+                    {
+                        "error": "user_creation_failed",
+                        "message": "Could not create or find user",
+                    }
+                ),
+                500,
+            )
+
+        token = create_user_token(user.id, user.email)
 
         response = jsonify(
             {
@@ -41,7 +56,12 @@ def auth_callback():
         )
         # also set cookie for browser flows
         response = make_response(response)
-        response.set_cookie("access_token", token, httponly=True, samesite="Lax")
+
+        # Use global cookie config for secure flag (production vs development)
+        secure_flag = current_app.config.get("SESSION_COOKIE_SECURE", False)
+        response.set_cookie(
+            "access_token", token, httponly=True, secure=secure_flag, samesite="Lax"
+        )
         return response
     except ValueError as ve:
         return jsonify({"error": "invalid_google_info", "message": str(ve)}), 400
@@ -52,6 +72,8 @@ def auth_callback():
 
 
 @auth_bp.route("/set-password", methods=["POST"])
+@limiter.limit("3 per hour")
+@csrf.exempt  # JSON API - administrative endpoint
 def set_password():
     """Set or reset a local password for a user.
 
@@ -82,6 +104,8 @@ def set_password():
 
 
 @auth_bp.route("/login", methods=["POST"])
+@limiter.limit("5 per minute;20 per hour")
+@csrf.exempt  # JSON API - uses JWT authentication
 def local_login():
     """Local email/password login fallback.
 
@@ -109,7 +133,12 @@ def local_login():
             {"token": token, "user": {"id": user.id, "email": user.email}}
         )
         response = make_response(response)
-        response.set_cookie("access_token", token, httponly=True, samesite="Lax")
+
+        # Use global cookie config for secure flag (production vs development)
+        secure_flag = current_app.config.get("SESSION_COOKIE_SECURE", False)
+        response.set_cookie(
+            "access_token", token, httponly=True, secure=secure_flag, samesite="Lax"
+        )
         return response
     except Exception as e:
         return jsonify({"error": "server_error", "message": str(e)}), 500
@@ -118,6 +147,7 @@ def local_login():
 
 
 @auth_bp.route("/logout", methods=["POST"])
+@csrf.exempt  # JSON API - uses JWT authentication
 @login_required
 def logout():
     """Logout the current user and clear JWT/session.
@@ -129,5 +159,10 @@ def logout():
     logout_user()
     response = jsonify({"message": "logout_success"})
     response = make_response(response)
-    response.set_cookie("access_token", "", expires=0, httponly=True, samesite="Lax")
+
+    # Use global cookie config for secure flag (production vs development)
+    secure_flag = current_app.config.get("SESSION_COOKIE_SECURE", False)
+    response.set_cookie(
+        "access_token", "", expires=0, httponly=True, secure=secure_flag, samesite="Lax"
+    )
     return response

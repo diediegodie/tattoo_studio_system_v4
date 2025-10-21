@@ -6,10 +6,13 @@ services:
     restart: always
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-admin}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secret123}
+      # Production Security: Require explicit password (no weak default)
+      # Set POSTGRES_PASSWORD in .env file
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
       POSTGRES_DB: ${POSTGRES_DB:-tattoo_studio}
-    ports:
-      - "5432:5432"
+    # Security: Postgres is only accessible within Docker network (not exposed to host)
+    expose:
+      - "5432"  # Internal Docker network only
     volumes:
       - db_data:/var/lib/postgresql/data
     command: >
@@ -37,14 +40,17 @@ services:
     env_file:
       - .env
     environment:
-      - [REDACTED_DATABASE_URL]
+      - DATABASE_URL=${DATABASE_URL:-postgresql://admin:${POSTGRES_PASSWORD}@db:5432/tattoo_studio}
       - FLASK_APP=${FLASK_APP:-app:app}
       - FLASK_ENV=${FLASK_ENV:-development}
       - FLASK_DEBUG=${FLASK_DEBUG:-1}
       - FLASK_SECRET_KEY=${FLASK_SECRET_KEY:-dev-secret-change-me}
+      - LIMITER_STORAGE_URI=redis://redis:6379/3
+      - DEBUG_METRICS=1  # Enable Prometheus metrics in development mode
+      - GIT_SHA=${GIT_SHA:-}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
-      - OAUTHLIB_INSECURE_TRANSPORT=${OAUTHLIB_INSECURE_TRANSPORT:-1}
+      - OAUTHLIB_INSECURE_TRANSPORT=${OAUTHLIB_INSECURE_TRANSPORT:-0}
       - OAUTHLIB_RELAX_TOKEN_SCOPE=${OAUTHLIB_RELAX_TOKEN_SCOPE:-1}
       - JOTFORM_API_KEY=${JOTFORM_API_KEY}
       - JOTFORM_FORM_ID=${JOTFORM_FORM_ID}
@@ -55,14 +61,23 @@ services:
       - ./backend:/app/backend
       - ./frontend:/app/frontend
     depends_on:
-      db:
-        condition: service_healthy
+      - db
+      - redis
+    networks:
+      - tattoo_network
+  # Redis for rate limiting and caching
+  redis:
+    image: redis:7-alpine
+    container_name: tattoo_studio_redis
+    restart: always
+    expose:
+      - "6379"
     networks:
       - tattoo_network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 30s
-      timeout: 10s
+      timeout: 5s
       retries: 3
       start_period: 5s
 

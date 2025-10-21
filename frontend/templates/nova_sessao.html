@@ -14,6 +14,7 @@
                         <!-- REMOVE CSS INLINE - USE EXISTING CLASSES, CHECK OTHER HTML PAGES -->
                     </header>
                     <form method="post" action="{{ url_for('sessoes.nova_sessao') }}" class="form">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
                         <div class="form-container">
                             <div class="flex-form-row">
                                 <div class="flex-form-field">

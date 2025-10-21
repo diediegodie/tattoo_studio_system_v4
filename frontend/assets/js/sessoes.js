@@ -295,6 +295,7 @@
 }
 
   // Function to handle the Finalizar button - call server to finalize, then follow server redirect
+  // Note: CSRF protection is exempted for this endpoint in the backend (@csrf.exempt)
   async function finalizarSessao(button) {
     // Get data from button data attributes
     const id = button.dataset.id;

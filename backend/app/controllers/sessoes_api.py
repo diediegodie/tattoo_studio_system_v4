@@ -14,6 +14,8 @@ from app.db.session import SessionLocal
 from flask import Blueprint, jsonify, request
 from flask_login import login_required
 from sqlalchemy.orm import joinedload
+from app.core.csrf_config import csrf
+from app.core.limiter_config import limiter
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +24,7 @@ from app.controllers.sessoes_controller import sessoes_bp
 
 
 @sessoes_bp.route("/api", methods=["GET"])
+@limiter.limit("100 per minute")
 @login_required
 def api_list_sessoes():
     """Return JSON array of sessions."""
@@ -68,6 +71,7 @@ def api_list_sessoes():
 
 
 @sessoes_bp.route("/api/<int:sessao_id>", methods=["GET"])
+@limiter.limit("100 per minute")
 @login_required
 def api_get_sessao(sessao_id: int):
     db = None
@@ -103,6 +107,8 @@ def api_get_sessao(sessao_id: int):
             db.close()
 
 
+@csrf.exempt
+@limiter.limit("30 per minute")
 @sessoes_bp.route("/api/<int:sessao_id>", methods=["PUT"])
 @login_required
 def api_update_sessao(sessao_id: int):
@@ -179,6 +185,8 @@ def api_update_sessao(sessao_id: int):
             db.close()
 
 
+@csrf.exempt
+@limiter.limit("30 per minute")
 @sessoes_bp.route("/api/<int:sessao_id>", methods=["DELETE"])
 @login_required
 def api_delete_sessao(sessao_id: int):

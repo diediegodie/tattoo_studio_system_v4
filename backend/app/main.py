@@ -510,6 +510,7 @@ def create_app():
         os.getenv("LOGIN_DISABLED", "false").lower() == "true"
     )
     app.config["SHOW_API_DOCS"] = os.getenv("SHOW_API_DOCS", "false").lower() == "true"
+    app.config["GIT_SHA"] = os.getenv("GIT_SHA", "")
 
     # Ensure database tables exist early to avoid runtime failures like
     # "relation 'users' does not exist" or "no such table: extratos".

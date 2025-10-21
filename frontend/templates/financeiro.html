@@ -68,8 +68,13 @@
                                             <span class="options-actions">
                                                 <button class="button small edit-pagamento-btn"
                                                     data-id="{{ pagamento.id }}">Editar</button>
-                                                <button class="button small delete-pagamento-btn"
-                                                    data-id="{{ pagamento.id }}">Excluir</button>
+                                                <form method="POST"
+                                                    action="{{ url_for('financeiro.delete_pagamento', pagamento_id=pagamento.id) }}"
+                                                    style="display:inline;">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                                                    <button type="submit" class="button small delete-pagamento-btn"
+                                                        data-id="{{ pagamento.id }}">Excluir</button>
+                                                </form>
                                             </span>
                                         </td>
                                     </tr>
@@ -93,7 +98,7 @@
         window.FINANCEIRO_API_BASE = "{{ url_for('financeiro.api_list_pagamentos') }}";
     </script>
     {% include 'partials/_base_scripts.html' %}
-    <script src="{{ url_for('static', filename='js/financeiro.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/financeiro.js', v=config.get('GIT_SHA','')) }}"></script>
 
 </body>
 

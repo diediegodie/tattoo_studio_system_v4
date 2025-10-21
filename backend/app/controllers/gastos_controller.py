@@ -9,6 +9,8 @@ from app.services.gastos_service import get_gastos_for_month, serialize_gastos
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 from sqlalchemy.orm import joinedload
+from app.core.csrf_config import csrf
+from app.core.limiter_config import limiter
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +46,7 @@ def gastos_home():
 
 
 @gastos_bp.route("/create", methods=["POST"])
+@limiter.limit("30 per minute")
 @login_required
 def create_gasto():
     db = None
@@ -156,6 +159,7 @@ def create_gasto():
 
 
 @gastos_bp.route("/api/<int:gasto_id>", methods=["GET"])
+@limiter.limit("100 per minute")
 @login_required
 def api_get_gasto(gasto_id):
     """Get a single gasto by ID."""
@@ -189,6 +193,8 @@ def api_get_gasto(gasto_id):
             db.close()
 
 
+@csrf.exempt
+@limiter.limit("30 per minute")
 @gastos_bp.route("/api/<int:gasto_id>", methods=["PUT"])
 @login_required
 def api_update_gasto(gasto_id):
@@ -257,6 +263,8 @@ def api_update_gasto(gasto_id):
             db.close()
 
 
+@csrf.exempt
+@limiter.limit("30 per minute")
 @gastos_bp.route("/api/<int:gasto_id>", methods=["DELETE"])
 @login_required
 def api_delete_gasto(gasto_id):

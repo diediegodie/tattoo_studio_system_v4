@@ -1,6 +1,6 @@
 {% set page_title = 'Reordenar Estoque' %}
 {% include 'partials/_head.html' %}
-<script src="{{ url_for('static', filename='js/drag_drop.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/drag_drop.js', v=config.get('GIT_SHA','')) }}" defer></script>
 
 <body class="is-preload">
     <div id="wrapper">
@@ -15,6 +15,7 @@
                     </header>
                     <div class="table-wrapper">
                         <form id="drag-drop-form" method="post" action="{{ url_for('drag_drop.drag_drop') }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
                             <table>
                                 <thead>
                                     <tr>

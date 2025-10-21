@@ -17,7 +17,7 @@
                 <section id="banner">
                     <div class="content">
                         <span class="image object">
-                            <img src="{{ url_for('static', filename='images/logo-1200x800.png') }}"
+                            <img src="{{ url_for('static', filename='images/logo-1200x800.png', v=config.get('GIT_SHA','')) }}"
                                 alt="Logo Alma Negra Tattoo & Piercing" />
                         </span>
                     </div>
@@ -25,7 +25,7 @@
             </div>
         </div>
     </div>
-    <script src="{{ url_for('static', filename='js/common.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/common.js', v=config.get('GIT_SHA','')) }}"></script>
     {% include 'partials/_base_scripts.html' %}
 </body>
 
