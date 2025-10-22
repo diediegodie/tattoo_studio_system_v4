@@ -73,11 +73,19 @@ jobs:
           echo "Waiting for PostgreSQL (tattoo_studio_db) to be healthy..."
           timeout 90 bash -c 'until [ "$(docker inspect -f {{.State.Health.Status}} tattoo_studio_db)" = "healthy" ]; do sleep 2; done'
       
+      - name: Reset database for clean test run
+        run: |
+          echo "Resetting database to ensure clean state..."
+          docker compose exec -T db psql -U ${{ secrets.POSTGRES_USER }} -d postgres -c "DROP DATABASE IF EXISTS ${{ secrets.POSTGRES_DB }};"
+          docker compose exec -T db psql -U ${{ secrets.POSTGRES_USER }} -d postgres -c "CREATE DATABASE ${{ secrets.POSTGRES_DB }};"
+          echo "Database reset complete"
+      
       - name: Ensure logs directory exists
         run: docker compose exec -T --user root app sh -c "mkdir -p /app/backend/logs && chown -R appuser:appuser /app/backend/logs"
       
-      - name: Initialize database schema (no Alembic)
-        run: docker compose exec -T app python -c "from app.db.session import create_tables; create_tables()"
+      # Database schema is created automatically by tests (SQLite in-memory)
+      # No need to call create_tables() in CI as it can cause UniqueViolation errors
+      # Tests use their own isolated in-memory database configured in conftest.py
 
       - name: Run tests
         run: docker compose run --rm app pytest -v
