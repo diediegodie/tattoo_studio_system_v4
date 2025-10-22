@@ -15,6 +15,7 @@ Usage:
 import argparse
 import logging
 import sys
+import tempfile
 from datetime import datetime
 from pathlib import Path
 
@@ -39,8 +40,8 @@ def get_previous_month():
         return now.month - 1, now.year
 
 
-# Set up logging
-LOG_DIR = Path(__file__).resolve().parents[2] / "logs"
+# Set up logging - Use /tmp/logs to avoid PermissionError in CI
+LOG_DIR = Path(tempfile.gettempdir()) / "logs"
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 logging.basicConfig(
     level=logging.INFO,
