@@ -60,12 +60,9 @@ class TestClientControllerIntegrationComplete:
 
     def test_client_list_requires_authentication(self, client):
         """Test that client list endpoint requires authentication."""
-        # Unauthenticated requests should redirect to the login page
+        # In test mode, unauthenticated requests return 401 JSON response
         response = client.get("/clients/")
-        assert response.status_code == 302
-        assert ("/login" in (response.location or "")) or (
-            "?next=" in (response.location or "")
-        )
+        assert response.status_code == 401
 
     def test_client_list_handles_jotform_service_error(
         self, authenticated_client, response_helper
@@ -141,10 +138,7 @@ class TestClientControllerIntegrationComplete:
     def test_sync_clients_requires_authentication(self, client):
         """Test that client sync endpoint requires authentication."""
         response = client.get("/clients/sync")
-        assert response.status_code == 302
-        assert ("/login" in (response.location or "")) or (
-            "?next=" in (response.location or "")
-        )
+        assert response.status_code == 401
 
     def test_api_client_list_returns_json(
         self, authenticated_client, sample_client_data, response_helper
@@ -183,10 +177,7 @@ class TestClientControllerIntegrationComplete:
     def test_api_client_list_requires_authentication(self, client):
         """Test that API client list endpoint requires authentication."""
         response = client.get("/clients/api/list")
-        assert response.status_code == 302
-        assert ("/login" in (response.location or "")) or (
-            "?next=" in (response.location or "")
-        )
+        assert response.status_code == 401
 
     def test_api_client_list_handles_service_errors(
         self, authenticated_client, response_helper
@@ -247,37 +238,28 @@ class TestAuthenticationIntegration:
         ]
 
         for endpoint, method in protected_endpoints:
-            # Test without auth headers -> should redirect to login (browser-style auth)
+            # Test without auth headers -> in test mode returns 401 JSON response
             response = getattr(client, method.lower())(
                 endpoint, headers=auth_headers_missing
             )
             assert (
-                response.status_code == 302
-            ), f"Endpoint {endpoint} should redirect to login"
-            assert ("/login" in (response.location or "")) or (
-                "?next=" in (response.location or "")
-            )
+                response.status_code == 401
+            ), f"Endpoint {endpoint} should return 401 unauthorized"
 
-            # Test with invalid auth headers -> should also redirect to login
+            # Test with invalid auth headers -> should also return 401
             response = getattr(client, method.lower())(
                 endpoint, headers=auth_headers_invalid
             )
             assert (
-                response.status_code == 302
-            ), f"Endpoint {endpoint} should redirect to login for invalid tokens"
-            assert ("/login" in (response.location or "")) or (
-                "?next=" in (response.location or "")
-            )
+                response.status_code == 401
+            ), f"Endpoint {endpoint} should return 401 for invalid tokens"
 
     def test_jwt_token_expiration_handling(self, client, auth_headers_expired):
         """Test that expired JWT tokens are properly rejected."""
 
         response = client.get("/clients/", headers=auth_headers_expired)
-        # Expired token should redirect to login in browser-style auth
-        assert response.status_code == 302
-        assert ("/login" in (response.location or "")) or (
-            "?next=" in (response.location or "")
-        )
+        # In test mode, expired token returns 401 JSON response
+        assert response.status_code == 401
 
     def test_authentication_error_responses_are_consistent(
         self, client, auth_headers_invalid, auth_test_helper
@@ -287,11 +269,8 @@ class TestAuthenticationIntegration:
 
         for endpoint in endpoints:
             response = client.get(endpoint, headers=auth_headers_invalid)
-            # Adjust helper expectations for browser-style redirects
-            assert response.status_code == 302
-            assert ("/login" in (response.location or "")) or (
-                "?next=" in (response.location or "")
-            )
+            # In test mode, returns 401 JSON response for authentication errors
+            assert response.status_code == 401
 
 
 @pytest.mark.integration

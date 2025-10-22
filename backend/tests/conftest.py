@@ -28,8 +28,17 @@ sys.path.insert(0, str(backend_root))
 TEST_DATABASE_URL = "sqlite:///:memory:"  # In-memory SQLite for fast tests
 os.environ["DATABASE_URL"] = TEST_DATABASE_URL
 os.environ["TESTING"] = "true"  # Set testing environment variable
+os.environ["DISABLE_AUTH_REDIRECTS"] = (
+    "1"  # Disable auth redirects in tests (401 instead of 302)
+)
+os.environ["RATE_LIMIT_ENABLED"] = "0"  # Disable rate limiting in tests
 os.environ["JOTFORM_API_KEY"] = "test-api-key"  # Set test JotForm credentials
 os.environ["JOTFORM_FORM_ID"] = "test-form-id"
+
+# Base URL for API integration tests (configurable for Docker Compose)
+# In CI (Docker Compose), set BASE_URL=http://app:5000 to reach the app service
+# Locally, defaults to http://localhost:5000
+BASE_URL = os.getenv("BASE_URL", "http://localhost:5000")
 
 # Set up test environment paths BEFORE any other imports
 from tests.config.test_paths import setup_test_environment

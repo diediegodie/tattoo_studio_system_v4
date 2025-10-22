@@ -54,6 +54,13 @@ def _setup_session(mock_session_local, sessao_stub: SessaoStub):
 @pytest.mark.unit
 @pytest.mark.api
 class TestFormaPagamentoValidation:
+    @staticmethod
+    def _unwrap_all_decorators(func):
+        """Unwrap all decorator layers to reach the base function."""
+        while hasattr(func, "__wrapped__"):
+            func = func.__wrapped__
+        return func
+
     def test_financeiro_update_missing_forma_pagamento_returns_400(self):
         mod = importlib.import_module("app.controllers.financeiro_api")
         main = importlib.import_module("main")
@@ -70,8 +77,9 @@ class TestFormaPagamentoValidation:
                 MockRepo.return_value = mock_repo
                 mock_repo.get_by_id.return_value = Mock(id=1)
 
-                # Call undecorated function to avoid login_required
-                resp = mod.api_update_pagamento.__wrapped__(1)
+                # Unwrap all decorator layers to reach the base function
+                base_func = self._unwrap_all_decorators(mod.api_update_pagamento)
+                resp = base_func(1)
 
                 assert isinstance(resp, tuple)
                 body, status = resp
@@ -95,7 +103,8 @@ class TestFormaPagamentoValidation:
                 MockRepo.return_value = mock_repo
                 mock_repo.get_by_id.return_value = Mock(id=2)
 
-                resp = mod.api_update_pagamento.__wrapped__(2)
+                base_func = self._unwrap_all_decorators(mod.api_update_pagamento)
+                resp = base_func(2)
                 assert isinstance(resp, tuple)
                 body, status = resp
                 assert status == 400
@@ -141,7 +150,8 @@ class TestFormaPagamentoValidation:
                 sessao_stub = SessaoStub(5)
                 _setup_session(mock_session_local, sessao_stub)
 
-                resp = mod.api_update_sessao.__wrapped__(5)
+                base_func = self._unwrap_all_decorators(mod.api_update_sessao)
+                resp = base_func(5)
                 assert isinstance(resp, tuple)
                 body, status = resp
                 assert status == 400
@@ -159,7 +169,8 @@ class TestFormaPagamentoValidation:
                 sessao_stub = SessaoStub(6)
                 _setup_session(mock_session_local, sessao_stub)
 
-                resp = mod.api_update_sessao.__wrapped__(6)
+                base_func = self._unwrap_all_decorators(mod.api_update_sessao)
+                resp = base_func(6)
                 assert isinstance(resp, tuple)
                 body, status = resp
                 assert status == 400
@@ -182,7 +193,8 @@ class TestFormaPagamentoValidation:
                 sessao_stub.observacoes = ""
                 mock_db = _setup_session(mock_session_local, sessao_stub)
 
-                resp = mod.api_update_sessao.__wrapped__(7)
+                base_func = self._unwrap_all_decorators(mod.api_update_sessao)
+                resp = base_func(7)
                 assert isinstance(resp, tuple)
                 body, status = resp
                 assert status == 200

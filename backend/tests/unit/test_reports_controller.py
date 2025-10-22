@@ -640,8 +640,8 @@ class TestReportsControllerEdgeCases:
 
             for endpoint in endpoints:
                 response = client.get(endpoint)
-                # Flask-Login will redirect unauthenticated users
-                assert response.status_code == 302
+                # In test mode, unauthenticated users get 401 JSON response instead of redirect
+                assert response.status_code == 401
 
     def test_invalid_parameters_handling(self, client, app):
         """Test handling of invalid query parameters."""

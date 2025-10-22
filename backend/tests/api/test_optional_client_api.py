@@ -122,6 +122,13 @@ class PagamentoRepoStub:
 class TestFinanceiroAPIOptionalClient:
     """Test financeiro API endpoints with optional client functionality."""
 
+    @staticmethod
+    def _unwrap_all_decorators(func):
+        """Unwrap all decorator layers to reach the base function."""
+        while hasattr(func, "__wrapped__"):
+            func = func.__wrapped__
+        return func
+
     def test_api_get_pagamento_with_null_client(self):
         """Test retrieving a payment with cliente_id=NULL via API."""
         mod = importlib.import_module("app.controllers.financeiro_api")
@@ -145,7 +152,7 @@ class TestFinanceiroAPIOptionalClient:
                 _setup_session(MockSession, pagamento_stub)
 
                 # Call the function
-                resp = mod.api_get_pagamento.__wrapped__(1)
+                resp = self._unwrap_all_decorators(mod.api_get_pagamento)(1)
 
                 # Assert successful response
                 assert isinstance(resp, tuple)
@@ -185,7 +192,7 @@ class TestFinanceiroAPIOptionalClient:
                 _setup_session(MockSession, pagamento_stub)
 
                 # Call the function
-                resp = mod.api_get_pagamento.__wrapped__(1)
+                resp = self._unwrap_all_decorators(mod.api_get_pagamento)(1)
 
                 # Assert successful response
                 assert isinstance(resp, tuple)
@@ -281,7 +288,7 @@ class TestFinanceiroAPIOptionalClient:
                     )
 
                     # Call the function
-                    resp = mod.api_update_pagamento.__wrapped__(1)
+                    resp = self._unwrap_all_decorators(mod.api_update_pagamento)(1)
 
                     # Assert successful update
                     assert isinstance(resp, tuple)
@@ -337,7 +344,9 @@ class TestFinanceiroAPIOptionalClient:
 
                         # Call the function (if it exists)
                         try:
-                            resp = mod.api_create_pagamento.__wrapped__()
+                            resp = self._unwrap_all_decorators(
+                                mod.api_create_pagamento
+                            )()
 
                             # Assert successful creation
                             assert isinstance(resp, tuple)
@@ -375,7 +384,7 @@ class TestFinanceiroAPIOptionalClient:
 
                 try:
                     # Call the function (if it exists)
-                    resp = mod.api_list_pagamentos.__wrapped__()
+                    resp = self._unwrap_all_decorators(mod.api_list_pagamentos)()
 
                     # Assert successful response
                     assert isinstance(resp, tuple)
@@ -401,6 +410,13 @@ class TestFinanceiroAPIOptionalClient:
 class TestFinanceiroAPIErrorHandling:
     """Test error handling in financeiro API with optional client scenarios."""
 
+    @staticmethod
+    def _unwrap_all_decorators(func):
+        """Unwrap all decorator layers to reach the base function."""
+        while hasattr(func, "__wrapped__"):
+            func = func.__wrapped__
+        return func
+
     def test_api_get_pagamento_not_found(self):
         """Test API response when payment is not found."""
         mod = importlib.import_module("app.controllers.financeiro_api")
@@ -412,7 +428,7 @@ class TestFinanceiroAPIErrorHandling:
                 _setup_session(MockSession, None)
 
                 # Call the function
-                resp = mod.api_get_pagamento.__wrapped__(999)
+                resp = self._unwrap_all_decorators(mod.api_get_pagamento)(999)
 
                 # Assert not found response
                 assert isinstance(resp, tuple)

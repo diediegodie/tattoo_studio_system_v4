@@ -298,6 +298,12 @@ def create_app():
         static_folder=static_folder,
     )
 
+    # Set TESTING config from environment variable (before any other configuration)
+    # This ensures test mode is properly detected even when tests create app directly
+    testing_env = os.getenv("TESTING", "").lower().strip()
+    if testing_env in ("true", "1", "yes"):
+        app.config["TESTING"] = True
+
     # Add long-lived cache headers for static assets
     @app.after_request
     def add_cache_headers(response):
@@ -409,6 +415,27 @@ def create_app():
     # Exempt monitoring endpoints from rate limiting (Prometheus scraper access)
     app.config["RATELIMIT_EXEMPT_PATHS"] = ["/metrics", "/health", "/pool-metrics"]
     limiter.init_app(app)
+
+    # Disable rate limiting in test mode if RATE_LIMIT_ENABLED=0
+    # This is evaluated at app creation time (after pytest is loaded)
+    def _is_test_mode_for_limiter():
+        """Check if we're in test mode for limiter configuration."""
+        testing_val = os.getenv("TESTING", "").lower().strip()
+        if testing_val in ("true", "1", "yes"):
+            return True
+        if "pytest" in sys.modules:
+            return True
+        if os.getenv("PYTEST_CURRENT_TEST"):
+            return True
+        if app.config.get("TESTING"):
+            return True
+        return False
+
+    if _is_test_mode_for_limiter() and os.getenv("RATE_LIMIT_ENABLED", "1") == "0":
+        limiter.enabled = False
+        logger.info(
+            "Rate limiting disabled for testing", extra={"context": {"test_mode": True}}
+        )
 
     # Production validation: fail fast if weak secrets are used
     if is_production:
@@ -598,6 +625,43 @@ def create_app():
     login_manager.init_app(app)
     login_manager.login_view = "login_page"  # type: ignore[assignment]
     login_manager.login_message = "Por favor, faça login para acessar esta página."
+
+    # Helper function to detect test mode
+    def _is_test_mode():
+        """Check if we're running in test mode (pytest/CI)."""
+        # Check TESTING env var (set in conftest.py and CI)
+        testing_val = os.getenv("TESTING", "").lower().strip()
+        if testing_val in ("true", "1", "yes"):
+            return True
+        # Check if pytest is running
+        if "pytest" in sys.modules:
+            return True
+        # Check PYTEST_CURRENT_TEST (set by pytest during execution)
+        if os.getenv("PYTEST_CURRENT_TEST"):
+            return True
+        # Check app.config for TESTING flag
+        if app.config.get("TESTING"):
+            return True
+        return False
+
+    # Test mode: Disable auth redirects when in test mode AND DISABLE_AUTH_REDIRECTS=1
+    # This allows integration tests to receive 401 responses instead of 302 redirects
+    # ONLY applies during testing - normal dev/prod behavior is unchanged
+    disable_auth_redirects = (
+        _is_test_mode() and os.getenv("DISABLE_AUTH_REDIRECTS", "0") == "1"
+    )
+
+    if disable_auth_redirects:
+
+        @login_manager.unauthorized_handler
+        def unauthorized():
+            """Return 401 instead of redirecting to login during tests."""
+            return (
+                jsonify(
+                    {"error": "Unauthorized", "message": "Authentication required"}
+                ),
+                401,
+            )
 
     # Import models after app creation
     from app.db.base import User

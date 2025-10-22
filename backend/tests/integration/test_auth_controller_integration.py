@@ -169,10 +169,8 @@ class TestAuthControllerIntegrationComplete:
         """Test that API endpoints reject invalid JWT tokens."""
         response = client.get("/clients/api/list", headers=auth_headers_invalid)
 
-        # Should reject invalid tokens
-
-        assert response.status_code == 302
-        assert "/login" in response.location or "?next=" in response.location
+        # In test mode, returns 401 JSON response for invalid tokens
+        assert response.status_code == 401
 
 
 @pytest.mark.integration
@@ -242,8 +240,8 @@ class TestAuthenticationSecurityIntegration:
             )
 
             # Should either succeed with CSRF token or fail without it
-            # Since we disabled CSRF for testing, these should succeed
-            assert response.status_code in [200, 302, 400, 403]
+            # In test mode, may return 401 if auth check happens before CSRF
+            assert response.status_code in [200, 302, 400, 401, 403]
 
     def test_sql_injection_protection_in_login(self, client):
         """Test SQL injection protection in login endpoint."""

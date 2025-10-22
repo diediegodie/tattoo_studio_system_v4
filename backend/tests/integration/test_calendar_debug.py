@@ -3,14 +3,15 @@
 Test script to debug Google Calendar sync with proper authentication
 """
 import json
+import os
 from datetime import datetime
 
 import pytest
 import requests
 from requests.exceptions import ConnectionError
 
-# App URL
-BASE_URL = "http://127.0.0.1:5000"
+# App URL (configurable for Docker Compose)
+BASE_URL = os.getenv("BASE_URL", "http://localhost:5000")
 
 
 def test_calendar_sync():

@@ -16,16 +16,18 @@ import argparse
 import logging
 import sys
 from datetime import datetime
+from pathlib import Path
 
 # Add the app directory to the Python path
 sys.path.insert(
     0, "/home/diego/documentos/github/projetos/tattoo_studio_system_v4/backend"
 )
 
-from app.services.extrato_atomic import \
-    check_and_generate_extrato_with_transaction
-from app.services.extrato_core import (delete_historical_records_atomic,
-                                       verify_backup_before_transfer)
+from app.services.extrato_atomic import check_and_generate_extrato_with_transaction
+from app.services.extrato_core import (
+    delete_historical_records_atomic,
+    verify_backup_before_transfer,
+)
 
 
 def get_previous_month():
@@ -38,12 +40,14 @@ def get_previous_month():
 
 
 # Set up logging
+LOG_DIR = Path(__file__).resolve().parents[2] / "logs"
+LOG_DIR.mkdir(parents=True, exist_ok=True)
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     handlers=[
         logging.StreamHandler(sys.stdout),
-        logging.FileHandler("backend/logs/test_atomic_extrato.log", mode="a"),
+        logging.FileHandler(LOG_DIR / "test_atomic_extrato.log", mode="a"),
     ],
 )
 

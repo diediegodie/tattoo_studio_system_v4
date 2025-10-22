@@ -20,6 +20,10 @@ jobs:
       LOG_TO_FILE: "0"
       DISABLE_EXTRATO_BACKGROUND: "true"
       LOGIN_DISABLED: "false"
+      # Test configuration for API integration tests
+      DISABLE_AUTH_REDIRECTS: "1"
+      RATE_LIMIT_ENABLED: "0"
+      BASE_URL: "http://app:5000"
       # Database configuration (for both db and app services)
       POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
       POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
@@ -51,6 +55,9 @@ jobs:
           echo "JOTFORM_FORM_ID=${{ secrets.CI_JOTFORM_FORM_ID }}" >> .env
           echo "GOOGLE_CLIENT_ID=${{ secrets.CI_GOOGLE_CLIENT_ID }}" >> .env
           echo "GOOGLE_CLIENT_SECRET=${{ secrets.CI_GOOGLE_CLIENT_SECRET }}" >> .env
+          echo "DISABLE_AUTH_REDIRECTS=1" >> .env
+          echo "RATE_LIMIT_ENABLED=0" >> .env
+          echo "BASE_URL=http://app:5000" >> .env
         working-directory: ${{ github.workspace }}
       
       - name: Build Docker images

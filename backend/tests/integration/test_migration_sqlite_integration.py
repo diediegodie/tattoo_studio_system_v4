@@ -39,9 +39,16 @@ def test_migration_integration_sqlite(tmp_path):
     env["DATABASE_URL"] = f"sqlite:///{db_file}"
 
     # Run the migration as a separate Python process so it uses its own SQLAlchemy engine
-    # Ensure PYTHONPATH includes the 'backend' package directory so 'app' is importable
+    # Build an absolute path to the migration script to avoid CWD-dependent paths
+    # tests/integration/... -> parents[3] == repo root (/app); script at backend/scripts/...
+    script_path = (
+        Path(__file__).resolve().parents[3]
+        / "backend"
+        / "scripts"
+        / "migrate_inventory_order.py"
+    )
     env["PYTHONPATH"] = str(Path.cwd())
-    cmd = [sys.executable, "backend/scripts/migrate_inventory_order.py"]
+    cmd = [sys.executable, str(script_path)]
     proc = subprocess.run(cmd, env=env, capture_output=True, text=True)
     assert proc.returncode == 0, f"Migration failed: {proc.stdout}\n{proc.stderr}"
 

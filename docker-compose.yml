@@ -51,6 +51,11 @@ services:
       - OAUTHLIB_RELAX_TOKEN_SCOPE=${OAUTHLIB_RELAX_TOKEN_SCOPE:-1}
       - JOTFORM_API_KEY=${JOTFORM_API_KEY}
       - JOTFORM_FORM_ID=${JOTFORM_FORM_ID}
+      # Test configuration (only active when TESTING=true in .env during CI)
+      - TESTING=${TESTING:-false}
+      - DISABLE_AUTH_REDIRECTS=${DISABLE_AUTH_REDIRECTS:-0}
+      - RATE_LIMIT_ENABLED=${RATE_LIMIT_ENABLED:-1}
+      - BASE_URL=${BASE_URL:-http://localhost:5000}
     ports:
       - "5000:5000"
     volumes:

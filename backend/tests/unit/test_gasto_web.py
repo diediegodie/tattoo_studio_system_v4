@@ -1,15 +1,19 @@
 #!/usr/bin/env python3
 """
 Test script to create a gasto via authenticated HTTP request
+This is a manual integration test that requires a running server.
 """
 from datetime import datetime
+import os
 
+import pytest
 import requests
 
-# Base URL for the app
-BASE_URL = "http://localhost:5000"
+# Base URL for the app (configurable for Docker Compose)
+BASE_URL = os.getenv("BASE_URL", "http://localhost:5000")
 
 
+@pytest.mark.skip(reason="Manual integration test - requires running server")
 def test_gasto_creation():
     # First, we need to login to get a session cookie
     # For this test, we'll assume there's a test user or we need to create one
