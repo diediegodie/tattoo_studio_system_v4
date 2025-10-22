@@ -91,6 +91,12 @@
                     <!-- Edit Artist Modal - Now handled by unified modal system -->
 
                     <script>
+                        // Helper: fetch CSRF token from <meta name="csrf-token">
+                        function getCsrfToken() {
+                            const meta = document.querySelector('meta[name="csrf-token"]');
+                            return meta ? meta.getAttribute('content') : null;
+                        }
+
                         // Define getStatusHelper for consistent flash message handling (matching Sessões/Financeiro)
                         function getStatusHelper() {
                             return typeof window.showStatus === 'function' ? window.showStatus : function (msg, ok) {
@@ -132,6 +138,8 @@
                                 method: 'POST',
                                 headers: {
                                     'Content-Type': 'application/json',
+                                    'Accept': 'application/json',
+                                    ...(getCsrfToken() ? { 'X-CSRFToken': getCsrfToken(), 'X-CSRF-Token': getCsrfToken() } : {})
                                 },
                                 body: JSON.stringify(data)
                             })
@@ -223,7 +231,8 @@
                                                         method: 'PUT',
                                                         headers: {
                                                             'Content-Type': 'application/json',
-                                                            'Accept': 'application/json'
+                                                            'Accept': 'application/json',
+                                                            ...(getCsrfToken() ? { 'X-CSRFToken': getCsrfToken(), 'X-CSRF-Token': getCsrfToken() } : {})
                                                         },
                                                         body: JSON.stringify(data)
                                                     });
@@ -283,7 +292,8 @@
                                 const response = await fetch(`/artist/${artistId}`, {
                                     method: 'DELETE',
                                     headers: {
-                                        'Accept': 'application/json'
+                                        'Accept': 'application/json',
+                                        ...(getCsrfToken() ? { 'X-CSRFToken': getCsrfToken(), 'X-CSRF-Token': getCsrfToken() } : {})
                                     }
                                 });
 

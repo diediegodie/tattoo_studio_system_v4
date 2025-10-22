@@ -1,0 +1,7 @@
+artista_name,cliente_name,created_at,data,forma_pagamento,google_event_id,id,observacoes,payment_id,sessao_id,status,type,updated_at,valor
+Pedro Artista,Ana Cliente,2025-10-22T18:08:37.048776+00:00,2025-09-05,Pix,,4,Pagamento referente à sessão 4,,4,,pagamento,,450.0
+Maria Artista,João Cliente,2025-10-22T18:08:37.048776+00:00,2025-09-15,Cartão,,5,Pagamento referente à sessão 5,,5,,pagamento,,320.0
+Pedro Artista,Carla Cliente,2025-10-22T18:08:37.048776+00:00,2025-09-25,Dinheiro,,6,Pagamento referente à sessão 6,,6,,pagamento,,280.0
+Pedro Artista,Ana Cliente,2025-10-22T18:08:37.006145+00:00,2025-09-05,,,4,Sessão de tatuagem - braço completo,,,completed,sessao,,450.0
+Maria Artista,João Cliente,2025-10-22T18:08:37.006145+00:00,2025-09-15,,,5,Sessão de tatuagem - perna,,,completed,sessao,,320.0
+Pedro Artista,Carla Cliente,2025-10-22T18:08:37.006145+00:00,2025-09-25,,,6,Sessão de tatuagem - costas,,,completed,sessao,,280.0
