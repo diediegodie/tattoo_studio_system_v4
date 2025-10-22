@@ -34,7 +34,7 @@ python-dotenv==1.0.0
 pytz==2023.3
 requests==2.31.0
 requests-oauthlib==2.0.0
-SQLAlchemy==2.0.23
+SQLAlchemy>=2.0.36
 typing_extensions==4.15.0
 urllib3==2.5.0
 URLObject==3.0.0
