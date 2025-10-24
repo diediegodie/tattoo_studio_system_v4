@@ -164,15 +164,20 @@ def google_logged_in(blueprint, token):
         )
 
         # Save OAuth token for Google Calendar access
-            # Garante que o token é sempre um dict JSON
+        # Garante que o token é sempre um dict JSON
         import json
+
         token_to_save = token
         if isinstance(token, str):
             try:
                 token_to_save = json.loads(token)
             except Exception:
-                print(f">>> DEBUG: token recebido como string não pôde ser convertido: {token}")
-        print(f">>> DEBUG: tipo do token a persistir: {type(token_to_save)} | conteúdo: {token_to_save}")
+                print(
+                    f">>> DEBUG: token recebido como string não pôde ser convertido: {token}"
+                )
+        print(
+            f">>> DEBUG: tipo do token a persistir: {type(token_to_save)} | conteúdo: {token_to_save}"
+        )
         token_saved = oauth_service.store_oauth_token(
             user_id=str(db_user.id),
             provider="google",
