@@ -26,6 +26,24 @@ class UserRepository(IUserRepository):
 
     def __init__(self, db_session) -> None:
         self.db = db_session
+        # Debug which engine/dialect this repository is using
+        try:
+            bind = getattr(self.db, "bind", None) or self.db.get_bind()
+        except Exception:
+            bind = None
+        if bind is not None:
+            try:
+                print(
+                    ">>> DEBUG: user_repo engine URL:", getattr(bind, "url", "unknown")
+                )
+                print(
+                    ">>> DEBUG: user_repo dialect:",
+                    getattr(getattr(bind, "dialect", None), "name", "unknown"),
+                )
+            except Exception as _e:
+                print(">>> DEBUG: user_repo engine inspection failed:", str(_e))
+        else:
+            print(">>> DEBUG: user_repo session has no bind yet")
 
     def get_by_id(self, user_id: int) -> Optional[DomainUser]:
         """Get user by ID, returning domain entity."""
