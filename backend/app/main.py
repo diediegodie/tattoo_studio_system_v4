@@ -3,7 +3,6 @@ import logging
 import os
 import sys
 
-from app.db.session import engine
 from dotenv import load_dotenv
 
 # Get logger for this module
@@ -31,8 +30,33 @@ from flask_login import (
 )
 from sqlalchemy import select, text
 
-# Load environment variables
-load_dotenv()
+# Load environment variables conditionally
+# Only load from .env when DATABASE_URL is not already defined by the environment
+if not os.getenv("DATABASE_URL"):
+    load_dotenv()
+
+# Resolve effective DATABASE_URL for the app (defaults to local sqlite in dev)
+SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./app.db")
+
+# Set it in the environment so db.session.get_engine() will use this value
+os.environ["DATABASE_URL"] = SQLALCHEMY_DATABASE_URL
+
+
+# Helper to mask password in URLs to avoid leaking secrets in logs
+def _mask_url_password(url: str) -> str:
+    try:
+        import re
+
+        return re.sub(r"(://[^:/?#]+):[^@]*@", r"\1:***@", url)
+    except Exception:
+        return url
+
+
+# Early runtime check for effective DATABASE_URL visibility in logs (Render startup)
+print(">>> DEBUG: DATABASE_URL efetiva:", _mask_url_password(SQLALCHEMY_DATABASE_URL))
+
+# Import engine after environment is finalized
+from app.db.session import engine
 
 # Create Google OAuth blueprint at module level
 # Flask-Dance setup for Google OAuth at module level (must be before create_app)
@@ -124,6 +148,7 @@ def google_logged_in(blueprint, token):
         service.create_or_update_from_google(google_info)
 
         # Get database user for Flask-Login
+        print(">>> DEBUG: Looking up user by google_id:", google_user_id)
         db_user = repo.get_db_by_google_id(google_user_id)
         if not db_user:
             # Fallback: try by email

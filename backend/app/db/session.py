@@ -71,6 +71,16 @@ def get_engine():
             # Default safe engine for other backends (e.g., SQLite in-memory during tests)
             _engine = create_engine(database_url, echo=False)
         register_query_timing(_engine)
+        try:
+            # Emit explicit debug about the constructed engine target and dialect
+            print(">>> DEBUG: SQLAlchemy engine URL:", str(getattr(_engine, "url", "")))
+            print(
+                ">>> DEBUG: SQLAlchemy dialect:",
+                getattr(getattr(_engine, "dialect", None), "name", "unknown"),
+            )
+        except Exception:
+            # Printing should never break engine creation
+            pass
         _database_url = database_url
     return _engine
 
@@ -89,7 +99,13 @@ def SessionLocal():
     """Compatibility wrapper: calling SessionLocal() returns a new Session
     instance. Modules that do `from db.session import SessionLocal` and then
     call `SessionLocal()` will continue to work."""
-    return get_sessionmaker()()
+    try:
+        session = get_sessionmaker()()
+        print(">>> DEBUG: DB session created successfully")
+        return session
+    except Exception as e:
+        print(">>> DEBUG: Failed to create DB session:", e)
+        raise
 
 
 # Backwards-compatible public symbols. Some modules import `engine` or

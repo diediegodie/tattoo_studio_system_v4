@@ -40,6 +40,7 @@ class UserService:
         google_id = str(google_id)
 
         # Try to find existing user by google_id
+        print(">>> DEBUG: Looking up user by google_id:", google_id)
         user = self.repo.get_by_google_id(google_id)
         if user is not None:
             # Update existing user with latest info
