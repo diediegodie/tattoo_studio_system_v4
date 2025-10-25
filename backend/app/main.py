@@ -28,6 +28,7 @@ from flask_login import (
     login_user,
     logout_user,
 )
+from flask_dance.consumer.storage.sqla import SQLAlchemyStorage
 from sqlalchemy import select, text
 
 # Load environment variables conditionally
@@ -95,6 +96,7 @@ google_oauth_bp = make_google_blueprint(
 )
 # Set unique name immediately to avoid conflicts
 google_oauth_bp.name = "google_oauth_calendar"
+# Note: Storage backend will be configured in create_app() to avoid circular imports
 
 
 # OAuth authorized handler - must be at module level
@@ -175,22 +177,26 @@ def google_logged_in(blueprint, token):
                 print(
                     f">>> DEBUG: token recebido como string não pôde ser convertido: {token}"
                 )
-        print(
-            f">>> DEBUG: tipo do token a persistir: {type(token_to_save)} | conteúdo: {token_to_save}"
-        )
-        token_saved = oauth_service.store_oauth_token(
-            user_id=str(db_user.id),
-            provider="google",
-            provider_user_id=google_user_id,
-            token=token_to_save,
-        )
+
+        # Enhanced debug output
+        print(f">>> DEBUG: [main.py] token type before store: {type(token_to_save)}")
+        print(f">>> DEBUG: [main.py] token is dict: {isinstance(token_to_save, dict)}")
+        if isinstance(token_to_save, dict):
+            print(f">>> DEBUG: [main.py] token keys: {list(token_to_save.keys())}")
+            print(
+                f">>> DEBUG: [main.py] has access_token: {'access_token' in token_to_save}"
+            )
+
+        # NOTE: Manual token storage REMOVED - Flask-Dance SQLAlchemyStorage handles this automatically
+        # The token is already stored by Flask-Dance's storage backend before this handler is called
+        # See: SQLAlchemyStorage.set() is called by the OAuth blueprint after successful authentication
         logger.info(
-            "OAuth token stored",
+            "OAuth token stored automatically by Flask-Dance",
             extra={
                 "context": {
                     "user_id": db_user.id,
                     "provider": "google",
-                    "success": token_saved,
+                    "provider_user_id": google_user_id,
                 }
             },
         )
@@ -1087,6 +1093,21 @@ def create_app():
     app.register_blueprint(admin_alerts_bp)
     app.register_blueprint(admin_extrato_bp)
     app.register_blueprint(reports_bp)
+
+    # CRITICAL FIX: Configure SQLAlchemy storage for Flask-Dance BEFORE registering blueprint
+    # This ensures OAuth tokens are stored in the database using our OAuth model with JSONB
+    # Without this, Flask-Dance uses default SessionStorage which serializes tokens as strings
+    from app.db.base import OAuth
+    from app.db.session import SessionLocal
+
+    print(">>> DEBUG: [create_app] Configuring Flask-Dance SQLAlchemy storage")
+    google_oauth_bp.storage = SQLAlchemyStorage(
+        OAuth,
+        SessionLocal,  # ✅ Pass the factory function, NOT SessionLocal()
+        user=current_user,
+        user_required=False,  # Allow tokens without Flask-Login user (we handle manually)
+    )
+    print(">>> DEBUG: [create_app] Flask-Dance storage configured successfully")
 
     # Register OAuth blueprint - name already set at creation
     app.register_blueprint(google_oauth_bp, url_prefix="/auth")

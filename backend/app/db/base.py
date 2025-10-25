@@ -8,6 +8,7 @@ from flask_dance.consumer.storage.sqla import OAuthConsumerMixin
 from sqlalchemy import (
     JSON,
     Boolean,
+    Column,
     Date,
     DateTime,
     ForeignKey,
@@ -18,6 +19,7 @@ from sqlalchemy import (
     func,
 )
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.ext.mutable import MutableDict
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .session import Base
@@ -135,6 +137,16 @@ class OAuth(OAuthConsumerMixin, Base):
         String(256), unique=True, nullable=False
     )
     user_id: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    # Override the token field from OAuthConsumerMixin to use JSONB for PostgreSQL
+    # Use SQLAlchemy 2.0 typed ORM annotations so static type checkers know
+    # the instance attribute is a dict, not a Column. MutableDict enables
+    # change tracking for in-place JSON mutations.
+    token: Mapped[dict[str, Any]] = mapped_column(
+        # Use JSONB on Postgres, JSON on SQLite/others for test compatibility
+        MutableDict.as_mutable(get_json_type()()),
+        nullable=False,
+    )
 
 
 class TestModel(Base):
