@@ -1107,6 +1107,7 @@ def create_app():
         user=current_user,
         user_required=False,  # Allow tokens without Flask-Login user (we handle manually)
     )
+    print(">>> DEBUG: google_oauth_bp.storage =", type(google_oauth_bp.storage))
     print(">>> DEBUG: [create_app] Flask-Dance storage configured successfully")
 
     # Register OAuth blueprint - name already set at creation
