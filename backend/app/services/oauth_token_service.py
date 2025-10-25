@@ -25,6 +25,38 @@ class OAuthTokenService:
     def __init__(self):
         self.db = SessionLocal()
 
+    def _ensure_token_dict(self, token: Any) -> Dict[str, Any]:
+        """Normalize token to a dict for DB storage and in-memory use.
+
+        - If token is JSON string, parse it.
+        - If token is a bare string, wrap as {"access_token": <str>}.
+        - If token has a to_dict method, use it.
+        - Otherwise, return {} to avoid storing invalid types.
+        """
+        print(f">>> DEBUG: [SAVE] incoming token type: {type(token)}")
+        try:
+            if isinstance(token, dict):
+                return token
+            if isinstance(token, str):
+                try:
+                    parsed = json.loads(token)
+                    if isinstance(parsed, dict):
+                        return parsed
+                    if isinstance(parsed, str):
+                        # A plain string inside JSON – treat as access token
+                        return {"access_token": parsed}
+                    # Unsupported JSON type; fallback
+                    return {}
+                except json.JSONDecodeError:
+                    # Not JSON; treat as plain access token string
+                    return {"access_token": token}
+            # Objects with to_dict support
+            if hasattr(token, "to_dict") and callable(getattr(token, "to_dict")):
+                return token.to_dict()  # type: ignore[no-any-return]
+        except Exception as e:
+            logger.warning(f"Failed to normalize token to dict: {e}")
+        return {}
+
     def store_oauth_token(
         self, user_id: str, provider: str, provider_user_id: str, token: Dict[str, Any]
     ) -> bool:
@@ -58,6 +90,12 @@ class OAuthTokenService:
                 },
             )
 
+            # Normalize token to dict and log type before persisting
+            token_dict: Dict[str, Any] = self._ensure_token_dict(token)
+            print(
+                f">>> DEBUG: [SAVE] normalized token type before DB persist: {type(token_dict)}"
+            )
+
             # Check if record already exists by provider_user_id (unique constraint)
             existing = (
                 self.db.query(OAuth)
@@ -79,15 +117,7 @@ class OAuthTokenService:
                         }
                     },
                 )
-                setattr(
-                    existing,
-                    "token",
-                    (
-                        token
-                        if isinstance(token, dict)
-                        else json.loads(token) if isinstance(token, str) else token
-                    ),
-                )
+                setattr(existing, "token", token_dict)
                 setattr(
                     existing, "user_id", int(user_id)
                 )  # Update user_id in case it changed
@@ -109,15 +139,7 @@ class OAuthTokenService:
                 oauth_record = OAuth()
                 # Set all attributes after creation using setattr
                 setattr(oauth_record, "provider", provider)
-                setattr(
-                    oauth_record,
-                    "token",
-                    (
-                        token
-                        if isinstance(token, dict)
-                        else json.loads(token) if isinstance(token, str) else token
-                    ),
-                )
+                setattr(oauth_record, "token", token_dict)
                 setattr(oauth_record, "provider_user_id", provider_user_id)
                 setattr(oauth_record, "user_id", int(user_id))
 
@@ -179,10 +201,16 @@ class OAuthTokenService:
 
                 try:
                     token_value = getattr(oauth_record, "token", None)
+                    print(
+                        f">>> DEBUG: [LOAD] raw token type from DB: {type(token_value)}"
+                    )
                     token_data = (
                         json.loads(token_value)
                         if isinstance(token_value, str)
                         else token_value
+                    )
+                    print(
+                        f">>> DEBUG: [LOAD] parsed token type in memory: {type(token_data)}"
                     )
                     if token_data and isinstance(token_data, dict):
                         access_token = token_data.get("access_token")
@@ -268,8 +296,14 @@ class OAuthTokenService:
                 logger.warning(f"No token data found for user {user_id}")
                 return None
 
+            print(
+                f">>> DEBUG: [LOAD] raw token type from DB (refresh): {type(token_value)}"
+            )
             token_data = (
                 json.loads(token_value) if isinstance(token_value, str) else token_value
+            )
+            print(
+                f">>> DEBUG: [LOAD] parsed token type in memory (refresh): {type(token_data)}"
             )
 
             refresh_token = token_data.get("refresh_token")
