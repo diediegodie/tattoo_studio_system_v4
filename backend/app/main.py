@@ -1104,7 +1104,7 @@ def create_app():
     google_oauth_bp.storage = SQLAlchemyStorage(
         OAuth,
         SessionLocal,  # ✅ Pass the factory function, NOT SessionLocal()
-        user=current_user,
+        user=lambda: current_user,
         user_required=False,  # Allow tokens without Flask-Login user (we handle manually)
     )
     print(">>> DEBUG: google_oauth_bp.storage =", type(google_oauth_bp.storage))
