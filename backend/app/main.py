@@ -31,6 +31,9 @@ from flask_login import (
 from flask_dance.consumer.storage.sqla import SQLAlchemyStorage
 from sqlalchemy import select, text
 
+# Import OAuth provider constant for consistency across blueprint and queries
+from app.config.oauth_provider import PROVIDER_GOOGLE
+
 # Load environment variables conditionally
 # Only load from .env when DATABASE_URL is not already defined by the environment
 if not os.getenv("DATABASE_URL"):
@@ -94,8 +97,8 @@ google_oauth_bp = make_google_blueprint(
     # Force consent to ensure refresh tokens are provided
     reprompt_consent=True,
 )
-# Set unique name immediately to avoid conflicts
-google_oauth_bp.name = "google_oauth_calendar"
+# Set unique name immediately to avoid conflicts - use constant for consistency
+google_oauth_bp.name = PROVIDER_GOOGLE
 # Note: Storage backend will be configured in create_app() to avoid circular imports
 
 
@@ -105,9 +108,19 @@ def google_logged_in(blueprint, token):
     import logging
 
     logger = logging.getLogger(__name__)
+
+    # Diagnostic: Log OAuth callback details (no secrets)
     logger.debug(
-        "OAuth callback triggered", extra={"context": {"has_token": bool(token)}}
+        "OAuth callback triggered",
+        extra={
+            "context": {
+                "provider": blueprint.name,
+                "has_token": bool(token),
+                "token_keys": list(token.keys()) if isinstance(token, dict) else [],
+            }
+        },
     )
+
     if not token:
         flash("Falha ao fazer login com Google.", category="error")
         return redirect(url_for("login_page"))
@@ -124,12 +137,24 @@ def google_logged_in(blueprint, token):
 
     google_info = resp.json()
     google_user_id = str(google_info["id"])
+    google_email = google_info.get("email", "")
     logger.info(
         "Google user authenticated",
         extra={
             "context": {
                 "google_user_id": google_user_id,
-                "email": google_info.get("email"),
+                "email": google_email,
+            }
+        },
+    )
+
+    # Diagnostic: Log candidate user email for correlation
+    logger.debug(
+        "OAuth callback processing",
+        extra={
+            "context": {
+                "provider": blueprint.name,
+                "candidate_user_email": google_email,
             }
         },
     )
@@ -1058,6 +1083,79 @@ def create_app():
                 500,
             )
 
+    @app.route("/debug/oauth-providers")
+    def oauth_provider_counts():
+        """
+        Diagnostic endpoint to check OAuth provider distribution in database.
+
+        Returns counts grouped by provider name to verify token storage.
+        Only available in non-production environments for security.
+
+        Usage:
+            GET /debug/oauth-providers
+
+        Returns:
+            JSON with provider counts and sample records
+        """
+        # Security: Only allow in development/staging
+        if os.getenv("FLASK_ENV") == "production":
+            return jsonify({"error": "Not available in production"}), 403
+
+        try:
+            from sqlalchemy import func
+
+            with SessionLocal() as db:
+                # Count by provider
+                counts = (
+                    db.query(OAuth.provider, func.count(OAuth.id))
+                    .group_by(OAuth.provider)
+                    .all()
+                )
+
+                # Get sample records (limit 5 per provider, exclude token values)
+                samples = []
+                for provider_name, _ in counts:
+                    provider_samples = (
+                        db.query(
+                            OAuth.id,
+                            OAuth.provider,
+                            OAuth.user_id,
+                            OAuth.provider_user_id,
+                            OAuth.created_at,
+                        )
+                        .filter(OAuth.provider == provider_name)
+                        .limit(5)
+                        .all()
+                    )
+                    samples.extend(
+                        [
+                            {
+                                "id": s.id,
+                                "provider": s.provider,
+                                "user_id": s.user_id,
+                                "provider_user_id": s.provider_user_id,
+                                "created_at": (
+                                    s.created_at.isoformat() if s.created_at else None
+                                ),
+                            }
+                            for s in provider_samples
+                        ]
+                    )
+
+                return jsonify(
+                    {
+                        "provider_counts": [
+                            {"provider": p, "count": c} for p, c in counts
+                        ],
+                        "total_records": sum(c for _, c in counts),
+                        "expected_provider": PROVIDER_GOOGLE,
+                        "sample_records": samples,
+                    }
+                )
+        except Exception as e:
+            logger.error(f"Error querying OAuth providers: {str(e)}")
+            return jsonify({"error": str(e)}), 500
+
     # Register blueprints/controllers here
 
     from app.controllers.admin_alerts_controller import admin_alerts_bp
@@ -1110,6 +1208,19 @@ def create_app():
     print(">>> DEBUG: google_oauth_bp.storage =", type(google_oauth_bp.storage))
     print(">>> DEBUG: [create_app] Flask-Dance storage configured successfully")
 
+    # Diagnostic: Log OAuth blueprint configuration for debugging
+    logger.info(
+        "Google OAuth blueprint configured",
+        extra={
+            "context": {
+                "blueprint_name": google_oauth_bp.name,
+                "provider": PROVIDER_GOOGLE,
+                "storage_type": type(google_oauth_bp.storage).__name__,
+                "user_required": False,
+            }
+        },
+    )
+
     # Register OAuth blueprint - name already set at creation
     app.register_blueprint(google_oauth_bp, url_prefix="/auth")
 
@@ -1151,7 +1262,7 @@ def create_app():
             logger.info("Starting background token refresh for all users")
             try:
                 with SessionLocal() as db:
-                    stmt = select(OAuth).where(OAuth.provider == "google")
+                    stmt = select(OAuth).where(OAuth.provider == PROVIDER_GOOGLE)
                     oauth_records = db.execute(stmt).scalars().all()
                     refreshed_count = 0
                     failed_count = 0

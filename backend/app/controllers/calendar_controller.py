@@ -12,6 +12,9 @@ from flask import Blueprint, flash, jsonify, redirect, render_template, request,
 from flask_login import current_user, login_required
 from app.core.csrf_config import csrf
 
+# Import OAuth provider constant for diagnostics
+from app.config.oauth_provider import PROVIDER_GOOGLE
+
 logger = logging.getLogger(__name__)
 
 # Create Blueprint
@@ -96,6 +99,18 @@ def get_events():
 
         # DEBUG: Log user authorization check
         logger.info(f"DEBUG: Checking authorization for user {current_user.id}")
+
+        # Diagnostic: Log calendar token query
+        logger.debug(
+            "Calendar events: querying for user token",
+            extra={
+                "context": {
+                    "user_id": current_user.id,
+                    "provider": PROVIDER_GOOGLE,
+                }
+            },
+        )
+
         is_authorized = calendar_service.is_user_authorized(str(current_user.id))
         logger.info(f"DEBUG: User {current_user.id} authorized: {is_authorized}")
 
@@ -495,6 +510,18 @@ def sync_events():
         # DEBUG: Log sync operation details
         logger.info(f"DEBUG: Starting calendar sync for user {current_user.id}")
         logger.info(f"DEBUG: Date range: {start_date} to {end_date}")
+
+        # Diagnostic: Log calendar sync query
+        logger.debug(
+            "Calendar sync: querying provider for user",
+            extra={
+                "context": {
+                    "user_id": current_user.id,
+                    "provider": PROVIDER_GOOGLE,
+                    "date_range": f"{start_date.date()} to {end_date.date()}",
+                }
+            },
+        )
 
         try:
             events = calendar_service.get_user_events(

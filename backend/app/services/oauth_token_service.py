@@ -13,6 +13,9 @@ from app.db.base import OAuth
 from app.db.session import SessionLocal
 from flask import current_app
 
+# Import OAuth provider constant for consistency
+from app.config.oauth_provider import PROVIDER_GOOGLE
+
 logger = logging.getLogger(__name__)
 
 
@@ -224,8 +227,22 @@ class OAuthTokenService:
             # Query from database storage
             oauth_record = (
                 self.db.query(OAuth)
-                .filter(OAuth.user_id == int(user_id), OAuth.provider == "google")
+                .filter(
+                    OAuth.user_id == int(user_id), OAuth.provider == PROVIDER_GOOGLE
+                )
                 .first()
+            )
+
+            # Diagnostic: Log token retrieval attempt
+            logger.debug(
+                "Retrieving OAuth token from database",
+                extra={
+                    "context": {
+                        "user_id": user_id,
+                        "provider": PROVIDER_GOOGLE,
+                        "found": bool(oauth_record),
+                    }
+                },
             )
 
             if oauth_record and getattr(oauth_record, "token", None):
@@ -322,7 +339,9 @@ class OAuthTokenService:
             # Get current token data from database
             oauth_record = (
                 self.db.query(OAuth)
-                .filter(OAuth.user_id == int(user_id), OAuth.provider == "google")
+                .filter(
+                    OAuth.user_id == int(user_id), OAuth.provider == PROVIDER_GOOGLE
+                )
                 .first()
             )
 
@@ -508,7 +527,9 @@ class OAuthTokenService:
                 # Clear token from database
                 oauth_record = (
                     self.db.query(OAuth)
-                    .filter(OAuth.user_id == int(user_id), OAuth.provider == "google")
+                    .filter(
+                        OAuth.user_id == int(user_id), OAuth.provider == PROVIDER_GOOGLE
+                    )
                     .first()
                 )
 
