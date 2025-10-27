@@ -751,7 +751,7 @@ def create_app():
 
     @app.route("/auth/login")
     def google_login():
-        return redirect(url_for("google_oauth_calendar.login"))
+        return redirect(url_for(f"{PROVIDER_GOOGLE}.login"))
 
     @app.route("/logout")
     @login_required

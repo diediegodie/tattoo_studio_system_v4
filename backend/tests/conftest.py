@@ -17,6 +17,13 @@ import pytest
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
+# Import OAuth provider constant for test helpers
+try:
+    from app.config.oauth_provider import PROVIDER_GOOGLE
+except ImportError:
+    # Fallback if import fails during test discovery
+    PROVIDER_GOOGLE = "google"
+
 # Add backend directories to sys.path for imports to work
 backend_root = Path(__file__).parent.parent  # backend/
 backend_app = backend_root / "app"  # backend/app/
@@ -317,6 +324,42 @@ def test_client(app):
     with app.test_client() as client:
         with app.app_context():
             yield client
+
+
+# =====================================================
+# OAUTH TEST HELPERS
+# =====================================================
+
+
+def google_oauth_endpoint(endpoint_suffix: str = "login") -> str:
+    """
+    Dynamically construct the Google OAuth endpoint name for url_for().
+
+    Uses the PROVIDER_GOOGLE constant to ensure tests use the same
+    blueprint name as the application runtime.
+
+    Args:
+        endpoint_suffix: The endpoint suffix (e.g., 'login', 'authorized')
+
+    Returns:
+        Full endpoint name for url_for() (e.g., 'google.login')
+
+    Example:
+        url_for(google_oauth_endpoint('login'))  # -> '/auth/login'
+    """
+    return f"{PROVIDER_GOOGLE}.{endpoint_suffix}"
+
+
+def google_oauth_session_state_key() -> str:
+    """
+    Return the Flask session key where Flask-Dance stores OAuth state.
+
+    Flask-Dance automatically uses the pattern: {blueprint_name}_oauth_state
+
+    Returns:
+        Session key string (e.g., 'google_oauth_state')
+    """
+    return f"{PROVIDER_GOOGLE}_oauth_state"
 
 
 # =====================================================

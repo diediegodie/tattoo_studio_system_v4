@@ -17,6 +17,7 @@ import pytest
 from app.db.base import User as DbUser
 from app.domain.entities import User as DomainUser
 from app.repositories.user_repo import UserRepository
+from tests.conftest import google_oauth_session_state_key
 
 DEFAULT_TOKEN: Dict[str, object] = {
     "access_token": "test-access-token",
@@ -103,14 +104,14 @@ def _complete_google_login(
         assert login_response.status_code == 302
 
         # Retrieve the stored state so the callback can validate it
+        # Use dynamic session key based on current blueprint name
+        session_state_key = google_oauth_session_state_key()
         with client.session_transaction() as flask_session:
-            stored_state = flask_session.get("google_oauth_calendar_oauth_state")
+            stored_state = flask_session.get(session_state_key)
             if stored_state is None:
                 # Some test paths bypass the default state persistence; ensure the expected
                 # value is present to keep the OAuth flow consistent.
-                flask_session["google_oauth_calendar_oauth_state"] = oauth_context[
-                    "state"
-                ]
+                flask_session[session_state_key] = oauth_context["state"]
                 stored_state = oauth_context["state"]
         assert (
             stored_state is not None

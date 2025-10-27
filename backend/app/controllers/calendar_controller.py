@@ -499,9 +499,7 @@ def sync_events():
             from flask import session
 
             session["oauth_purpose"] = "calendar_sync"
-            return redirect(
-                url_for("google_oauth_calendar.login")
-            )  # Corrected endpoint
+            return redirect(url_for(f"{PROVIDER_GOOGLE}.login"))
 
         # Sync events
         start_date = datetime.now()
