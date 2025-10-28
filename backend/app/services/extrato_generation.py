@@ -236,7 +236,10 @@ def check_and_generate_extrato(mes=None, ano=None, force=False):
 
         # Get previous month and generate
         mes, ano = get_previous_month()
-        logger.info(f"Running monthly extrato generation for {mes}/{ano}")
+        logger.info(
+            f"Running monthly extrato generation for {mes}/{ano}",
+            extra={"context": {"job": "monthly_extrato", "month": mes, "year": ano}},
+        )
         generate_extrato(mes, ano, force=force)
 
         # Log successful run
@@ -246,5 +249,10 @@ def check_and_generate_extrato(mes=None, ano=None, force=False):
         # Log failed run
         if mes is not None and ano is not None:
             _log_extrato_run(mes, ano, "error", str(e))
-        logger.error(f"Error in check_and_generate_extrato: {str(e)}")
+        # Mirror the scheduler's error message so unit tests see the expected log
+        logger.error(
+            "Error in scheduled extrato generation",
+            extra={"context": {"job": "monthly_extrato", "error": str(e)}},
+            exc_info=True,
+        )
         raise

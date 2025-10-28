@@ -14,7 +14,7 @@ from datetime import datetime, timedelta, timezone
 from logging.handlers import RotatingFileHandler
 from typing import Any, Iterable, List, Optional, Tuple
 
-from app.core.config import APP_TZ
+from app.core import config
 from app.db.base import (
     Client,
     Comissao,
@@ -78,7 +78,7 @@ def get_previous_month():
         Uses APP_TZ from core.config to ensure timezone consistency.
         This prevents issues with month boundaries in different timezones.
     """
-    today = datetime.now(APP_TZ)
+    today = datetime.now(config.APP_TZ)
     first_day_this_month = today.replace(day=1)
     last_day_prev_month = first_day_this_month - timedelta(days=1)
     return last_day_prev_month.month, last_day_prev_month.year
@@ -106,7 +106,7 @@ def should_run_monthly_extrato(min_day_threshold: int = 2) -> bool:
         Uses APP_TZ from core.config to ensure timezone consistency.
     """
 
-    today = datetime.now(APP_TZ)
+    today = datetime.now(config.APP_TZ)
 
     if today.day < min_day_threshold:
         logger.info(
@@ -116,7 +116,7 @@ def should_run_monthly_extrato(min_day_threshold: int = 2) -> bool:
                 "context": {
                     "current_day": today.day,
                     "threshold": min_day_threshold,
-                    "timezone": str(APP_TZ),
+                    "timezone": str(config.APP_TZ),
                 }
             },
         )
@@ -969,10 +969,26 @@ def current_month_range():
     """
     from datetime import datetime
 
-    now = datetime.now(APP_TZ)
-    start_date = datetime(now.year, now.month, 1, tzinfo=APP_TZ)
+    now = datetime.now(config.APP_TZ)
+    start_date = datetime(now.year, now.month, 1, tzinfo=config.APP_TZ)
     if now.month == 12:
-        end_date = datetime(now.year + 1, 1, 1, tzinfo=APP_TZ)
+        end_date = datetime(now.year + 1, 1, 1, tzinfo=config.APP_TZ)
     else:
-        end_date = datetime(now.year, now.month + 1, 1, tzinfo=APP_TZ)
+        end_date = datetime(now.year, now.month + 1, 1, tzinfo=config.APP_TZ)
     return start_date, end_date
+
+
+# Provide dynamic attribute access so external imports of extrato_core.APP_TZ
+# always return the live object from app.core.config.
+def __getattr__(name: str):
+    """
+    Module-level attribute access to provide dynamic references.
+    
+    This ensures that `extrato_core.APP_TZ` always returns the current
+    `config.APP_TZ` object, maintaining object identity for tests and
+    avoiding stale references from module import time.
+    """
+    if name == "APP_TZ":
+        from app.core import config  # local import to avoid import-order issues
+        return config.APP_TZ
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

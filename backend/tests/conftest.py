@@ -1,12 +1,11 @@
 """
-Central pyte# Add /app to sys.path for relative imports to work in Docker
-sys.path.insert(0, '/app')
-sys.path.insert(0, '/app/backend') configuration for the tattoo studio system tests.
+Central pytest configuration for the tattoo studio system tests.
 
 This file provides common fixtures, test markers, and setup
 for both unit and integration tests following SOLID principles.
 """
 
+import logging
 import os
 import sys
 import uuid
@@ -52,6 +51,46 @@ os.environ["JOTFORM_FORM_ID"] = "test-form-id"
 # In CI (Docker Compose), set BASE_URL=http://app:5000 to reach the app service
 # Locally, defaults to http://localhost:5000
 BASE_URL = os.getenv("BASE_URL", "http://localhost:5000")
+
+
+@pytest.fixture(autouse=True)
+def caplog_bridge(caplog):
+    """
+    Ensure pytest's caplog captures logs from the application's 'app' logger
+    and its children by:
+      - enabling propagation on the 'app' logger so records reach the root logger
+      - attaching caplog's handler directly to the 'app' logger while tests run
+      - setting the log level to INFO to capture info and error logs
+    This avoids changing application logging configuration and keeps capture scoped to tests.
+    """
+    # Set caplog to capture INFO level and above
+    caplog.set_level(logging.INFO)
+
+    app_logger = logging.getLogger("app")
+    # save previous propagate value to restore later
+    prev_propagate = app_logger.propagate
+    prev_level = app_logger.level
+
+    # Enable propagation and set level
+    app_logger.propagate = True
+    app_logger.setLevel(logging.DEBUG)  # Capture all levels
+
+    # attach caplog handler if not already attached
+    added_handler = False
+    if caplog.handler not in app_logger.handlers:
+        app_logger.addHandler(caplog.handler)
+        caplog.handler.setLevel(logging.DEBUG)
+        added_handler = True
+
+    try:
+        yield caplog
+    finally:
+        # cleanup: remove the handler we added and restore propagate
+        if added_handler:
+            app_logger.removeHandler(caplog.handler)
+        app_logger.propagate = prev_propagate
+        app_logger.level = prev_level
+
 
 # Set up test environment paths BEFORE any other imports
 from tests.config.test_paths import setup_test_environment

@@ -1292,7 +1292,7 @@ def create_app():  # noqa: C901
             execution_time = datetime.now(APP_TZ).isoformat()
 
             logger.info(
-                "Running scheduled monthly extrato generation",
+                f"Running scheduled monthly_extrato generation for target_month={target_month}, target_year={target_year}",
                 extra={
                     "context": {
                         "job": "monthly_extrato",
@@ -1306,13 +1306,14 @@ def create_app():  # noqa: C901
             )
 
             try:
-                from app.services.extrato_atomic import (
-                    check_and_generate_extrato_with_transaction,
-                )
+                # Resolve the function at call time so tests that patch app.services.extrato_atomic.check_and_generate_extrato_with_transaction are effective
+                import importlib
+
+                extrato_atomic = importlib.import_module("app.services.extrato_atomic")
 
                 # Use atomic version with backup check (Task 3)
                 # No args → previous month by default inside the service
-                success = check_and_generate_extrato_with_transaction()
+                success = extrato_atomic.check_and_generate_extrato_with_transaction()
 
                 if success:
                     logger.info(

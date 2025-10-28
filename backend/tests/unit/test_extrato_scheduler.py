@@ -75,7 +75,7 @@ class TestExtratoScheduler:
             assert "day='1'" in trigger_str, "Job should run on day 1"
             assert "hour='2'" in trigger_str, "Job should run at hour 2"
 
-    @patch("app.services.extrato_generation.check_and_generate_extrato")
+    @patch("app.services.extrato_atomic.check_and_generate_extrato_with_transaction")
     def test_generate_monthly_extrato_job_execution(
         self, mock_check_and_generate, monkeypatch
     ):
@@ -108,7 +108,7 @@ class TestExtratoScheduler:
             # Verify that check_and_generate_extrato was called
             mock_check_and_generate.assert_called_once()
 
-    @patch("app.services.extrato_generation.check_and_generate_extrato")
+    @patch("app.services.extrato_atomic.check_and_generate_extrato_with_transaction")
     def test_generate_monthly_extrato_job_handles_exception(
         self, mock_check_and_generate, monkeypatch, caplog
     ):
@@ -177,6 +177,7 @@ class TestExtratoScheduler:
 
     def test_structured_logging_context(self, monkeypatch, caplog):
         """Test that the job logs include structured context."""
+        import logging
         from unittest.mock import MagicMock
 
         # Mock get_previous_month
@@ -185,8 +186,10 @@ class TestExtratoScheduler:
             "app.services.extrato_core.get_previous_month", mock_get_previous_month
         )
 
-        # Mock check_and_generate_extrato to do nothing
-        with patch("app.services.extrato_generation.check_and_generate_extrato"):
+        # Mock check_and_generate_extrato_with_transaction to do nothing
+        with patch(
+            "app.services.extrato_atomic.check_and_generate_extrato_with_transaction"
+        ):
             with patch.dict(os.environ, {"ENABLE_MONTHLY_EXTRATO_JOB": "true"}):
                 from app.main import create_app
 
