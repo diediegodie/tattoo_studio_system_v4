@@ -72,6 +72,16 @@ jobs:
         run: |
           echo "Waiting for PostgreSQL (tattoo_studio_db) to be healthy..."
           timeout 90 bash -c 'until [ "$(docker inspect -f {{.State.Health.Status}} tattoo_studio_db)" = "healthy" ]; do sleep 2; done'
+          echo "PostgreSQL is ready - verifying with pg_isready..."
+          docker compose exec -T db pg_isready -U ${{ secrets.POSTGRES_USER }} -d ${{ secrets.POSTGRES_DB }}
+          echo "Database connection verified"
+      
+      - name: Set up backups directory permissions
+        run: |
+          echo "Setting up backups directory with write permissions..."
+          mkdir -p backups
+          chmod -R 777 backups
+          echo "Backups directory permissions configured"
       
       - name: Reset database for clean test run
         run: |
