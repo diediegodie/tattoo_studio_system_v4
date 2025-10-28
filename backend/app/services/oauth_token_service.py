@@ -13,8 +13,8 @@ from app.db.base import OAuth
 from app.db.session import SessionLocal
 from flask import current_app
 
-# Import OAuth provider constant for consistency
-from app.config.oauth_provider import PROVIDER_GOOGLE
+# Import OAuth provider constants for consistency
+from app.config.oauth_provider import PROVIDER_GOOGLE_CALENDAR, PROVIDER_GOOGLE_LOGIN
 
 logger = logging.getLogger(__name__)
 
@@ -212,13 +212,16 @@ class OAuthTokenService:
         finally:
             self.db.close()
 
-    def get_user_access_token(self, user_id: str) -> Optional[str]:
+    def get_user_access_token(
+        self, user_id: str, provider: str = PROVIDER_GOOGLE_CALENDAR
+    ) -> Optional[str]:
         """
         Get Google access token for user.
         Checks expiration and refreshes if needed.
 
         Args:
             user_id: User identifier
+            provider: OAuth provider name (default: google_calendar)
 
         Returns:
             Access token if available and valid, None otherwise
@@ -227,9 +230,7 @@ class OAuthTokenService:
             # Query from database storage
             oauth_record = (
                 self.db.query(OAuth)
-                .filter(
-                    OAuth.user_id == int(user_id), OAuth.provider == PROVIDER_GOOGLE
-                )
+                .filter(OAuth.user_id == int(user_id), OAuth.provider == provider)
                 .first()
             )
 
@@ -239,7 +240,7 @@ class OAuthTokenService:
                 extra={
                     "context": {
                         "user_id": user_id,
-                        "provider": PROVIDER_GOOGLE,
+                        "provider": provider,
                         "found": bool(oauth_record),
                     }
                 },
@@ -248,7 +249,6 @@ class OAuthTokenService:
             if oauth_record and getattr(oauth_record, "token", None):
                 # OAuth record stores token as JSON string
                 import json
-                from datetime import datetime, timedelta
 
                 try:
                     token_value = getattr(oauth_record, "token", None)
@@ -300,7 +300,9 @@ class OAuthTokenService:
                                     logger.info(
                                         f"Access token expired or expiring soon for user {user_id}, attempting proactive refresh"
                                     )
-                                    new_token = self.refresh_access_token(user_id)
+                                    new_token = self.refresh_access_token(
+                                        user_id, provider
+                                    )
                                     return new_token
                                 else:
                                     logger.info(
@@ -325,12 +327,15 @@ class OAuthTokenService:
         finally:
             self.db.close()
 
-    def refresh_access_token(self, user_id: str) -> Optional[str]:
+    def refresh_access_token(
+        self, user_id: str, provider: str = PROVIDER_GOOGLE_CALENDAR
+    ) -> Optional[str]:
         """
         Refresh Google access token using refresh token.
 
         Args:
             user_id: User identifier
+            provider: OAuth provider name (default: google_calendar)
 
         Returns:
             New access token if refresh successful, None otherwise
@@ -339,9 +344,7 @@ class OAuthTokenService:
             # Get current token data from database
             oauth_record = (
                 self.db.query(OAuth)
-                .filter(
-                    OAuth.user_id == int(user_id), OAuth.provider == PROVIDER_GOOGLE
-                )
+                .filter(OAuth.user_id == int(user_id), OAuth.provider == provider)
                 .first()
             )
 
@@ -350,7 +353,6 @@ class OAuthTokenService:
                 return None
 
             import json
-            from datetime import datetime, timedelta
 
             token_value = getattr(oauth_record, "token", None)
             if not token_value:
@@ -461,18 +463,21 @@ class OAuthTokenService:
         finally:
             self.db.close()
 
-    def is_token_valid(self, user_id: str) -> bool:
+    def is_token_valid(
+        self, user_id: str, provider: str = PROVIDER_GOOGLE_CALENDAR
+    ) -> bool:
         """
         Check if user's OAuth token is valid.
 
         Args:
             user_id: User identifier
+            provider: OAuth provider name (default: google_calendar)
 
         Returns:
             True if token is valid, False otherwise
         """
         try:
-            access_token = self.get_user_access_token(user_id)
+            access_token = self.get_user_access_token(user_id, provider)
             if not access_token:
                 return False
 
@@ -500,18 +505,21 @@ class OAuthTokenService:
             logger.error(f"Error validating token for user {user_id}: {str(e)}")
             return False
 
-    def revoke_user_token(self, user_id: str) -> bool:
+    def revoke_user_token(
+        self, user_id: str, provider: str = PROVIDER_GOOGLE_CALENDAR
+    ) -> bool:
         """
         Revoke Google access token for user.
 
         Args:
             user_id: User identifier
+            provider: OAuth provider name (default: google_calendar)
 
         Returns:
             True if revocation successful, False otherwise
         """
         try:
-            access_token = self.get_user_access_token(user_id)
+            access_token = self.get_user_access_token(user_id, provider)
             if not access_token:
                 logger.info(f"No token to revoke for user {user_id}")
                 return True
@@ -527,9 +535,7 @@ class OAuthTokenService:
                 # Clear token from database
                 oauth_record = (
                     self.db.query(OAuth)
-                    .filter(
-                        OAuth.user_id == int(user_id), OAuth.provider == PROVIDER_GOOGLE
-                    )
+                    .filter(OAuth.user_id == int(user_id), OAuth.provider == provider)
                     .first()
                 )
 
@@ -556,9 +562,11 @@ class OAuthTokenService:
         Get Google OAuth authorization URL for manual/testing flows.
 
         Note:
-            - The primary OAuth flow is handled by the Flask-Dance blueprint configured in
+            - The primary OAuth flow is handled by the Flask-Dance blueprints configured in
               `app.main`. This helper is intended for manual testing or diagnostics and may
               use scopes that differ slightly from the production blueprint configuration.
+            - This generates a URL with calendar scopes. For login-only, use the google_login
+              blueprint endpoint directly.
 
         Returns:
             Authorization URL for redirecting user (manual usage only)
@@ -573,7 +581,7 @@ class OAuthTokenService:
                 "client_id": os.getenv("GOOGLE_CLIENT_ID"),
                 "redirect_uri": os.getenv(
                     "GOOGLE_OAUTH_REDIRECT_URL",
-                    "http://localhost:5000/auth/google/authorized",
+                    "http://localhost:5000/auth/calendar/google_calendar/authorized",
                 ),
                 "scope": "openid email profile https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events",
                 "response_type": "code",

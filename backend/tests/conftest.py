@@ -19,10 +19,16 @@ from sqlalchemy.orm import sessionmaker
 
 # Import OAuth provider constant for test helpers
 try:
-    from app.config.oauth_provider import PROVIDER_GOOGLE
+    from app.config.oauth_provider import (
+        PROVIDER_GOOGLE,
+        PROVIDER_GOOGLE_LOGIN,
+        PROVIDER_GOOGLE_CALENDAR,
+    )
 except ImportError:
     # Fallback if import fails during test discovery
     PROVIDER_GOOGLE = "google"
+    PROVIDER_GOOGLE_LOGIN = "google_login"
+    PROVIDER_GOOGLE_CALENDAR = "google_calendar"
 
 # Add backend directories to sys.path for imports to work
 backend_root = Path(__file__).parent.parent  # backend/
@@ -335,6 +341,8 @@ def google_oauth_endpoint(endpoint_suffix: str = "login") -> str:
     """
     Dynamically construct the Google OAuth endpoint name for url_for().
 
+    DEPRECATED: Use google_login_endpoint() or google_calendar_endpoint() instead.
+
     Uses the PROVIDER_GOOGLE constant to ensure tests use the same
     blueprint name as the application runtime.
 
@@ -350,9 +358,43 @@ def google_oauth_endpoint(endpoint_suffix: str = "login") -> str:
     return f"{PROVIDER_GOOGLE}.{endpoint_suffix}"
 
 
+def google_login_endpoint(endpoint_suffix: str = "login") -> str:
+    """
+    Construct Google Login blueprint endpoint for url_for().
+
+    Args:
+        endpoint_suffix: The endpoint suffix (e.g., 'login', 'authorized')
+
+    Returns:
+        Full endpoint name (e.g., 'google_login.login')
+
+    Example:
+        url_for(google_login_endpoint('login'))  # -> '/auth/google_login/login'
+    """
+    return f"{PROVIDER_GOOGLE_LOGIN}.{endpoint_suffix}"
+
+
+def google_calendar_endpoint(endpoint_suffix: str = "login") -> str:
+    """
+    Construct Google Calendar blueprint endpoint for url_for().
+
+    Args:
+        endpoint_suffix: The endpoint suffix (e.g., 'login', 'authorized')
+
+    Returns:
+        Full endpoint name (e.g., 'google_calendar.login')
+
+    Example:
+        url_for(google_calendar_endpoint('login'))  # -> '/auth/calendar/google_calendar/login'
+    """
+    return f"{PROVIDER_GOOGLE_CALENDAR}.{endpoint_suffix}"
+
+
 def google_oauth_session_state_key() -> str:
     """
     Return the Flask session key where Flask-Dance stores OAuth state.
+
+    DEPRECATED: Use google_login_session_state_key() or google_calendar_session_state_key().
 
     Flask-Dance automatically uses the pattern: {blueprint_name}_oauth_state
 
@@ -360,6 +402,58 @@ def google_oauth_session_state_key() -> str:
         Session key string (e.g., 'google_oauth_state')
     """
     return f"{PROVIDER_GOOGLE}_oauth_state"
+
+
+def google_login_session_state_key() -> str:
+    """
+    Return the Flask session key for Google Login OAuth state.
+
+    Returns:
+        Session key string (e.g., 'google_login_oauth_state')
+    """
+    return f"{PROVIDER_GOOGLE_LOGIN}_oauth_state"
+
+
+def google_calendar_session_state_key() -> str:
+    """
+    Return the Flask session key for Google Calendar OAuth state.
+
+    Returns:
+        Session key string (e.g., 'google_calendar_oauth_state')
+    """
+    return f"{PROVIDER_GOOGLE_CALENDAR}_oauth_state"
+
+
+@pytest.fixture
+def oauth_token_factory():
+    """
+    Factory fixture for creating OAuth token dictionaries.
+
+    Returns:
+        Callable that creates token dicts with customizable fields
+
+    Example:
+        token = oauth_token_factory(expires_at=1234567890)
+    """
+
+    def _make_token(
+        access_token: str = "test-access-token",
+        refresh_token: str = "test-refresh-token",
+        token_type: str = "Bearer",
+        expires_at: int = 1750000000,
+        **extra,
+    ) -> dict:
+        """Create a token dictionary with given values."""
+        token = {
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "token_type": token_type,
+            "expires_at": expires_at,
+        }
+        token.update(extra)
+        return token
+
+    return _make_token
 
 
 # =====================================================

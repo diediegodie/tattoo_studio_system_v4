@@ -1,17 +1,29 @@
-import asyncio
-import inspect
 import logging
 from datetime import datetime
 from decimal import Decimal
 from typing import Any, Iterable, List, Optional, Tuple, Union, cast
 
-from app.core.api_utils import api_response
+from app.core.api_utils import api_response  # noqa: F401 - used in financeiro_api
 from app.db.base import Client, Pagamento
 from app.db.session import SessionLocal
-from app.repositories.pagamento_repository import PagamentoRepository
-from app.repositories.user_repo import UserRepository
-from app.services.user_service import UserService
-from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
+from app.repositories.pagamento_repository import (
+    PagamentoRepository,
+)  # noqa: F401 - used in financeiro_api
+from app.repositories.user_repo import (
+    UserRepository,
+)  # noqa: F401 - may be used in imported modules
+from app.services.user_service import (
+    UserService,
+)  # noqa: F401 - may be used in imported modules
+from flask import (
+    Blueprint,
+    flash,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    url_for,
+)  # noqa: F401 - jsonify used in financeiro_api
 from flask_login import current_user, login_required
 from sqlalchemy.orm import joinedload
 from werkzeug.wrappers import Response
@@ -20,13 +32,13 @@ from werkzeug.wrappers import Response
 logger = logging.getLogger(__name__)
 
 # Create blueprint FIRST (before imports to avoid circular imports)
-financeiro_bp = Blueprint("financeiro", __name__, url_prefix="/financeiro")
+financeiro_bp: Blueprint = Blueprint("financeiro", __name__, url_prefix="/financeiro")
 
-from app.controllers.financeiro_api import *
-from app.controllers.financeiro_crud import *
+from app.controllers.financeiro_api import *  # noqa: E402, F401, F403
+from app.controllers.financeiro_crud import *  # noqa: E402, F401, F403
 
 # Import from split modules
-from app.controllers.financeiro_helpers import (
+from app.controllers.financeiro_helpers import (  # noqa: E402
     _get_user_service,
     _maybe_await,
     _safe_redirect,

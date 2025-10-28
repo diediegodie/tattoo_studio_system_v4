@@ -26,9 +26,9 @@ from typing import List, Dict, Any
 # Add backend to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from app.core.logging_config import get_logger
-from app.db.session import SessionLocal
-from sqlalchemy import text
+from app.core.logging_config import get_logger  # noqa: E402
+from app.db.session import SessionLocal  # noqa: E402
+from sqlalchemy import text  # noqa: E402
 
 logger = get_logger(__name__)
 

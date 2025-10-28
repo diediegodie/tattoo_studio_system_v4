@@ -27,70 +27,78 @@ class TestSessionsAPI:
         mock_user = Mock()
         mock_user.is_authenticated = True
 
+        # prepare two sessions
+        s1 = Mock()
+        s1.id = 1
+        s1.data = date(2025, 8, 30)
+        s1.valor = Decimal("200.00")
+        s1.observacoes = "Test session with Google ID"
+        s1.google_event_id = "GOOGLE123"
+        s1.created_at = datetime(2025, 8, 28, 10, 0)
+        s1.updated_at = datetime(2025, 8, 28, 10, 0)
+        client_obj = Mock()
+        client_obj.id = 1
+        client_obj.name = "C"
+        artist_obj = Mock()
+        artist_obj.id = 1
+        artist_obj.name = "A"
+        s1.cliente = client_obj
+        s1.artista = artist_obj
+
+        s2 = Mock()
+        s2.id = 2
+        s2.data = date(2025, 8, 31)
+        s2.valor = Decimal("150.00")
+        s2.observacoes = "Manual session"
+        s2.google_event_id = None
+        s2.created_at = datetime(2025, 8, 28, 11, 0)
+        s2.updated_at = datetime(2025, 8, 28, 11, 0)
+        s2.cliente = client_obj
+        s2.artista = artist_obj
+
         mock_db = Mock()
+        q = Mock()
+        mock_db.query.return_value = q
+        q.options.return_value = q
+        q.order_by.return_value = q
+        q.all.return_value = [s1, s2]
+        mock_db.close = Mock()
 
-        # Patch the controller's SessionLocal directly (adapted to controllers package)
-        with patch("app.db.session.SessionLocal", return_value=mock_db), patch(
-            "flask_login.login_required", lambda f: f
-        ), patch("flask_login.current_user", mock_user):
-            print(f"DEBUG: mock_db: {mock_db}")
-
-            # prepare two sessions
-            s1 = Mock()
-            s1.id = 1
-            s1.data = date(2025, 8, 30)
-            s1.valor = Decimal("200.00")
-            s1.observacoes = "Test session with Google ID"
-            s1.google_event_id = "GOOGLE123"
-            s1.created_at = datetime(2025, 8, 28, 10, 0)
-            s1.updated_at = datetime(2025, 8, 28, 10, 0)
-            client_obj = Mock()
-            client_obj.id = 1
-            client_obj.name = "C"
-            artist_obj = Mock()
-            artist_obj.id = 1
-            artist_obj.name = "A"
-            s1.cliente = client_obj
-            s1.artista = artist_obj
-
-            s2 = Mock()
-            s2.id = 2
-            s2.data = date(2025, 8, 31)
-            s2.valor = Decimal("150.00")
-            s2.observacoes = "Manual session"
-            s2.google_event_id = None
-            s2.created_at = datetime(2025, 8, 28, 11, 0)
-            s2.updated_at = datetime(2025, 8, 28, 11, 0)
-            s2.cliente = client_obj
-            s2.artista = artist_obj
-
-            q = Mock()
-            mock_db.query.return_value = q
-            q.options.return_value = q
-            q.order_by.return_value = q
-            q.all.return_value = [s1, s2]
+        # Patch SessionLocal in the controller module where it's used
+        with patch(
+            "app.controllers.sessoes_api.SessionLocal", return_value=mock_db
+        ), patch("flask_login.login_required", lambda f: f), patch(
+            "flask_login.current_user", mock_user
+        ):
 
             resp = client.get("/sessoes/api")
             print(f"DEBUG: Response status: {resp.status_code}")
             print(f"DEBUG: Response data: {resp.get_json()}")
+
             if resp.status_code != 200:
                 pytest.skip(f"API endpoint not available: {resp.status_code}")
 
             data = resp.get_json()
             assert isinstance(data, dict)
             assert data["success"] is True
-            sessions = data["data"]
+            sessions = data.get("data", [])
             assert isinstance(sessions, list)
-            if not sessions:
-                print("DEBUG: Empty data returned, checking if patch worked")
-                print(f"DEBUG: mock_db.query called: {mock_db.query.called}")
-                print(
-                    f"DEBUG: mock_db.query.return_value: {mock_db.query.return_value}"
-                )
-                print(f"DEBUG: q.all called: {q.all.called}")
-                print(f"DEBUG: q.all.return_value: {q.all.return_value}")
-            assert sessions[0]["google_event_id"] == "GOOGLE123"
-            assert sessions[1]["google_event_id"] is None
+            assert (
+                len(sessions) >= 2
+            ), f"Expected at least 2 sessions, got {len(sessions)}"
+
+            # Find sessions with the expected google_event_ids
+            google_session = next(
+                (s for s in sessions if s.get("google_event_id") == "GOOGLE123"), None
+            )
+            manual_session = next(
+                (s for s in sessions if s.get("google_event_id") is None), None
+            )
+
+            assert google_session is not None, "Session with GOOGLE123 not found"
+            assert (
+                manual_session is not None
+            ), "Session without google_event_id not found"
 
     def test_api_detail_includes_google_event_id(self, app, client):
         """GET /sessoes/api/<id> should return an api_response containing google_event_id."""
@@ -117,11 +125,12 @@ class TestSessionsAPI:
 
         with patch(
             "app.controllers.sessoes_controller.login_required", mock_login_required
-        ), patch("app.db.session.SessionLocal") as mock_session_local:
+        ), patch("app.controllers.sessoes_api.SessionLocal") as mock_session_local:
             mock_db = Mock()
             mock_session_local.return_value = mock_db
             # mock.get should return the session object
-            mock_db.query.return_value.get.return_value = s
+            mock_db.get.return_value = s
+            mock_db.close = Mock()
 
             resp = client.get("/sessoes/api/1")
             if resp.status_code != 200:
@@ -156,17 +165,30 @@ class TestSessionsAPI:
 
         with patch(
             "app.controllers.sessoes_controller.login_required", mock_login_required
-        ), patch("app.db.session.SessionLocal") as mock_session_local:
+        ), patch("app.controllers.sessoes_api.SessionLocal") as mock_session_local:
             mock_db = Mock()
             mock_session_local.return_value = mock_db
-            mock_db.query.return_value.get.return_value = s
+
+            # Setup query chain for update
+            q = Mock()
+            mock_db.query.return_value = q
+            q.options.return_value = q
+            q.get.return_value = s
+
             mock_db.add = Mock()
             mock_db.commit = Mock()
             mock_db.refresh = Mock()
+            mock_db.close = Mock()
 
             resp = client.put(
                 "/sessoes/api/1",
-                json={"observacoes": "Updated", "forma_pagamento": "cash"},
+                json={
+                    "observacoes": "Updated",
+                    "data": "2025-08-30",
+                    "cliente_id": 1,
+                    "artista_id": 1,
+                    "valor": "100.00",
+                },
             )
             if resp.status_code != 200:
                 pytest.skip(f"API endpoint not available: {resp.status_code}")

@@ -404,7 +404,6 @@ def get_extrato_summary():
             total_lucro = sum(getattr(e, "lucro_total", 0) for e in extratos)
 
             monthly_receitas = [getattr(e, "receita_total", 0) for e in extratos]
-            monthly_lucros = [getattr(e, "lucro_total", 0) for e in extratos]
 
             avg_monthly_receita = total_receita / len(extratos)
             avg_monthly_lucro = total_lucro / len(extratos)

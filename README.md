@@ -94,10 +94,13 @@ See .env.example for examples.
 
 - Do NOT rely on the deprecated Google+ API. Configure Google OAuth / Identity credentials.
 - Authorized redirect URIs (example):
-http://localhost:5000/auth/google/authorized
-http://127.0.0.1:5000/auth/google/authorized
+http://localhost:5000/auth/google_login/authorized
+http://127.0.0.1:5000/auth/google_login/authorized
+http://localhost:5000/auth/calendar/google_calendar/authorized
+http://127.0.0.1:5000/auth/calendar/google_calendar/authorized
 - Scopes requested by the app:
-email
+For login: openid, email, profile
+For calendar: calendar.readonly, calendar.events
 profile
 https://www.googleapis.com/auth/calendar.readonly
 https://www.googleapis.com/auth/calendar.events

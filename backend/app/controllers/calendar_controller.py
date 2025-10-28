@@ -13,7 +13,7 @@ from flask_login import current_user, login_required
 from app.core.csrf_config import csrf
 
 # Import OAuth provider constant for diagnostics
-from app.config.oauth_provider import PROVIDER_GOOGLE
+from app.config.oauth_provider import PROVIDER_GOOGLE_CALENDAR
 
 logger = logging.getLogger(__name__)
 
@@ -106,7 +106,7 @@ def get_events():
             extra={
                 "context": {
                     "user_id": current_user.id,
-                    "provider": PROVIDER_GOOGLE,
+                    "provider": PROVIDER_GOOGLE_CALENDAR,
                 }
             },
         )
@@ -495,11 +495,8 @@ def sync_events():
             flash(
                 "Você precisa autorizar o acesso ao Google Calendar primeiro", "warning"
             )
-            # Set session flag to indicate this is a calendar sync operation
-            from flask import session
-
-            session["oauth_purpose"] = "calendar_sync"
-            return redirect(url_for(f"{PROVIDER_GOOGLE}.login"))
+            # Redirect to Google Calendar authorization
+            return redirect(url_for("google_calendar.login"))
 
         # Sync events
         start_date = datetime.now()
@@ -515,7 +512,7 @@ def sync_events():
             extra={
                 "context": {
                     "user_id": current_user.id,
-                    "provider": PROVIDER_GOOGLE,
+                    "provider": PROVIDER_GOOGLE_CALENDAR,
                     "date_range": f"{start_date.date()} to {end_date.date()}",
                 }
             },

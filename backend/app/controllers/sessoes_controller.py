@@ -25,8 +25,11 @@ logger = logging.getLogger(__name__)
 # Create Blueprint FIRST (before imports to avoid circular imports)
 sessoes_bp = Blueprint("sessoes", __name__, url_prefix="/sessoes")
 
-from app.controllers.sessoes_api import *
+from app.controllers.sessoes_api import *  # noqa: E402
 
 # Import from split modules
-from app.controllers.sessoes_helpers import _get_user_service, api_response
-from app.controllers.sessoes_routes import *
+from app.controllers.sessoes_helpers import (
+    _get_user_service,
+    api_response,
+)  # noqa: E402
+from app.controllers.sessoes_routes import *  # noqa: E402

@@ -149,13 +149,13 @@ class SearchService:
 
         return query
 
-    def _normalize_text(self, text: str) -> str:
+    def _normalize_text(self, input_text: str) -> str:
         """Normalize any text string: lowercase, remove accents."""
-        if not text:
+        if not input_text:
             return ""
 
         # Convert to lowercase
-        text = text.lower()
+        normalized = input_text.lower()
 
         # Remove accents
         accents = {
@@ -216,9 +216,9 @@ class SearchService:
         }
 
         for accented, normal in accents.items():
-            text = text.replace(accented, normal)
+            normalized = normalized.replace(accented, normal)
 
-        return text
+        return normalized
 
     def _parse_query(
         self, query: str

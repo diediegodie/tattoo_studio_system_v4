@@ -129,13 +129,13 @@ class Inventory(Base):
 
 
 class OAuth(OAuthConsumerMixin, Base):
-    """OAuth model for storing OAuth tokens"""
+    """OAuth model for storing OAuth tokens with provider-specific separation"""
 
     __tablename__ = "oauth"  # type: ignore[assignment]
 
-    provider_user_id: Mapped[str] = mapped_column(
-        String(256), unique=True, nullable=False
-    )
+    # Changed from unique=True to support same user_id across multiple providers
+    # Unique constraint is now composite: (provider_user_id, provider)
+    provider_user_id: Mapped[str] = mapped_column(String(256), nullable=False)
     user_id: Mapped[int] = mapped_column(Integer, nullable=False)
 
     # Override the token field from OAuthConsumerMixin to use JSONB for PostgreSQL
@@ -146,6 +146,13 @@ class OAuth(OAuthConsumerMixin, Base):
         # Use JSONB on Postgres, JSON on SQLite/others for test compatibility
         MutableDict.as_mutable(get_json_type()()),
         nullable=False,
+    )
+
+    __table_args__ = (
+        # Composite unique constraint: same user can have tokens for different providers
+        UniqueConstraint(
+            "provider_user_id", "provider", name="uq_provider_user_provider"
+        ),
     )
 
 

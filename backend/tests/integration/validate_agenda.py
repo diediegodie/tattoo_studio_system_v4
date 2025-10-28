@@ -65,9 +65,10 @@ if __name__ == "__main__":
     if template_ok:
         print("\n🎉 Template validation passed! The agenda page is ready!")
         print("\n📝 Next Steps:")
-        print("   1. Complete Google OAuth flow at http://localhost:5000/auth/google")
+        print("   1. Complete Google OAuth login at http://localhost:5000/")
         print("   2. Visit http://localhost:5000/calendar/ to view the agenda")
-        print("   3. Test sync functionality with real calendar events")
+        print("   3. Connect Google Calendar using the button on the page")
+        print("   4. Test sync functionality with real calendar events")
         print("\n📋 Features implemented:")
         print("   ✅ Frontend page following exact design pattern")
         print("   ✅ Events table with expand/collapse details")

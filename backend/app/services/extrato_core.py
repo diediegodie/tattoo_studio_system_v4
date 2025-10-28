@@ -454,8 +454,6 @@ def calculate_totals(pagamentos_data, sessoes_data, comissoes_data, gastos_data=
         that occurred when both sessions and payments were included. This ensures
         accurate financial reporting based on actual money received.
     """
-    import os
-
     gastos_data = gastos_data or []
 
     # FIXED: Calculate revenue from payments only (actual money received)

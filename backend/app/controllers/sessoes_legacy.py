@@ -13,7 +13,7 @@ from werkzeug.wrappers.response import Response
 logger = logging.getLogger(__name__)
 
 # Import the blueprint from sessoes_controller instead of creating a new one
-from app.controllers.sessoes_controller import sessoes_bp
+from app.controllers.sessoes_controller import sessoes_bp  # noqa: E402
 
 
 # DEPRECATED: Legacy endpoint - use /artist/create instead

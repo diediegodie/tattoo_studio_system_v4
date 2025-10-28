@@ -19,7 +19,7 @@ from app.core.limiter_config import limiter
 logger = logging.getLogger(__name__)
 
 # Import the blueprint from financeiro_controller instead of creating a new one
-from app.controllers.financeiro_controller import financeiro_bp
+from app.controllers.financeiro_controller import financeiro_bp  # noqa: E402
 
 
 @financeiro_bp.route("/api", methods=["GET"])

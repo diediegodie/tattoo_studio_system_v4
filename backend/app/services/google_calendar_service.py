@@ -12,6 +12,7 @@ from app.domain.entities import CalendarEvent
 from app.domain.interfaces import ICalendarService, IGoogleCalendarRepository
 from app.repositories.google_calendar_repo import GoogleCalendarRepository
 from app.services.oauth_token_service import OAuthTokenService
+from app.config.oauth_provider import PROVIDER_GOOGLE_CALENDAR
 
 logger = logging.getLogger(__name__)
 
@@ -101,11 +102,13 @@ class GoogleCalendarService(ICalendarService):
             logger.info(f"DEBUG: Parsed {len(parsed_events)} events to domain entities")
             return parsed_events
 
-        except ExpiredAccessTokenError as e:
+        except ExpiredAccessTokenError:
             logger.info(f"Access token expired for user {user_id}, attempting refresh")
             try:
                 # Refresh the token
-                new_token = self.oauth_service.refresh_access_token(user_id)
+                new_token = self.oauth_service.refresh_access_token(
+                    user_id, PROVIDER_GOOGLE_CALENDAR
+                )
                 if new_token:
                     # Retry the request with new token
                     events_data = self.calendar_repo.fetch_events(
@@ -211,7 +214,7 @@ class GoogleCalendarService(ICalendarService):
 
             return google_event_id
 
-        except ExpiredAccessTokenError as e:
+        except ExpiredAccessTokenError:
             logger.info(
                 f"Access token expired for user {event_details.user_id}, attempting refresh"
             )
@@ -256,7 +259,7 @@ class GoogleCalendarService(ICalendarService):
         Returns:
             True if user is authorized, False otherwise
         """
-        return self.oauth_service.is_token_valid(user_id)
+        return self.oauth_service.is_token_valid(user_id, PROVIDER_GOOGLE_CALENDAR)
 
     def _get_user_access_token(self, user_id: str) -> Optional[str]:
         """
@@ -268,7 +271,9 @@ class GoogleCalendarService(ICalendarService):
         Returns:
             Access token if available, None otherwise
         """
-        return self.oauth_service.get_user_access_token(user_id)
+        return self.oauth_service.get_user_access_token(
+            user_id, PROVIDER_GOOGLE_CALENDAR
+        )
 
     def _parse_events_to_domain(
         self, events_data: List[dict], user_id: str

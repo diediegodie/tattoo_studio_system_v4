@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 
 # Get logger for this module
 logger = logging.getLogger(__name__)
-from flask import (
+from flask import (  # noqa: E402
     Flask,
     abort,
     flash,
@@ -15,24 +15,18 @@ from flask import (
     redirect,
     render_template,
     request,
-    session,
     url_for,
-    current_app,
 )
-from flask_dance.consumer import oauth_authorized
-from flask_dance.contrib.google import make_google_blueprint
-from flask_login import (
+from flask_login import (  # noqa: E402
     LoginManager,
     current_user,
     login_required,
-    login_user,
     logout_user,
 )
-from flask_dance.consumer.storage.sqla import SQLAlchemyStorage
-from sqlalchemy import select, text
 
-# Import OAuth provider constant for consistency across blueprint and queries
-from app.config.oauth_provider import PROVIDER_GOOGLE
+# Import custom OAuth storage to support provider_user_id field
+from app.core.custom_oauth_storage import CustomOAuthStorage  # noqa: E402
+from sqlalchemy import select, text  # noqa: E402
 
 # Load environment variables conditionally
 # Only load from .env when DATABASE_URL is not already defined by the environment
@@ -56,18 +50,28 @@ def _mask_url_password(url: str) -> str:
         return url
 
 
-# Early runtime check for effective DATABASE_URL visibility in logs (Render startup)
-print(">>> DEBUG: DATABASE_URL efetiva:", _mask_url_password(SQLALCHEMY_DATABASE_URL))
+# Early runtime check for effective DATABASE_URL visibility in logs
+print(
+    ">>> DEBUG: DATABASE_URL efetiva:",
+    _mask_url_password(SQLALCHEMY_DATABASE_URL),
+)
 
 # Import engine after environment is finalized
-from app.db.session import engine
+from app.db.session import engine  # noqa: E402
 
-# Create Google OAuth blueprint at module level
-# Flask-Dance setup for Google OAuth at module level (must be before create_app)
-# IMPORTANT: The Google Cloud Console OAuth client must list
-# http://127.0.0.1:5000/auth/google/authorized as an authorized redirect URI.
-# This blueprint is registered with url_prefix="/auth", so the absolute callback
-# will always resolve to /auth/google/authorized locally and in Docker.
+# Import OAuth provider constants for consistency
+from app.config.oauth_provider import (  # noqa: E402
+    PROVIDER_GOOGLE_LOGIN,
+    PROVIDER_GOOGLE_CALENDAR,
+)
+
+# Import blueprint creation functions
+from app.auth.google_login import create_google_login_blueprint  # noqa: E402
+from app.auth.google_calendar import (  # noqa: E402
+    create_google_calendar_blueprint,
+)
+
+# Get Google OAuth credentials
 google_client_id = os.getenv("GOOGLE_CLIENT_ID")
 google_client_secret = os.getenv("GOOGLE_CLIENT_SECRET")
 
@@ -82,189 +86,10 @@ if not google_client_id or not google_client_secret:
         },
     )
 
-google_oauth_bp = make_google_blueprint(
-    client_id=google_client_id,
-    client_secret=google_client_secret,
-    scope=[
-        "email",
-        "profile",
-        "https://www.googleapis.com/auth/calendar.readonly",
-        "https://www.googleapis.com/auth/calendar.events",
-    ],
-    redirect_url="/auth/google/authorized",
-    # Request offline access to get refresh tokens
-    offline=True,
-    # Force consent to ensure refresh tokens are provided
-    reprompt_consent=True,
-)
-# Set unique name immediately to avoid conflicts - use constant for consistency
-google_oauth_bp.name = PROVIDER_GOOGLE
-# Note: Storage backend will be configured in create_app() to avoid circular imports
+# NOTE: OAuth blueprints are now created inside create_app() to pass storage
+# This ensures Flask-Dance uses CustomOAuthStorage during OAuth callbacks
 
-
-# OAuth authorized handler - must be at module level
-@oauth_authorized.connect_via(google_oauth_bp)
-def google_logged_in(blueprint, token):
-    import logging
-
-    logger = logging.getLogger(__name__)
-
-    # Diagnostic: Log OAuth callback details (no secrets)
-    logger.debug(
-        "OAuth callback triggered",
-        extra={
-            "context": {
-                "provider": blueprint.name,
-                "has_token": bool(token),
-                "token_keys": list(token.keys()) if isinstance(token, dict) else [],
-            }
-        },
-    )
-
-    if not token:
-        flash("Falha ao fazer login com Google.", category="error")
-        return redirect(url_for("login_page"))
-
-    logger.debug(
-        "OAuth token received",
-        extra={"context": {"token_type": str(type(token).__name__)}},
-    )
-
-    resp = blueprint.session.get("/oauth2/v2/userinfo")
-    if not resp.ok:
-        flash("Falha ao buscar informações do usuário do Google.", category="error")
-        return redirect(url_for("login_page"))
-
-    google_info = resp.json()
-    google_user_id = str(google_info["id"])
-    google_email = google_info.get("email", "")
-    logger.info(
-        "Google user authenticated",
-        extra={
-            "context": {
-                "google_user_id": google_user_id,
-                "email": google_email,
-            }
-        },
-    )
-
-    # Diagnostic: Log candidate user email for correlation
-    logger.debug(
-        "OAuth callback processing",
-        extra={
-            "context": {
-                "provider": blueprint.name,
-                "candidate_user_email": google_email,
-            }
-        },
-    )
-
-    from app.core.security import create_user_token
-    from app.db.session import SessionLocal
-    from app.repositories.user_repo import UserRepository
-    from app.services.oauth_token_service import OAuthTokenService
-    from app.services.user_service import UserService
-
-    db = SessionLocal()
-    try:
-        repo = UserRepository(db)
-        service = UserService(repo)
-        oauth_service = OAuthTokenService()
-
-        # Create or update user from Google info (ensures user exists in database)
-        service.create_or_update_from_google(google_info)
-
-        # Get database user for Flask-Login
-        print(">>> DEBUG: Looking up user by google_id:", google_user_id)
-        db_user = repo.get_db_by_google_id(google_user_id)
-        if not db_user:
-            # Fallback: try by email
-            db_user = repo.get_db_by_email(google_info.get("email"))
-
-        if not db_user:
-            flash("Erro ao processar login: usuário não encontrado.", category="error")
-            return redirect(url_for("login_page"))
-
-        logger.debug(
-            "Database user found",
-            extra={"context": {"user_id": db_user.id, "email": db_user.email}},
-        )
-
-        # Save OAuth token for Google Calendar access
-        # Garante que o token é sempre um dict JSON
-        import json
-
-        token_to_save = token
-        if isinstance(token, str):
-            try:
-                token_to_save = json.loads(token)
-            except Exception:
-                print(
-                    f">>> DEBUG: token recebido como string não pôde ser convertido: {token}"
-                )
-
-        # Enhanced debug output
-        print(f">>> DEBUG: [main.py] token type before store: {type(token_to_save)}")
-        print(f">>> DEBUG: [main.py] token is dict: {isinstance(token_to_save, dict)}")
-        if isinstance(token_to_save, dict):
-            print(f">>> DEBUG: [main.py] token keys: {list(token_to_save.keys())}")
-            print(
-                f">>> DEBUG: [main.py] has access_token: {'access_token' in token_to_save}"
-            )
-
-        # NOTE: Manual token storage REMOVED - Flask-Dance SQLAlchemyStorage handles this automatically
-        # The token is already stored by Flask-Dance's storage backend before this handler is called
-        # See: SQLAlchemyStorage.set() is called by the OAuth blueprint after successful authentication
-        logger.info(
-            "OAuth token stored automatically by Flask-Dance",
-            extra={
-                "context": {
-                    "user_id": db_user.id,
-                    "provider": "google",
-                    "provider_user_id": google_user_id,
-                }
-            },
-        )
-
-        # Create JWT token for API access
-        jwt_token = create_user_token(getattr(db_user, "id"), getattr(db_user, "email"))
-
-        login_user(db_user)  # Use database model for Flask-Login
-        flash(f"Bem-vindo, {db_user.name}!", category="success")
-
-        # Determine where to redirect based on the OAuth purpose
-        purpose = session.pop("oauth_purpose", None)  # Get and remove the purpose flag
-
-        if purpose == "calendar_sync":
-            next_url = url_for("calendar.calendar_page")  # Go back to calendar
-        else:
-            next_url = url_for("index")  # Default for general login
-
-        # After successful OAuth login, redirect user to the appropriate page
-        response = redirect(next_url)
-
-        # Use global cookie config for secure flag (production vs development)
-        secure_flag = current_app.config.get("SESSION_COOKIE_SECURE", False)
-        response.set_cookie(
-            "access_token",
-            jwt_token,
-            max_age=604800,  # 7 days (increased from 24 hours)
-            httponly=True,
-            secure=secure_flag,
-            samesite="Lax",
-        )
-        return response
-    except Exception as e:
-        # Rollback in case repository/service raised after partial changes
-        logger.exception(
-            "OAuth callback failed",
-            extra={"context": {"error": str(e)}},
-        )
-        db.rollback()
-        flash("Erro interno durante o login.", category="error")
-        return redirect(url_for("login_page"))
-    finally:
-        db.close()
+# Signal handlers are defined in the blueprint creation functions
 
 
 def test_database_connection():
@@ -282,7 +107,7 @@ def test_database_connection():
         return False
 
 
-def create_app():
+def create_app():  # noqa: C901
     # Calculate paths based on the actual file system structure
     script_dir = os.path.dirname(
         os.path.abspath(__file__)
@@ -540,12 +365,13 @@ def create_app():
     csrf.init_app(app)
 
     # CSRF Configuration
-    app.config["WTF_CSRF_TIME_LIMIT"] = None  # Tokens don't expire (better UX)
-    app.config["WTF_CSRF_SSL_STRICT"] = is_production  # Require HTTPS in production
-    app.config["WTF_CSRF_ENABLED"] = True  # Explicitly enable (default, but clear)
+    app.config["WTF_CSRF_TIME_LIMIT"] = None  # Tokens don't expire
+    app.config["WTF_CSRF_SSL_STRICT"] = is_production  # HTTPS in prod
+    app.config["WTF_CSRF_ENABLED"] = True  # Explicitly enable
 
     # HTTPS Enforcement with Talisman (Task 3 & 7 - Production Security)
-    # Force HTTPS, add HSTS, XFO, XCTO, CSP, Referrer-Policy, and Permissions-Policy headers
+    # Force HTTPS, add HSTS, XFO, XCTO, CSP, Referrer-Policy,
+    # and Permissions-Policy headers
     if is_production:
         from flask_talisman import Talisman
 
@@ -557,7 +383,7 @@ def create_app():
         }
 
         # Initialize Talisman with most headers
-        talisman = Talisman(
+        Talisman(
             app,
             # Content Security Policy
             content_security_policy=csp,
@@ -598,8 +424,8 @@ def create_app():
 
         app.wsgi_app = permissions_policy_middleware
 
-    # Surface DATABASE_URL in Flask config so other components (e.g., JSON vs JSONB chooser)
-    # can correctly infer the active dialect. This also helps debugging.
+    # Surface DATABASE_URL in Flask config
+    # Allows other components (e.g., JSON vs JSONB) to infer dialect
     app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL", "")
     app.config["GOOGLE_OAUTH_CLIENT_ID"] = os.getenv("GOOGLE_CLIENT_ID")
     app.config["GOOGLE_OAUTH_CLIENT_SECRET"] = os.getenv("GOOGLE_CLIENT_SECRET")
@@ -640,8 +466,9 @@ def create_app():
             exc_info=True,
         )
 
-    # If primary DB is unreachable (e.g., Postgres password mismatch or container not ready),
-    # provide a development-friendly fallback to the local SQLite DB to avoid blocking login/UI.
+    # If primary DB is unreachable (e.g., Postgres password mismatch or
+    # container not ready), provide a development-friendly fallback to the
+    # local SQLite DB to avoid blocking login/UI.
     if not test_database_connection():
         if not is_production:
             try:
@@ -751,7 +578,8 @@ def create_app():
 
     @app.route("/auth/login")
     def google_login():
-        return redirect(url_for(f"{PROVIDER_GOOGLE}.login"))
+        """Redirect to Google Login blueprint"""
+        return redirect(url_for(f"{PROVIDER_GOOGLE_LOGIN}.login"))
 
     @app.route("/logout")
     @login_required
@@ -830,7 +658,9 @@ def create_app():
             initial_mes="",
             initial_ano="",
             bootstrap_extrato=None,
-            bootstrap_message="Selecione o mês e o ano para visualizar o extrato mensal.",
+            bootstrap_message=(
+                "Selecione o mês e o ano para visualizar o extrato mensal."
+            ),
             bootstrap_state="info",
         )
 
@@ -975,7 +805,9 @@ def create_app():
             # Get pool status string and parse it
             status_str = pool.status()
 
-            # Parse the status string (format: "Pool size: X  Connections in pool: Y Current Overflow: Z Current Checked out connections: W")
+            # Parse the status string
+            # Format: "Pool size: X  Connections in pool: Y
+            #          Current Overflow: Z Current Checked out connections: W"
             # Use Dict[str, Union[str, int, float]] to allow mixed types
             from typing import Dict, Union
 
@@ -1055,11 +887,17 @@ def create_app():
             Security: This route is NOT registered in production (ENV=production)
             """
             logger.warning(
-                "Sentry test route triggered - this should appear in Sentry",
-                extra={"context": {"route": "/__sentry-test", "purpose": "testing"}},
+                "Sentry test route triggered",
+                extra={
+                    "context": {
+                        "route": "/__sentry-test",
+                        "purpose": "testing",
+                    }
+                },
             )
             raise RuntimeError(
-                "Sentry test exception - if you see this in Sentry, integration is working!"
+                "Sentry test exception - if you see this in Sentry, "
+                "integration is working!"
             )
 
     @app.route("/db-test")
@@ -1148,7 +986,10 @@ def create_app():
                             {"provider": p, "count": c} for p, c in counts
                         ],
                         "total_records": sum(c for _, c in counts),
-                        "expected_provider": PROVIDER_GOOGLE,
+                        "expected_providers": [
+                            PROVIDER_GOOGLE_LOGIN,
+                            PROVIDER_GOOGLE_CALENDAR,
+                        ],
                         "sample_records": samples,
                     }
                 )
@@ -1192,37 +1033,129 @@ def create_app():
     app.register_blueprint(admin_extrato_bp)
     app.register_blueprint(reports_bp)
 
-    # CRITICAL FIX: Configure SQLAlchemy storage for Flask-Dance BEFORE registering blueprint
-    # This ensures OAuth tokens are stored in the database using our OAuth model with JSONB
-    # Without this, Flask-Dance uses default SessionStorage which serializes tokens as strings
-    from app.db.base import OAuth
-    from app.db.session import SessionLocal
+    # CRITICAL FIX: Configure SQLAlchemy storage for Flask-Dance
+    # BEFORE registering blueprint. This ensures OAuth tokens are stored
+    # in the database using our OAuth model with JSONB. Without this,
+    # Flask-Dance uses default SessionStorage (serializes tokens as strings)
+    from app.db.base import OAuth  # noqa: E402
+    from app.db.session import SessionLocal  # noqa: E402
 
-    print(">>> DEBUG: [create_app] Configuring Flask-Dance SQLAlchemy storage")
-    google_oauth_bp.storage = SQLAlchemyStorage(
+    print(
+        ">>> DEBUG: [create_app] Configuring Flask-Dance SQLAlchemy "
+        "storage for both blueprints"
+    )
+
+    # ✅ CRITICAL FIX: Create blueprints WITH storage passed during creation
+    # Previously, blueprints were created at module level and storage
+    # assigned afterwards. This caused Flask-Dance to use default storage
+    # (MemoryStorage) during OAuth callbacks. Now we create blueprints here
+    # and pass CustomOAuthStorage during make_google_blueprint()
+
+    # Create CustomOAuthStorage instances for both blueprints
+    google_login_storage = CustomOAuthStorage(
         OAuth,
         SessionLocal,  # ✅ Pass the factory function, NOT SessionLocal()
         user=lambda: current_user,
-        user_required=False,  # Allow tokens without Flask-Login user (we handle manually)
+        # Allow tokens without Flask-Login user (we handle manually)
+        user_required=False,
     )
-    print(">>> DEBUG: google_oauth_bp.storage =", type(google_oauth_bp.storage))
-    print(">>> DEBUG: [create_app] Flask-Dance storage configured successfully")
 
-    # Diagnostic: Log OAuth blueprint configuration for debugging
+    google_calendar_storage = CustomOAuthStorage(
+        OAuth,
+        SessionLocal,  # ✅ Pass the factory function, NOT SessionLocal()
+        user=lambda: current_user,
+        # Require authenticated user for calendar authorization
+        user_required=True,
+    )
+
+    # Create Google Login Blueprint with storage passed during creation
+    google_login_bp = create_google_login_blueprint(
+        client_id=os.getenv("GOOGLE_CLIENT_ID"),
+        client_secret=os.getenv("GOOGLE_CLIENT_SECRET"),
+        redirect_url=("http://127.0.0.1:5000/auth/google_login/google/authorized"),
+        storage=google_login_storage,  # ✅ Pass storage here, not afterwards
+    )
+    print(">>> DEBUG: google_login_bp.storage =", type(google_login_bp.storage))
+
+    # Create Google Calendar Blueprint with storage passed during creation
+    google_calendar_bp = create_google_calendar_blueprint(
+        client_id=os.getenv("GOOGLE_CLIENT_ID"),
+        client_secret=os.getenv("GOOGLE_CLIENT_SECRET"),
+        redirect_url=(
+            "http://127.0.0.1:5000/auth/calendar/google_calendar/" "google/authorized"
+        ),
+        storage=google_calendar_storage,  # ✅ Pass storage here
+    )
+    print(
+        ">>> DEBUG: google_calendar_bp.storage =",
+        type(google_calendar_bp.storage),
+    )
+    print(
+        ">>> DEBUG: [create_app] Flask-Dance storage configured "
+        "successfully for both blueprints"
+    )
+
+    # Diagnostic: Log OAuth blueprint configurations for debugging
     logger.info(
-        "Google OAuth blueprint configured",
+        "Google Login blueprint configured",
         extra={
             "context": {
-                "blueprint_name": google_oauth_bp.name,
-                "provider": PROVIDER_GOOGLE,
-                "storage_type": type(google_oauth_bp.storage).__name__,
+                "blueprint_name": google_login_bp.name,
+                "provider": PROVIDER_GOOGLE_LOGIN,
+                "storage_type": type(google_login_bp.storage).__name__,
                 "user_required": False,
+                "scopes": ["openid", "email", "profile"],
             }
         },
     )
 
-    # Register OAuth blueprint - name already set at creation
-    app.register_blueprint(google_oauth_bp, url_prefix="/auth")
+    logger.info(
+        "Google Calendar blueprint configured",
+        extra={
+            "context": {
+                "blueprint_name": google_calendar_bp.name,
+                "provider": PROVIDER_GOOGLE_CALENDAR,
+                "storage_type": type(google_calendar_bp.storage).__name__,
+                "user_required": True,
+                "scopes": [
+                    "https://www.googleapis.com/auth/calendar.readonly",
+                    "https://www.googleapis.com/auth/calendar.events",
+                ],
+            }
+        },
+    )
+
+    # Register both OAuth blueprints with url_prefix
+    # Flask-Dance creates /google routes, so we prefix them
+    app.register_blueprint(google_login_bp, url_prefix="/auth/google_login")
+    logger.info(
+        "Google Login blueprint registered",
+        extra={
+            "context": {
+                "blueprint_name": google_login_bp.name,
+                "provider": PROVIDER_GOOGLE_LOGIN,
+                "url_prefix": "/auth/google_login",
+                "login_route": "/auth/google_login/google",
+                "callback_route": ("/auth/google_login/google/authorized"),
+            }
+        },
+    )
+
+    app.register_blueprint(
+        google_calendar_bp, url_prefix="/auth/calendar/google_calendar"
+    )
+    logger.info(
+        "Google Calendar blueprint registered",
+        extra={
+            "context": {
+                "blueprint_name": google_calendar_bp.name,
+                "provider": PROVIDER_GOOGLE_CALENDAR,
+                "url_prefix": "/auth/calendar/google_calendar",
+                "login_route": "/auth/calendar/google_calendar/google",
+                "callback_route": ("/auth/calendar/google_calendar/google/authorized"),
+            }
+        },
+    )
 
     # Register template helper functions
     from app.utils.template_helpers import (
@@ -1262,7 +1195,12 @@ def create_app():
             logger.info("Starting background token refresh for all users")
             try:
                 with SessionLocal() as db:
-                    stmt = select(OAuth).where(OAuth.provider == PROVIDER_GOOGLE)
+                    # Query both login and calendar tokens
+                    stmt = select(OAuth).where(
+                        OAuth.provider.in_(
+                            [PROVIDER_GOOGLE_LOGIN, PROVIDER_GOOGLE_CALENDAR]
+                        )
+                    )
                     oauth_records = db.execute(stmt).scalars().all()
                     refreshed_count = 0
                     failed_count = 0
@@ -1275,22 +1213,23 @@ def create_app():
                             if new_token:
                                 refreshed_count += 1
                                 logger.info(
-                                    f"Token atualizado com sucesso para o usuário {user_id}"
+                                    "Token atualizado com sucesso "
+                                    f"para o usuário {user_id}"
                                 )
                             else:
                                 failed_count += 1
                                 logger.warning(
-                                    f"Failed to refresh token for user {user_id}"
+                                    f"Failed to refresh token " f"for user {user_id}"
                                 )
                         except Exception as e:
                             failed_count += 1
                             logger.error(
-                                f"Error refreshing token for user "
+                                "Error refreshing token for user "
                                 f"{oauth_record.user_id}: {str(e)}"
                             )
 
                     logger.info(
-                        f"Background token refresh completed: "
+                        "Background token refresh completed: "
                         f"{refreshed_count} successful, {failed_count} failed"
                     )
 

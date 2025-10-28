@@ -17,6 +17,19 @@
                         <h1>Eventos (Google)</h1>
                     </header>
 
+                    <!-- Calendar Connection Status -->
+                    {% if not calendar_connected %}
+                    <div class="box"
+                        style="background-color: #fff3cd; border-left: 4px solid #ffc107; margin-bottom: 2em;">
+                        <p><strong>⚠️ Google Calendar não conectado</strong></p>
+                        <p>Para visualizar e sincronizar seus eventos do Google Calendar, você precisa autorizar o
+                            acesso.</p>
+                        <a href="{{ url_for('google_calendar.login') }}" class="button primary">
+                            🔗 Conectar Google Calendar
+                        </a>
+                    </div>
+                    {% endif %}
+
                     <!-- Sync Button -->
                     <a href="{{ url_for('calendar.sync_events') }}" class="sync-button">
                         Sincronizar com Google Agenda
@@ -116,7 +129,8 @@
                         <h3>Nenhum evento encontrado</h3>
                         <p>Clique em "Sincronizar com Google Agenda" para buscar novos eventos.</p>
                         {% if not calendar_connected %}
-                        <p><a href="{{ url_for('google_login') }}">Conectar com Google Calendar</a></p>
+                        <p><a href="{{ url_for('google_calendar.login') }}" class="button primary">🔗 Conectar com
+                                Google Calendar</a></p>
                         {% endif %}
                     </div>
                     {% endif %}

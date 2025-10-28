@@ -14,15 +14,24 @@ This file imports all fixtures to maintain backward compatibility.
 """
 
 from .integration_app_fixtures import app, client, runner
-from .integration_auth_fixtures import (auth_headers, authenticated_client,
-                                        mock_authenticated_user)
-from .integration_data_fixtures import (mock_jotform_response,
-                                        sample_appointment_data,
-                                        sample_client_data)
+from .integration_auth_fixtures import (
+    auth_headers,
+    authenticated_client,
+    mock_authenticated_user,
+)
+from .integration_data_fixtures import (
+    mock_jotform_response,
+    sample_appointment_data,
+    sample_client_data,
+)
+
 # Import all fixtures from split modules
-from .integration_database_fixtures import (database_transaction_isolator,
-                                            db_session, test_database)
-from .integration_test_utils import FlaskTestResponse
+from .integration_database_fixtures import (
+    database_transaction_isolator,
+    db_session,
+    test_database,
+)
+from .integration_test_utils import FlaskTestResponse, response_helper
 
 # Re-export all fixtures and utilities for pytest discovery
 __all__ = [
@@ -39,4 +48,5 @@ __all__ = [
     "mock_jotform_response",
     "database_transaction_isolator",
     "FlaskTestResponse",
+    "response_helper",
 ]

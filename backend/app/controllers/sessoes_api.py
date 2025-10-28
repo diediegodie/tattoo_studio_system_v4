@@ -20,7 +20,7 @@ from app.core.limiter_config import limiter
 logger = logging.getLogger(__name__)
 
 # Import the blueprint from sessoes_controller instead of creating a new one
-from app.controllers.sessoes_controller import sessoes_bp
+from app.controllers.sessoes_controller import sessoes_bp  # noqa: E402
 
 
 @sessoes_bp.route("/api", methods=["GET"])
@@ -30,10 +30,7 @@ def api_list_sessoes():
     """Return JSON array of sessions."""
     db = None
     try:
-        from app.db.session import SessionLocal
-
         db = SessionLocal()
-        from sqlalchemy.orm import joinedload
 
         sessoes = (
             db.query(Sessao)
@@ -76,8 +73,6 @@ def api_list_sessoes():
 def api_get_sessao(sessao_id: int):
     db = None
     try:
-        from app.db.session import SessionLocal
-
         db = SessionLocal()
         s = db.get(Sessao, sessao_id)
         if not s:
@@ -114,8 +109,6 @@ def api_get_sessao(sessao_id: int):
 def api_update_sessao(sessao_id: int):
     db = None
     try:
-        from app.db.session import SessionLocal
-
         db = SessionLocal()
         if not request.is_json:
             return api_response(False, "Expected JSON payload", None, 400)
@@ -192,8 +185,6 @@ def api_update_sessao(sessao_id: int):
 def api_delete_sessao(sessao_id: int):
     db = None
     try:
-        from app.db.session import SessionLocal
-
         db = SessionLocal()
 
         s = (
@@ -207,7 +198,7 @@ def api_delete_sessao(sessao_id: int):
         try:
             db.delete(s)
             db.commit()
-        except Exception as e:
+        except Exception:
             db.rollback()
             return api_response(False, "Falha ao excluir sessão", None, 400)
 

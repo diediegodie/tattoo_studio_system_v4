@@ -8,6 +8,7 @@ and other testing infrastructure.
 from datetime import datetime, timezone
 
 import pytest
+
 # Set up test environment paths
 from tests.config.test_paths import setup_test_environment
 
@@ -52,3 +53,9 @@ class FlaskTestResponse:
         if expected_location:
             assert expected_location in response.location
         return response.location
+
+
+@pytest.fixture
+def response_helper():
+    """Provide FlaskTestResponse helper for tests."""
+    return FlaskTestResponse()

@@ -18,13 +18,13 @@ def api_response(
     return jsonify({"success": success, "message": message, "data": data}), status_code
 
 
-from app.core.csrf_config import csrf
-from app.db.session import SessionLocal
-from app.domain.entities import InventoryItem
-from app.repositories.inventory_repository import InventoryRepository
-from app.services.inventory_service import InventoryService
-from flask_login import current_user, login_required
-from app.core.limiter_config import limiter
+from app.core.csrf_config import csrf  # noqa: E402
+from app.db.session import SessionLocal  # noqa: E402
+from app.domain.entities import InventoryItem  # noqa: E402
+from app.repositories.inventory_repository import InventoryRepository  # noqa: E402
+from app.services.inventory_service import InventoryService  # noqa: E402
+from flask_login import current_user, login_required  # noqa: E402
+from app.core.limiter_config import limiter  # noqa: E402
 
 inventory_bp = Blueprint("inventory", __name__, url_prefix="/inventory")
 

@@ -20,4 +20,4 @@ from werkzeug.wrappers import Response
 logger = logging.getLogger(__name__)
 
 # Import the blueprint from financeiro_controller instead of creating a new one
-from app.controllers.financeiro_controller import financeiro_bp
+from app.controllers.financeiro_controller import financeiro_bp  # noqa: E402
