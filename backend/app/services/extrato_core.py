@@ -983,12 +983,13 @@ def current_month_range():
 def __getattr__(name: str):
     """
     Module-level attribute access to provide dynamic references.
-    
+
     This ensures that `extrato_core.APP_TZ` always returns the current
     `config.APP_TZ` object, maintaining object identity for tests and
     avoiding stale references from module import time.
     """
     if name == "APP_TZ":
         from app.core import config  # local import to avoid import-order issues
+
         return config.APP_TZ
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
