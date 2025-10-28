@@ -3,6 +3,7 @@ Example protected routes demonstrating JWT authentication decorators.
 These routes show different authentication patterns.
 """
 
+import logging
 from app.core.auth_decorators import get_current_user, jwt_required
 from flask import (
     Blueprint,
@@ -16,6 +17,8 @@ from flask import (
 from flask_login import current_user, login_required, logout_user
 from app.core.csrf_config import csrf
 from app.core.limiter_config import limiter
+
+logger = logging.getLogger(__name__)
 
 # Create a blueprint for API routes
 api_bp = Blueprint("api", __name__, url_prefix="/api")
@@ -201,3 +204,210 @@ def forbidden(error):
 def api_docs():
     """API Documentation page."""
     return render_template("api_docs.html")
+
+
+@csrf.exempt
+@limiter.limit("10 per minute")
+@api_bp.route("/extrato/generate", methods=["POST"])
+@login_required
+def generate_extrato_manual():
+    """
+    Manually trigger extrato generation (admin only).
+
+    This endpoint allows administrators to manually trigger the monthly extrato
+    generation process. It uses the atomic transaction function with backup
+    verification to ensure data integrity.
+
+    Request body (JSON):
+    - month: Month (1-12) - optional, defaults to previous month
+    - year: Year (YYYY) - optional, defaults to previous month
+    - force: Boolean - whether to force regeneration if extrato already exists
+
+    Returns:
+        JSON response with success status and message
+
+    Status codes:
+        200: Success
+        403: Forbidden (user is not admin)
+        400: Bad request (invalid parameters)
+        500: Internal server error
+
+    Example:
+        POST /api/extrato/generate
+        {
+            "month": 1,
+            "year": 2025,
+            "force": false
+        }
+    """
+    # Check if user is admin
+    if (
+        not current_user.is_authenticated
+        or not hasattr(current_user, "role")
+        or current_user.role != "admin"
+    ):
+        logger.warning(
+            "Unauthorized extrato generation attempt",
+            extra={
+                "context": {
+                    "job": "manual_extrato_generation",
+                    "user_id": getattr(current_user, "id", None),
+                    "user_role": getattr(current_user, "role", None),
+                    "status": "forbidden",
+                }
+            },
+        )
+        return jsonify({"success": False, "error": "Admin access required"}), 403
+
+    try:
+        # Parse request body
+        data = request.get_json() or {}
+        month = data.get("month")
+        year = data.get("year")
+        force = data.get("force", False)
+
+        # Validate parameters if provided
+        if month is not None:
+            if not isinstance(month, int) or month < 1 or month > 12:
+                return (
+                    jsonify(
+                        {
+                            "success": False,
+                            "error": "Month must be an integer between 1 and 12",
+                        }
+                    ),
+                    400,
+                )
+
+        if year is not None:
+            if not isinstance(year, int) or year < 2000 or year > 2100:
+                return (
+                    jsonify(
+                        {
+                            "success": False,
+                            "error": "Year must be an integer between 2000 and 2100",
+                        }
+                    ),
+                    400,
+                )
+
+        if not isinstance(force, bool):
+            return jsonify({"success": False, "error": "Force must be a boolean"}), 400
+
+        # Log the attempt
+        logger.info(
+            "Manual extrato generation triggered",
+            extra={
+                "context": {
+                    "job": "manual_extrato_generation",
+                    "user_id": current_user.id,
+                    "user_email": current_user.email,
+                    "month": month,
+                    "year": year,
+                    "force": force,
+                    "status": "started",
+                }
+            },
+        )
+
+        # Import and call the atomic function
+        from app.services.extrato_atomic import (
+            check_and_generate_extrato_with_transaction,
+        )
+
+        # Call the atomic function (handles defaults, backup verification, etc.)
+        # Note: Function expects mes/ano (Portuguese) but API uses month/year (English)
+        success = check_and_generate_extrato_with_transaction(
+            mes=month, ano=year, force=force
+        )
+
+        if success:
+            # Determine actual month/year used (in case defaults were applied)
+            if month is None or year is None:
+                from app.services.extrato_core import get_previous_month
+
+                actual_month, actual_year = get_previous_month()
+            else:
+                actual_month, actual_year = month, year
+
+            logger.info(
+                "Manual extrato generation completed successfully",
+                extra={
+                    "context": {
+                        "job": "manual_extrato_generation",
+                        "user_id": current_user.id,
+                        "month": actual_month,
+                        "year": actual_year,
+                        "force": force,
+                        "status": "success",
+                    }
+                },
+            )
+
+            return (
+                jsonify(
+                    {
+                        "success": True,
+                        "message": f"Extrato generated successfully for {actual_month:02d}/{actual_year}",
+                        "data": {
+                            "month": actual_month,
+                            "year": actual_year,
+                            "force": force,
+                        },
+                    }
+                ),
+                200,
+            )
+        else:
+            # Function returned False (could be due to backup failure, existing extrato, etc.)
+            logger.error(
+                "Manual extrato generation failed",
+                extra={
+                    "context": {
+                        "job": "manual_extrato_generation",
+                        "user_id": current_user.id,
+                        "month": month,
+                        "year": year,
+                        "force": force,
+                        "status": "failed",
+                        "reason": "check_and_generate_extrato_with_transaction returned False",
+                    }
+                },
+            )
+
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": "Extrato generation failed. Check server logs for details.",
+                    }
+                ),
+                500,
+            )
+
+    except Exception as e:
+        # Handle unexpected errors
+        # Safely extract request data for logging (if it exists)
+        request_data = request.get_json(silent=True) or {}
+        month = request_data.get("month")
+        year = request_data.get("year")
+
+        logger.error(
+            "Error in manual extrato generation endpoint",
+            extra={
+                "context": {
+                    "job": "manual_extrato_generation",
+                    "user_id": current_user.id,
+                    "month": month,
+                    "year": year,
+                    "status": "error",
+                    "error_message": str(e),
+                }
+            },
+            exc_info=True,
+        )
+
+        return (
+            jsonify({"success": False, "error": f"Internal server error: {str(e)}"}),
+            500,
+        )

@@ -21,10 +21,11 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 from app.services.backup_service import BackupService
-from app.services.extrato_atomic import \
-    check_and_generate_extrato_with_transaction
-from app.services.extrato_core import (delete_historical_records_atomic,
-                                       verify_backup_before_transfer)
+from app.services.extrato_atomic import check_and_generate_extrato_with_transaction
+from app.services.extrato_core import (
+    delete_historical_records_atomic,
+    verify_backup_before_transfer,
+)
 
 
 def setup_test_logging(verbose=False):
@@ -166,8 +167,10 @@ def test_batch_processing_integration(logger):
     logger.info("=== Testing Batch Processing Integration ===")
 
     try:
-        from app.services.extrato_batch import (get_batch_size,
-                                                process_records_in_batches)
+        from app.services.extrato_batch import (
+            get_batch_size,
+            process_records_in_batches,
+        )
 
         # Test batch size configuration
         batch_size = get_batch_size()
@@ -216,8 +219,7 @@ def run_health_check(logger):
         logger.info("✓ Backup service is available")
 
         # Test extrato service imports
-        from app.services.extrato_atomic import \
-            generate_extrato_with_atomic_transaction
+        from app.services.extrato_atomic import generate_extrato_with_atomic_transaction
 
         health_status["extrato_service"] = True
         logger.info("✓ Extrato service is available")
@@ -244,6 +246,57 @@ def run_health_check(logger):
         logger.error(f"Health check failed: {str(e)}")
         health_status["overall_health"] = "ERROR"
         return health_status
+
+
+def test_backup_toggle_integration(logger):
+    """
+    Test backup toggle in integration environment.
+
+    Tests both strict and flexible modes to ensure EXTRATO_REQUIRE_BACKUP
+    works correctly in real environment.
+    """
+    from unittest.mock import patch
+    import importlib
+    from app.core import config
+
+    logger.info("=== Testing Backup Toggle Integration ===")
+
+    try:
+        # Test strict mode (default)
+        logger.info("Testing STRICT mode (EXTRATO_REQUIRE_BACKUP=true)")
+        with patch.dict(os.environ, {"EXTRATO_REQUIRE_BACKUP": "true"}):
+            importlib.reload(config)
+
+            # Try to verify backup (may or may not exist)
+            result = verify_backup_before_transfer(2025, 10)
+
+            logger.info(f"Strict mode result: {result}")
+            # In strict mode: True if backup exists, False if missing
+            # Both outcomes are valid depending on actual backup state
+
+        # Test flexible mode
+        logger.info("Testing FLEXIBLE mode (EXTRATO_REQUIRE_BACKUP=false)")
+        with patch.dict(os.environ, {"EXTRATO_REQUIRE_BACKUP": "false"}):
+            importlib.reload(config)
+
+            # Verify backup (should always return True in flexible mode)
+            result = verify_backup_before_transfer(2025, 10)
+
+            if result is True:
+                logger.info("✓ Flexible mode allows execution as expected")
+            else:
+                logger.error("✗ Flexible mode should always return True")
+                return False
+
+        # Reload config to restore default
+        importlib.reload(config)
+
+        logger.info("✓ Backup toggle integration test passed")
+        return True
+
+    except Exception as e:
+        logger.error(f"Backup toggle integration test failed: {str(e)}")
+        return False
 
 
 def main():
@@ -297,15 +350,19 @@ def main():
         if not test_backup_verification_integration(logger):
             success = False
 
-        # Test 2: Atomic transaction flow
+        # Test 2: Backup toggle (Task 3)
+        if not test_backup_toggle_integration(logger):
+            success = False
+
+        # Test 3: Atomic transaction flow
         if not test_atomic_transaction_flow(logger, args.dry_run):
             success = False
 
-        # Test 3: Deletion function
+        # Test 4: Deletion function
         if not test_deletion_function_integration(logger):
             success = False
 
-        # Test 4: Batch processing
+        # Test 5: Batch processing
         if not test_batch_processing_integration(logger):
             success = False
 

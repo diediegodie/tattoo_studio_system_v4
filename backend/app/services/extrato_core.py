@@ -14,6 +14,7 @@ from datetime import datetime, timedelta, timezone
 from logging.handlers import RotatingFileHandler
 from typing import Any, Iterable, List, Optional, Tuple
 
+from app.core.config import APP_TZ
 from app.db.base import (
     Client,
     Comissao,
@@ -67,28 +68,57 @@ logger.setLevel(logging.INFO)
 
 
 def get_previous_month():
-    """Get the previous month and year."""
-    today = datetime.now()
+    """
+    Get the previous month and year using the application's configured timezone.
+
+    Returns:
+        tuple: (month, year) of the previous month
+
+    Note:
+        Uses APP_TZ from core.config to ensure timezone consistency.
+        This prevents issues with month boundaries in different timezones.
+    """
+    today = datetime.now(APP_TZ)
     first_day_this_month = today.replace(day=1)
     last_day_prev_month = first_day_this_month - timedelta(days=1)
     return last_day_prev_month.month, last_day_prev_month.year
 
 
 def should_run_monthly_extrato(min_day_threshold: int = 2) -> bool:
-    """Determine if the scheduled monthly extrato job should run.
+    """
+    Determine if the scheduled monthly extrato job should run.
 
-    Skips execution if we are still within the first couple of days of the month
-    (allowing late data entry) or if a successful run for the target month already
-    exists in the log table. Falls back to running if any unexpected error occurs
-    while checking the database to avoid blocking the job.
+    Skips execution if we are still before the minimum day threshold
+    or if a successful run for the target month already exists in the log table.
+    Falls back to running if any unexpected error occurs while checking the
+    database to avoid blocking the job.
+
+    Args:
+        min_day_threshold: Minimum day of month to allow execution (default: 2).
+                          Set to 2 to allow 1-day buffer for EoM data ingestion.
+                          Job is scheduled for day 1 at 02:00, but respects this
+                          threshold for data completeness.
+
+    Returns:
+        bool: True if the job should run, False otherwise
+
+    Note:
+        Uses APP_TZ from core.config to ensure timezone consistency.
     """
 
-    today = datetime.now()
+    today = datetime.now(APP_TZ)
 
     if today.day < min_day_threshold:
         logger.info(
             "Monthly extrato generation skipped - waiting until day %s of the month",
             min_day_threshold,
+            extra={
+                "context": {
+                    "current_day": today.day,
+                    "threshold": min_day_threshold,
+                    "timezone": str(APP_TZ),
+                }
+            },
         )
         return False
 
@@ -634,14 +664,34 @@ def verify_backup_before_transfer(year: int, month: int) -> bool:
     """
     Verify that a backup exists and is valid before proceeding with data transfer.
 
+    Behavior is controlled by EXTRATO_REQUIRE_BACKUP environment variable:
+    - If True (default): Backup is REQUIRED, returns False if missing (blocks execution)
+    - If False: Backup is OPTIONAL, returns True even if missing (warning only)
+
     Args:
         year: Year of the backup to verify
         month: Month of the backup to verify
 
     Returns:
-        True if backup exists and is valid, False otherwise
+        True if backup exists OR backup not required, False if backup missing AND required
+
+    Environment Variables:
+        EXTRATO_REQUIRE_BACKUP: Controls whether backup is mandatory
+            - "true" (default): Strict mode - blocks if backup missing
+            - "false": Flexible mode - allows with warning if backup missing
     """
-    logger.info(f"Verifying backup exists for {month:02d}/{year} before data transfer")
+    from app.core.config import EXTRATO_REQUIRE_BACKUP
+
+    logger.info(
+        f"Verifying backup for {month:02d}/{year}",
+        extra={
+            "context": {
+                "require_backup": EXTRATO_REQUIRE_BACKUP,
+                "month": month,
+                "year": year,
+            }
+        },
+    )
 
     try:
         backup_service = BackupService()
@@ -651,14 +701,70 @@ def verify_backup_before_transfer(year: int, month: int) -> bool:
             logger.info(f"✓ Backup verification successful for {month:02d}/{year}")
             return True
         else:
-            logger.error(f"✗ Backup verification failed for {month:02d}/{year}")
-            return False
+            # Backup does NOT exist
+            if EXTRATO_REQUIRE_BACKUP:
+                # Strict mode: Block execution
+                logger.error(
+                    f"✗ Backup verification failed for {month:02d}/{year} - "
+                    f"EXTRATO_REQUIRE_BACKUP=true, cannot proceed",
+                    extra={
+                        "context": {
+                            "month": month,
+                            "year": year,
+                            "require_backup": True,
+                            "backup_exists": False,
+                        }
+                    },
+                )
+                return False
+            else:
+                # Flexible mode: Allow execution with warning
+                logger.warning(
+                    f"⚠ Backup not found for {month:02d}/{year} but "
+                    f"EXTRATO_REQUIRE_BACKUP=false, proceeding anyway",
+                    extra={
+                        "context": {
+                            "month": month,
+                            "year": year,
+                            "require_backup": False,
+                            "backup_exists": False,
+                        }
+                    },
+                )
+                return True
 
     except Exception as e:
-        logger.error(
-            f"Error during backup verification for {month:02d}/{year}: {str(e)}"
-        )
-        return False
+        # Error during backup check
+        if EXTRATO_REQUIRE_BACKUP:
+            # Strict mode: Fail-closed (safe)
+            logger.error(
+                f"Error during backup verification for {month:02d}/{year}: {str(e)} - "
+                f"EXTRATO_REQUIRE_BACKUP=true, blocking execution",
+                extra={
+                    "context": {
+                        "month": month,
+                        "year": year,
+                        "require_backup": True,
+                        "error": str(e),
+                    }
+                },
+            )
+            return False
+        else:
+            # Flexible mode: Log warning but allow (with caution)
+            logger.warning(
+                f"Error checking backup for {month:02d}/{year}: {str(e)} - "
+                f"EXTRATO_REQUIRE_BACKUP=false, proceeding with caution",
+                extra={
+                    "context": {
+                        "month": month,
+                        "year": year,
+                        "require_backup": False,
+                        "error": str(e),
+                    }
+                },
+            )
+            return True
 
 
 def delete_historical_records_atomic(
@@ -850,23 +956,23 @@ def _log_extrato_run(mes, ano, status, message=None):
 
 def current_month_range():
     """
-    Compute start and end datetime for the current month in server-local time.
+    Compute start and end datetime for the current month using application timezone.
 
     Returns:
-        tuple: (start_date, end_date) as naive datetime objects representing
+        tuple: (start_date, end_date) as timezone-aware datetime objects representing
                the first day of the current month at 00:00:00 and the first day
-               of the next month at 00:00:00.
+               of the next month at 00:00:00 in the application's configured timezone.
 
     Note:
-        Returns naive datetime objects. Consider timezone handling if the
-        application spans multiple timezones.
+        Uses APP_TZ from core.config to ensure timezone consistency.
+        Returns timezone-aware datetime objects for proper comparison.
     """
     from datetime import datetime
 
-    now = datetime.now()
-    start_date = datetime(now.year, now.month, 1)
+    now = datetime.now(APP_TZ)
+    start_date = datetime(now.year, now.month, 1, tzinfo=APP_TZ)
     if now.month == 12:
-        end_date = datetime(now.year + 1, 1, 1)
+        end_date = datetime(now.year + 1, 1, 1, tzinfo=APP_TZ)
     else:
-        end_date = datetime(now.year, now.month + 1, 1)
+        end_date = datetime(now.year, now.month + 1, 1, tzinfo=APP_TZ)
     return start_date, end_date

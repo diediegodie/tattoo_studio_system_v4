@@ -44,6 +44,12 @@ Desktop.ini
 *.crt
 *.key
 *.lock
+
+# Service account tokens (never commit!)
+.service_token.txt
+backend/scripts/.service_token.txt
+backend/scripts/generate_service_token.py
+
 *.coverage
 .coverage.*
 .cache

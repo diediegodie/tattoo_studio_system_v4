@@ -232,6 +232,34 @@ def create_app():  # noqa: C901
         },
     )
 
+    # Log timezone configuration (Task 2)
+    from app.core.config import log_timezone_config, APP_TZ
+
+    log_timezone_config()
+    logger.info(
+        "Application timezone configured",
+        extra={
+            "context": {
+                "timezone": str(APP_TZ),
+                "tz_source": os.getenv("TZ", "UTC (default)"),
+            }
+        },
+    )
+
+    # Log extrato backup configuration (Task 3)
+    from app.core.config import log_extrato_config, EXTRATO_REQUIRE_BACKUP
+
+    log_extrato_config()
+    logger.info(
+        "Extrato backup configuration loaded",
+        extra={
+            "context": {
+                "require_backup": EXTRATO_REQUIRE_BACKUP,
+                "backup_env": os.getenv("EXTRATO_REQUIRE_BACKUP", "true (default)"),
+            }
+        },
+    )
+
     # Sentry Integration (Task 9 - Logging and Observability)
     # Initialize Sentry for error tracking and performance monitoring
     sentry_dsn = os.getenv("SENTRY_DSN")
@@ -1187,6 +1215,7 @@ def create_app():  # noqa: C901
         from app.services.oauth_token_service import OAuthTokenService
         from apscheduler.schedulers.background import BackgroundScheduler
         from apscheduler.triggers.interval import IntervalTrigger
+        from apscheduler.triggers.cron import CronTrigger
 
         logger = logging.getLogger(__name__)
 
@@ -1236,6 +1265,95 @@ def create_app():  # noqa: C901
             except Exception as e:
                 logger.error(f"Error in background token refresh: {str(e)}")
 
+        def generate_monthly_extrato_job():
+            """Scheduled monthly extrato snapshot generation.
+
+            Runs on the 1st of each month at 02:00 AM to generate
+            the previous month's extrato snapshot automatically.
+
+            Note (Task 2 - Timezone):
+                Uses timezone-aware datetime operations via APP_TZ from core.config.
+                Threshold set to day 2 (min_day_threshold=2) to allow 1-day buffer
+                for end-of-month data ingestion. Job runs on day 1, but respects
+                threshold for data completeness.
+
+            Note (Task 3 - Backup):
+                Uses atomic transaction with backup verification.
+                Backup requirement controlled by EXTRATO_REQUIRE_BACKUP env var.
+                Routes through check_and_generate_extrato_with_transaction() for
+                full transaction safety and backup validation.
+            """
+            from datetime import datetime
+            from app.services.extrato_core import get_previous_month
+            from app.core.config import APP_TZ, EXTRATO_REQUIRE_BACKUP
+
+            # Get target month/year for logging
+            target_month, target_year = get_previous_month()
+            execution_time = datetime.now(APP_TZ).isoformat()
+
+            logger.info(
+                "Running scheduled monthly extrato generation",
+                extra={
+                    "context": {
+                        "job": "monthly_extrato",
+                        "target_month": target_month,
+                        "target_year": target_year,
+                        "execution_time": execution_time,
+                        "timezone": str(APP_TZ),
+                        "require_backup": EXTRATO_REQUIRE_BACKUP,
+                    }
+                },
+            )
+
+            try:
+                from app.services.extrato_atomic import (
+                    check_and_generate_extrato_with_transaction,
+                )
+
+                # Use atomic version with backup check (Task 3)
+                # No args → previous month by default inside the service
+                success = check_and_generate_extrato_with_transaction()
+
+                if success:
+                    logger.info(
+                        "Monthly extrato generation completed successfully",
+                        extra={
+                            "context": {
+                                "job": "monthly_extrato",
+                                "target_month": target_month,
+                                "target_year": target_year,
+                                "status": "success",
+                            }
+                        },
+                    )
+                else:
+                    logger.error(
+                        "Monthly extrato generation failed",
+                        extra={
+                            "context": {
+                                "job": "monthly_extrato",
+                                "target_month": target_month,
+                                "target_year": target_year,
+                                "status": "failed",
+                                "reason": "check_and_generate_extrato_with_transaction returned False",
+                            }
+                        },
+                    )
+            except Exception as e:
+                logger.error(
+                    "Error in scheduled extrato generation",
+                    extra={
+                        "context": {
+                            "job": "monthly_extrato",
+                            "target_month": target_month,
+                            "target_year": target_year,
+                            "status": "error",
+                            "error": str(e),
+                        }
+                    },
+                    exc_info=True,
+                )
+
         # Start background scheduler for token refresh
         scheduler = BackgroundScheduler()
         scheduler.add_job(
@@ -1245,8 +1363,41 @@ def create_app():  # noqa: C901
             name="Refresh Google OAuth tokens",
             replace_existing=True,
         )
+
+        # Add monthly extrato generation job (controlled by environment variable)
+        enable_extrato_job = (
+            os.getenv("ENABLE_MONTHLY_EXTRATO_JOB", "true").lower() == "true"
+        )
+
+        if enable_extrato_job:
+            scheduler.add_job(
+                generate_monthly_extrato_job,
+                trigger=CronTrigger(
+                    day=1, hour=2, minute=0
+                ),  # 1st of month at 02:00 AM
+                id="monthly_extrato",
+                name="Generate monthly extrato snapshot",
+                replace_existing=True,
+            )
+            logger.info(
+                "Monthly extrato job registered",
+                extra={
+                    "context": {
+                        "job_id": "monthly_extrato",
+                        "schedule": "day 1 at 02:00 AM",
+                    }
+                },
+            )
+        else:
+            logger.info(
+                "Monthly extrato job disabled by environment variable",
+                extra={"context": {"ENABLE_MONTHLY_EXTRATO_JOB": "false"}},
+            )
+
         scheduler.start()
-        logger.info("Background token refresh scheduler started")
+        logger.info(
+            "Background scheduler started with token refresh and monthly extrato jobs"
+        )
 
         # Store scheduler reference to prevent garbage collection
         app.config["SCHEDULER"] = scheduler

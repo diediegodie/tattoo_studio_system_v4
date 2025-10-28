@@ -1,0 +1,217 @@
+name: Monthly Extrato Backup Safety Net
+
+on:
+  # Schedule: 2nd of each month at 03:00 UTC
+  # (APScheduler runs on 1st at 02:00 São Paulo = 05:00 UTC)
+  schedule:
+    - cron: '0 3 2 * *'
+  
+  # Allow manual trigger for testing
+  workflow_dispatch:
+    inputs:
+      month:
+        description: 'Month (1-12, leave empty for previous month)'
+        required: false
+        type: number
+      year:
+        description: 'Year (YYYY, leave empty for previous month)'
+        required: false
+        type: number
+      force:
+        description: 'Force generation (ignore threshold)'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  trigger-extrato-generation:
+    name: Trigger Monthly Extrato Generation
+    runs-on: ubuntu-latest
+    
+    # Note: This workflow requires two GitHub Secrets:
+    # - EXTRATO_API_BASE_URL: Base URL of your backend API (e.g., https://api.yourdomain.com)
+    # - EXTRATO_API_TOKEN: Long-lived service account JWT token with admin role
+    #   (NOT a regular user JWT - create a dedicated service account for automation)
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            .github
+      
+      - name: Set up environment
+        id: setup
+        run: |
+          # Calculate previous month if not provided
+          if [ -z "${{ github.event.inputs.month }}" ]; then
+            MONTH=$(date -d "last month" +%-m)
+            YEAR=$(date -d "last month" +%Y)
+          else
+            MONTH=${{ github.event.inputs.month }}
+            YEAR=${{ github.event.inputs.year }}
+          fi
+          
+          echo "month=$MONTH" >> $GITHUB_OUTPUT
+          echo "year=$YEAR" >> $GITHUB_OUTPUT
+          echo "force=${{ github.event.inputs.force || 'false' }}" >> $GITHUB_OUTPUT
+          
+          echo "📅 Target: $MONTH/$YEAR"
+          echo "🔧 Force: ${{ github.event.inputs.force || 'false' }}"
+      
+      - name: Trigger extrato generation endpoint
+        id: trigger
+        env:
+          API_BASE_URL: ${{ secrets.EXTRATO_API_BASE_URL }}
+          API_TOKEN: ${{ secrets.EXTRATO_API_TOKEN }}
+          MONTH: ${{ steps.setup.outputs.month }}
+          YEAR: ${{ steps.setup.outputs.year }}
+          FORCE: ${{ steps.setup.outputs.force }}
+        run: |
+          # Validate required secrets exist
+          if [ -z "$API_BASE_URL" ] || [ -z "$API_TOKEN" ]; then
+            echo "❌ Error: EXTRATO_API_BASE_URL or EXTRATO_API_TOKEN not configured"
+            echo "💡 Add these secrets in: Settings → Secrets and variables → Actions"
+            exit 1
+          fi
+          
+          # Build request payload with proper JSON formatting
+          PAYLOAD=$(cat <<EOF
+          {
+            "month": $MONTH,
+            "year": $YEAR,
+            "force": $FORCE
+          }
+          EOF
+          )
+          
+          echo "📤 Target endpoint: $API_BASE_URL/api/extrato/generate"
+          echo "📦 Payload: $PAYLOAD"
+          
+          # Retry configuration
+          MAX_RETRIES=3
+          DELAY=5
+          
+          # Make API request with retry logic
+          for i in $(seq 1 $MAX_RETRIES); do
+            echo "🔄 Attempt $i of $MAX_RETRIES..."
+            
+            HTTP_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+              "$API_BASE_URL/api/extrato/generate" \
+              -H "Content-Type: application/json" \
+              -H "Authorization: Bearer $API_TOKEN" \
+              -d "$PAYLOAD")
+            
+            # Extract HTTP status code and body
+            HTTP_BODY=$(echo "$HTTP_RESPONSE" | head -n -1)
+            HTTP_STATUS=$(echo "$HTTP_RESPONSE" | tail -n 1)
+            
+            echo "� Response status: $HTTP_STATUS"
+            echo "📄 Response body: $HTTP_BODY"
+            
+            # Check if request was successful
+            if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 300 ]; then
+              echo "✅ Extrato generation triggered successfully"
+              
+              # Save for next step
+              echo "status=$HTTP_STATUS" >> $GITHUB_OUTPUT
+              echo "$HTTP_BODY" > response.json
+              
+              break
+            else
+              echo "⚠️ Attempt $i failed (HTTP $HTTP_STATUS)"
+              
+              if [ "$i" -lt $MAX_RETRIES ]; then
+                echo "⏳ Retrying in $DELAY seconds..."
+                sleep $DELAY
+                DELAY=$((DELAY * 2))  # Exponential backoff
+              else
+                echo "❌ Failed after $MAX_RETRIES attempts"
+                echo "status=$HTTP_STATUS" >> $GITHUB_OUTPUT
+                echo "$HTTP_BODY" > response.json
+                exit 1
+              fi
+            fi
+          done
+      
+      - name: Parse response
+        id: parse
+        if: success()
+        run: |
+          # Extract key fields from response
+          SUCCESS=$(jq -r '.success // false' response.json)
+          MESSAGE=$(jq -r '.message // "No message"' response.json)
+          EXTRATO_ID=$(jq -r '.extrato_id // "N/A"' response.json)
+          
+          echo "success=$SUCCESS" >> $GITHUB_OUTPUT
+          echo "message=$MESSAGE" >> $GITHUB_OUTPUT
+          echo "extrato_id=$EXTRATO_ID" >> $GITHUB_OUTPUT
+          
+          echo "🎯 Success: $SUCCESS"
+          echo "💬 Message: $MESSAGE"
+          echo "🆔 Extrato ID: $EXTRATO_ID"
+      
+      - name: Create summary
+        if: always()
+        run: |
+          echo "## 📊 Monthly Extrato Generation Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Date**: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "**Target**: ${{ steps.setup.outputs.month }}/${{ steps.setup.outputs.year }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Trigger**: ${{ github.event_name == 'schedule' && '🤖 Scheduled' || '👤 Manual' }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ steps.trigger.outcome }}" == "success" ]; then
+            echo "### ✅ Generation Successful" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "- **Status**: ${{ steps.trigger.outputs.status }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **Message**: ${{ steps.parse.outputs.message }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **Extrato ID**: ${{ steps.parse.outputs.extrato_id }}" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### ❌ Generation Failed" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "- **Status**: ${{ steps.trigger.outputs.status }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **Error**: Check logs above for details" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Action Required**: Investigate APScheduler job and API endpoint" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "*This is a backup safety net. Primary automation runs via APScheduler in main.py.*" >> $GITHUB_STEP_SUMMARY
+      
+      - name: Notify on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🚨 Monthly Extrato Generation Failed - ${{ steps.setup.outputs.month }}/${{ steps.setup.outputs.year }}`,
+              body: `## Failure Report
+              
+              **Workflow Run**: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}
+              **Triggered**: ${{ github.event_name }}
+              **Target Period**: ${{ steps.setup.outputs.month }}/${{ steps.setup.outputs.year }}
+              **HTTP Status**: ${{ steps.trigger.outputs.status }}
+              
+              ### Next Steps
+              
+              1. Check [workflow logs](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})
+              2. Verify APScheduler job status in production logs
+              3. Check \`EXTRATO_REQUIRE_BACKUP\` environment variable
+              4. Manually trigger generation if needed
+              
+              ### Manual Trigger
+              
+              \`\`\`bash
+              # From backend container
+              python scripts/run_atomic_extrato.py --month ${{ steps.setup.outputs.month }} --year ${{ steps.setup.outputs.year }}
+              \`\`\`
+              
+              ---
+              *Auto-created by Monthly Extrato Backup Safety Net workflow*
+              `,
+              labels: ['automation', 'extrato', 'urgent']
+            })

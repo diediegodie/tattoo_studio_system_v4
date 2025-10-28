@@ -69,3 +69,32 @@ class TestExtratoService:
             mock_filter.first.return_value = None  # No existing run
             result = should_run_monthly_extrato()
             assert result == True
+
+    def test_should_run_monthly_extrato_with_threshold_2(self):
+        """Test should_run_monthly_extrato with min_day_threshold=2 on day 2 (default)."""
+        with patch("app.services.extrato_core.datetime") as mock_datetime, patch(
+            "app.services.extrato_core.SessionLocal"
+        ) as mock_session:
+            mock_datetime.now.return_value = datetime(2025, 11, 2)
+            mock_db = mock_session.return_value
+            mock_query = mock_db.query.return_value
+            mock_filter = mock_query.filter.return_value
+            mock_filter.first.return_value = None  # No existing run
+
+            from app.services.extrato_core import should_run_monthly_extrato
+
+            # Default threshold is now 2 (Task 2)
+            result = should_run_monthly_extrato()
+            assert result is True
+
+    def test_should_run_monthly_extrato_threshold_not_reached(self):
+        """Test should_run_monthly_extrato returns False when threshold not reached."""
+        with patch("app.services.extrato_core.datetime") as mock_datetime:
+            # Simulating day < threshold
+            mock_datetime.now.return_value = datetime(2025, 11, 1)
+
+            from app.services.extrato_core import should_run_monthly_extrato
+
+            # With threshold=2 (default), day 1 should not run
+            result = should_run_monthly_extrato()
+            assert result is False
