@@ -1,5 +1,8 @@
 name: Monthly Extrato Backup Safety Net
 
+permissions:
+  issues: write
+
 on:
   # Schedule: 2nd of each month at 03:00 UTC
   # (APScheduler runs on 1st at 02:00 São Paulo = 05:00 UTC)

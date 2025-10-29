@@ -601,6 +601,11 @@ def create_app():  # noqa: C901
     # Import models after app creation
     from app.db.base import User
 
+    # Ensure service account user exists for GitHub Actions automation
+    from app.db.seed import ensure_service_account_user
+
+    ensure_service_account_user()
+
     @login_manager.user_loader
     def load_user(user_id):
         from app.db.session import SessionLocal
