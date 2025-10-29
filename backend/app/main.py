@@ -1038,6 +1038,7 @@ def create_app():  # noqa: C901
     from app.controllers.extrato_controller import extrato_bp
     from app.controllers.financeiro_controller import financeiro_bp
     from app.controllers.gastos_controller import gastos_bp
+    from app.controllers.health_controller import health_bp
     from app.controllers.historico_controller import historico_bp
     from app.controllers.inventory_controller import inventory_bp
     from app.controllers.reports_controller import reports_bp
@@ -1057,6 +1058,7 @@ def create_app():  # noqa: C901
     app.register_blueprint(extrato_bp)
     app.register_blueprint(search_bp)
     app.register_blueprint(gastos_bp)
+    app.register_blueprint(health_bp)
     app.register_blueprint(admin_alerts_bp)
     app.register_blueprint(admin_extrato_bp)
     app.register_blueprint(reports_bp)
