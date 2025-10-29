@@ -27,6 +27,9 @@ services:
       DATABASE_URL: [REDACTED_DATABASE_URL]
       PYTHONPATH: /app
       FLASK_ENV: testing
+      # Ensure flexible mode in tests unless explicitly overridden
+      EXTRATO_REQUIRE_BACKUP: "${EXTRATO_REQUIRE_BACKUP:-false}"
+      TZ: "${TZ:-America/Sao_Paulo}"
     volumes:
       - ./backend/tests:/app/tests
       - ./backend/pytest.ini:/app/pytest.ini
