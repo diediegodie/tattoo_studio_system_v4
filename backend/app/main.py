@@ -408,6 +408,16 @@ def create_app():  # noqa: C901
             "default-src": ["'self'"],
             "script-src": ["'self'"],
             "object-src": ["'none'"],
+            "style-src": [
+                "'self'",
+                "https://fonts.googleapis.com",
+                "https://cdnjs.cloudflare.com",
+            ],
+            "font-src": [
+                "'self'",
+                "https://fonts.gstatic.com",
+                "https://cdnjs.cloudflare.com",
+            ],
         }
 
         # Initialize Talisman with most headers
