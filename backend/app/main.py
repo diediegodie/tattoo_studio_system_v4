@@ -608,6 +608,42 @@ def create_app():  # noqa: C901
         with SessionLocal() as db:
             return db.get(User, int(user_id))
 
+    @login_manager.request_loader
+    def load_user_from_request(request):
+        """
+        Load user from Authorization header Bearer token.
+        This enables GitHub Actions service account authentication.
+        """
+        # Try to get Authorization header
+        auth_header = request.headers.get("Authorization")
+        if not auth_header or not auth_header.startswith("Bearer "):
+            return None
+
+        # Extract token
+        token = auth_header.split(" ")[1]
+
+        # Decode and validate JWT
+        from app.core.security import decode_access_token
+
+        payload = decode_access_token(token)
+        if not payload:
+            return None
+
+        # Extract user_id from payload
+        user_id = payload.get("user_id")
+        if not user_id:
+            return None
+
+        # Load user from database
+        from app.db.session import SessionLocal
+
+        with SessionLocal() as db:
+            user = db.get(User, int(user_id))
+            if user and user.is_active:
+                return user
+
+        return None
+
     @app.route("/")
     def login_page():
         if current_user.is_authenticated:
