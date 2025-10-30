@@ -412,3 +412,200 @@ def generate_extrato_manual():
             jsonify({"success": False, "error": f"Internal server error: {str(e)}"}),
             500,
         )
+
+
+@csrf.exempt
+@limiter.limit("10 per minute")
+@api_bp.route("/extrato/generate_service", methods=["POST"])
+@jwt_required
+def generate_extrato_service():
+    """
+    Service account endpoint for automated extrato generation (JWT-protected).
+
+    This endpoint is designed for automation systems (e.g., GitHub Actions) that
+    use JWT Bearer token authentication. It triggers the monthly extrato generation
+    process using atomic transactions with backup verification.
+
+    Authentication: Requires valid JWT token in Authorization header (Bearer <token>).
+    The token must belong to a service account with admin role (user_id=999).
+
+    Request body (JSON):
+    - month: Month (1-12) - optional, defaults to previous month
+    - year: Year (YYYY) - optional, defaults to previous month
+    - force: Boolean - whether to force regeneration if extrato already exists
+
+    Returns:
+        JSON response with success status and message
+
+    Status codes:
+        200: Success
+        401: Unauthorized (invalid/missing JWT token)
+        400: Bad request (invalid parameters)
+        500: Internal server error
+
+    Example:
+        POST /api/extrato/generate_service
+        Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        Content-Type: application/json
+
+        {
+            "month": 9,
+            "year": 2025,
+            "force": false
+        }
+    """
+    # Get current user from g (set by @jwt_required decorator)
+    user = g.current_user
+
+    try:
+        # Parse request body
+        data = request.get_json() or {}
+        month = data.get("month")
+        year = data.get("year")
+        force = data.get("force", False)
+
+        # Validate parameters if provided
+        if month is not None:
+            if not isinstance(month, int) or month < 1 or month > 12:
+                return (
+                    jsonify(
+                        {
+                            "success": False,
+                            "error": "Month must be an integer between 1 and 12",
+                        }
+                    ),
+                    400,
+                )
+
+        if year is not None:
+            if not isinstance(year, int) or year < 2000 or year > 2100:
+                return (
+                    jsonify(
+                        {
+                            "success": False,
+                            "error": "Year must be an integer between 2000 and 2100",
+                        }
+                    ),
+                    400,
+                )
+
+        if not isinstance(force, bool):
+            return jsonify({"success": False, "error": "Force must be a boolean"}), 400
+
+        # Log the attempt
+        logger.info(
+            "Service extrato generation triggered",
+            extra={
+                "context": {
+                    "job": "service_extrato_generation",
+                    "user_id": user.id,
+                    "user_email": user.email,
+                    "month": month,
+                    "year": year,
+                    "force": force,
+                    "status": "started",
+                }
+            },
+        )
+
+        # Import and call the atomic function
+        from app.services.extrato_atomic import (
+            check_and_generate_extrato_with_transaction,
+        )
+
+        # Call the atomic function (handles defaults, backup verification, etc.)
+        # Note: Function expects mes/ano (Portuguese) but API uses month/year (English)
+        success = check_and_generate_extrato_with_transaction(
+            mes=month, ano=year, force=force
+        )
+
+        if success:
+            # Determine actual month/year used (in case defaults were applied)
+            if month is None or year is None:
+                from app.services.extrato_core import get_previous_month
+
+                actual_month, actual_year = get_previous_month()
+            else:
+                actual_month, actual_year = month, year
+
+            logger.info(
+                "Service extrato generation completed successfully",
+                extra={
+                    "context": {
+                        "job": "service_extrato_generation",
+                        "user_id": user.id,
+                        "month": actual_month,
+                        "year": actual_year,
+                        "force": force,
+                        "status": "success",
+                    }
+                },
+            )
+
+            return (
+                jsonify(
+                    {
+                        "success": True,
+                        "message": f"Extrato generated successfully for {actual_month:02d}/{actual_year}",
+                        "data": {
+                            "month": actual_month,
+                            "year": actual_year,
+                            "force": force,
+                        },
+                    }
+                ),
+                200,
+            )
+        else:
+            # Function returned False (could be due to backup failure, existing extrato, etc.)
+            logger.error(
+                "Service extrato generation failed",
+                extra={
+                    "context": {
+                        "job": "service_extrato_generation",
+                        "user_id": user.id,
+                        "month": month,
+                        "year": year,
+                        "force": force,
+                        "status": "failed",
+                        "reason": "check_and_generate_extrato_with_transaction returned False",
+                    }
+                },
+            )
+
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": "Extrato generation failed. Check server logs for details.",
+                    }
+                ),
+                500,
+            )
+
+    except Exception as e:
+        # Handle unexpected errors
+        # Safely extract request data for logging (if it exists)
+        request_data = request.get_json(silent=True) or {}
+        month = request_data.get("month")
+        year = request_data.get("year")
+
+        logger.error(
+            "Error in service extrato generation endpoint",
+            extra={
+                "context": {
+                    "job": "service_extrato_generation",
+                    "user_id": user.id,
+                    "month": month,
+                    "year": year,
+                    "status": "error",
+                    "error_message": str(e),
+                }
+            },
+            exc_info=True,
+        )
+
+        return (
+            jsonify({"success": False, "error": f"Internal server error: {str(e)}"}),
+            500,
+        )

@@ -88,7 +88,7 @@ jobs:
           EOF
           )
           
-          echo "📤 Target endpoint: $API_BASE_URL/api/extrato/generate"
+          echo "📤 Target endpoint: $API_BASE_URL/api/extrato/generate_service"
           echo "📦 Payload: $PAYLOAD"
           
           # Retry configuration
@@ -100,7 +100,7 @@ jobs:
             echo "🔄 Attempt $i of $MAX_RETRIES..."
             
             HTTP_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
-              "$API_BASE_URL/api/extrato/generate" \
+              "$API_BASE_URL/api/extrato/generate_service" \
               -H "Content-Type: application/json" \
               -H "Authorization: Bearer $API_TOKEN" \
               -d "$PAYLOAD")
