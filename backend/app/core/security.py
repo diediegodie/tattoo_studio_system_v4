@@ -135,7 +135,8 @@ def get_user_from_token(token: str) -> Optional[Dict[str, Any]]:
     if payload is None:
         return None
 
-    user_id = payload.get("sub")
+    # Support both 'sub' (standard JWT) and 'user_id' (service tokens)
+    user_id = payload.get("sub") or payload.get("user_id")
     email = payload.get("email")
 
     if user_id is None or email is None:
