@@ -1,4 +1,5 @@
 import logging
+import os
 
 from .controllers.drag_drop_controller import drag_drop_bp
 from .db.base import Client, Inventory, OAuth, Pagamento, Sessao, TestModel, User
@@ -23,4 +24,6 @@ if __name__ == "__main__":
         )
 
     # Run the Flask app
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    # Use PORT from environment (for Render/production) or default to 5000 (for local dev)
+    port = int(os.getenv("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=True)
