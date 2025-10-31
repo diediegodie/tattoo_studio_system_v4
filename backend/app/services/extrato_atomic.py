@@ -28,6 +28,10 @@ from sqlalchemy.orm import joinedload
 # Configure logging
 logger = logging.getLogger(__name__)
 
+# Debug/diagnostic info about the last run (temporary: aids API error reporting)
+# Keys: correlation_id, stage, error
+LAST_RUN_INFO: dict = {"correlation_id": None, "stage": None, "error": None}
+
 
 def generate_extrato_with_atomic_transaction(
     mes: int, ano: int, force: bool = False
@@ -54,6 +58,18 @@ def generate_extrato_with_atomic_transaction(
     # Add correlation ID to logger context
     extra = {"correlation_id": correlation_id}
 
+    # Initialize LAST_RUN_INFO for this run
+    try:
+        LAST_RUN_INFO.update(
+            {
+                "correlation_id": correlation_id,
+                "stage": "starting",
+                "error": None,
+            }
+        )
+    except Exception:
+        pass
+
     start_time = datetime.now()
     logger.info(
         f"Starting atomic extrato generation for {mes:02d}/{ano} - Run ID: {correlation_id}",
@@ -68,6 +84,15 @@ def generate_extrato_with_atomic_transaction(
             f"Cannot proceed with extrato generation - backup verification failed - Run ID: {correlation_id}",
             extra=extra,
         )
+        try:
+            LAST_RUN_INFO.update(
+                {
+                    "stage": "backup_verification_failed",
+                    "error": "Backup verification failed",
+                }
+            )
+        except Exception:
+            pass
         return False
 
     # Step 2: Start atomic transaction
@@ -87,6 +112,15 @@ def generate_extrato_with_atomic_transaction(
                 f"Extrato for {mes}/{ano} already exists. Use force=True to overwrite - Run ID: {correlation_id}",
                 extra=extra,
             )
+            try:
+                LAST_RUN_INFO.update(
+                    {
+                        "stage": "already_exists",
+                        "error": "Extrato already exists for month/year",
+                    }
+                )
+            except Exception:
+                pass
             db.rollback()
             return False
         elif existing and force:
@@ -191,6 +225,15 @@ def generate_extrato_with_atomic_transaction(
                 f"Historical records deletion failed - Run ID: {correlation_id}",
                 extra=extra,
             )
+            try:
+                LAST_RUN_INFO.update(
+                    {
+                        "stage": "deletion_failed",
+                        "error": "Failed to delete historical records",
+                    }
+                )
+            except Exception:
+                pass
             raise ValueError("Failed to delete historical records")
 
         # Step 8: Commit the transaction
@@ -206,6 +249,10 @@ def generate_extrato_with_atomic_transaction(
             f"in {duration:.2f}s - Run ID: {correlation_id}",
             extra=extra,
         )
+        try:
+            LAST_RUN_INFO.update({"stage": "success", "error": None})
+        except Exception:
+            pass
         return True
 
     except SQLAlchemyError as e:
@@ -215,6 +262,15 @@ def generate_extrato_with_atomic_transaction(
             extra=extra,
         )
         db.rollback()
+        try:
+            LAST_RUN_INFO.update(
+                {
+                    "stage": "database_error",
+                    "error": str(e),
+                }
+            )
+        except Exception:
+            pass
         return False
 
     except Exception as e:
@@ -224,6 +280,15 @@ def generate_extrato_with_atomic_transaction(
             extra=extra,
         )
         db.rollback()
+        try:
+            LAST_RUN_INFO.update(
+                {
+                    "stage": "unexpected_error",
+                    "error": str(e),
+                }
+            )
+        except Exception:
+            pass
         return False
 
     finally:

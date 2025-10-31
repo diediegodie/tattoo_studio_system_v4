@@ -4,6 +4,7 @@ These routes show different authentication patterns.
 """
 
 import logging
+import traceback
 from app.core.auth_decorators import get_current_user, jwt_required
 from flask import (
     Blueprint,
@@ -511,6 +512,7 @@ def generate_extrato_service():
         # Import and call the atomic function
         from app.services.extrato_atomic import (
             check_and_generate_extrato_with_transaction,
+            LAST_RUN_INFO,
         )
         from app.services.backup_service import BackupService
         from app.core.config import EXTRATO_REQUIRE_BACKUP
@@ -626,6 +628,9 @@ def generate_extrato_service():
                             "force": force,
                             "status": "failed",
                             "reason": "check_and_generate_extrato_with_transaction returned False",
+                            "correlation_id": LAST_RUN_INFO.get("correlation_id"),
+                            "error": LAST_RUN_INFO.get("error"),
+                            "stage": LAST_RUN_INFO.get("stage"),
                         }
                     },
                 )
@@ -634,7 +639,10 @@ def generate_extrato_service():
                     jsonify(
                         {
                             "success": False,
-                            "error": "Extrato generation failed. Check server logs for details.",
+                            "error": "Extrato generation failed.",
+                            "correlation_id": LAST_RUN_INFO.get("correlation_id"),
+                            "stage": LAST_RUN_INFO.get("stage"),
+                            "details": LAST_RUN_INFO.get("error"),
                         }
                     ),
                     500,
@@ -662,7 +670,15 @@ def generate_extrato_service():
             exc_info=True,
         )
 
+        # Temporary: include traceback to speed debugging (remove after fix)
+        tb = traceback.format_exc()
         return (
-            jsonify({"success": False, "error": f"Internal server error: {str(e)}"}),
+            jsonify(
+                {
+                    "success": False,
+                    "error": f"Internal server error: {str(e)}",
+                    "traceback": tb,
+                }
+            ),
             500,
         )
