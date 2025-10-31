@@ -512,6 +512,8 @@ def generate_extrato_service():
         from app.services.extrato_atomic import (
             check_and_generate_extrato_with_transaction,
         )
+        from app.services.backup_service import BackupService
+        from app.core.config import EXTRATO_REQUIRE_BACKUP
 
         # Call the atomic function (handles defaults, backup verification, etc.)
         # Note: Function expects mes/ano (Portuguese) but API uses month/year (English)
@@ -557,31 +559,86 @@ def generate_extrato_service():
                 200,
             )
         else:
-            # Function returned False (could be due to backup failure, existing extrato, etc.)
-            logger.error(
-                "Service extrato generation failed",
-                extra={
-                    "context": {
-                        "job": "service_extrato_generation",
-                        "user_id": user.id,
-                        "month": month,
-                        "year": year,
-                        "force": force,
-                        "status": "failed",
-                        "reason": "check_and_generate_extrato_with_transaction returned False",
-                    }
-                },
+            # Function returned False - provide specific diagnostics
+            # Determine actual month/year that was attempted
+            if month is None or year is None:
+                from app.services.extrato_core import get_previous_month
+
+                actual_month, actual_year = get_previous_month()
+            else:
+                actual_month, actual_year = month, year
+
+            # Check if backup exists to provide specific error message
+            backup_service = BackupService()
+            backup_exists = backup_service.verify_backup_exists(
+                actual_year, actual_month
             )
 
-            return (
-                jsonify(
-                    {
-                        "success": False,
-                        "error": "Extrato generation failed. Check server logs for details.",
-                    }
-                ),
-                500,
-            )
+            if not backup_exists and EXTRATO_REQUIRE_BACKUP:
+                # Backup is required but missing
+                error_msg = (
+                    f"Cannot generate extrato for {actual_month:02d}/{actual_year}: "
+                    f"backup verification failed. "
+                    f"A backup is required before generating extrato (EXTRATO_REQUIRE_BACKUP=true). "
+                    f"Create a backup first or set EXTRATO_REQUIRE_BACKUP=false to bypass this check."
+                )
+                logger.error(
+                    "Service extrato generation failed: backup required but missing",
+                    extra={
+                        "context": {
+                            "job": "service_extrato_generation",
+                            "user_id": user.id,
+                            "month": actual_month,
+                            "year": actual_year,
+                            "force": force,
+                            "status": "failed",
+                            "reason": "backup_verification_failed",
+                            "backup_exists": False,
+                            "require_backup": True,
+                        }
+                    },
+                )
+                return (
+                    jsonify(
+                        {
+                            "success": False,
+                            "error": error_msg,
+                            "details": {
+                                "month": actual_month,
+                                "year": actual_year,
+                                "backup_exists": False,
+                                "backup_required": True,
+                            },
+                        }
+                    ),
+                    400,  # Changed to 400 Bad Request - client needs to take action
+                )
+            else:
+                # Other failure reason (existing extrato, no data, etc.)
+                logger.error(
+                    "Service extrato generation failed",
+                    extra={
+                        "context": {
+                            "job": "service_extrato_generation",
+                            "user_id": user.id,
+                            "month": actual_month,
+                            "year": actual_year,
+                            "force": force,
+                            "status": "failed",
+                            "reason": "check_and_generate_extrato_with_transaction returned False",
+                        }
+                    },
+                )
+
+                return (
+                    jsonify(
+                        {
+                            "success": False,
+                            "error": "Extrato generation failed. Check server logs for details.",
+                        }
+                    ),
+                    500,
+                )
 
     except Exception as e:
         # Handle unexpected errors
