@@ -328,32 +328,103 @@ def main():
             "Extrato created successfully", extra={"context": {"mes": mes, "ano": ano}}
         )
 
-        # Delete original records in dependency order, breaking circular references
-        for c in comissoes:
-            db.delete(c)
-        # Break circular reference between Sessao and Pagamento
-        for s in sessoes:
-            s.payment_id = None
-        db.commit()
-        for p in pagamentos:
-            db.delete(p)
-        for s in sessoes:
-            db.delete(s)
-        for g in gastos:
-            db.delete(g)
-        db.commit()
-
+        # Log what we're about to delete (helps correlate with errors)
         logger.info(
-            "Original records deleted",
+            "About to delete source records",
             extra={
                 "context": {
-                    "pagamentos": len(pagamentos),
-                    "sessoes": len(sessoes),
-                    "comissoes": len(comissoes),
-                    "gastos": len(gastos),
+                    "pagamentos_ids": [getattr(p, "id", None) for p in pagamentos][:20],
+                    "sessoes_ids": [getattr(s, "id", None) for s in sessoes][:20],
+                    "comissoes_ids": [getattr(c, "id", None) for c in comissoes][:20],
+                    "gastos_ids": [getattr(g, "id", None) for g in gastos][:20],
                 }
             },
         )
+
+        # Robust cleanup and deletion with defensive attribute handling
+        try:
+            # Step 1: Delete comissoes first (they depend on pagamentos)
+            for c in comissoes:
+                try:
+                    db.delete(c)
+                except Exception:
+                    logger.exception(
+                        "Failed to delete comissao",
+                        extra={"comissao_id": getattr(c, "id", None)},
+                    )
+            db.flush()
+
+            # Step 2: Break circular reference between Sessao and Pagamento
+            # Model attribute may be 'payment_id', 'pagamento_id' or relationship 'pagamento'
+            for s in sessoes:
+                try:
+                    if hasattr(s, "payment_id"):
+                        setattr(s, "payment_id", None)
+                    elif hasattr(s, "pagamento_id"):
+                        setattr(s, "pagamento_id", None)
+                    elif hasattr(s, "pagamento"):
+                        setattr(s, "pagamento", None)
+                    else:
+                        logger.debug(
+                            "Sessao has no known pagamento attr",
+                            extra={"sessao_id": getattr(s, "id", None)},
+                        )
+                except Exception:
+                    logger.exception(
+                        "Failed to break sessao->pagamento reference",
+                        extra={"sessao_id": getattr(s, "id", None)},
+                    )
+            db.flush()
+
+            # Step 3: Delete pagamentos
+            for p in pagamentos:
+                try:
+                    db.delete(p)
+                except Exception:
+                    logger.exception(
+                        "Failed to delete pagamento",
+                        extra={"pagamento_id": getattr(p, "id", None)},
+                    )
+            db.flush()
+
+            # Step 4: Delete sessoes
+            for s in sessoes:
+                try:
+                    db.delete(s)
+                except Exception:
+                    logger.exception(
+                        "Failed to delete sessao",
+                        extra={"sessao_id": getattr(s, "id", None)},
+                    )
+            db.flush()
+
+            # Step 5: Delete gastos
+            for g in gastos:
+                try:
+                    db.delete(g)
+                except Exception:
+                    logger.exception(
+                        "Failed to delete gasto",
+                        extra={"gasto_id": getattr(g, "id", None)},
+                    )
+            db.commit()
+
+            logger.info(
+                "Original records deleted",
+                extra={
+                    "context": {
+                        "pagamentos": len(pagamentos),
+                        "sessoes": len(sessoes),
+                        "comissoes": len(comissoes),
+                        "gastos": len(gastos),
+                    }
+                },
+            )
+
+        except Exception:
+            db.rollback()
+            logger.exception("Error deleting original records during extrato creation")
+            raise
 
     except Exception as e:
         db.rollback()
