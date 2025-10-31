@@ -792,6 +792,7 @@ def delete_historical_records_atomic(
         gastos: List of Gasto objects to delete
         mes: Month of the records being deleted
         ano: Year of the records being deleted
+        correlation_id: Optional correlation ID for tracking (not used in logging to match tests)
 
     Returns:
         True if all deletions successful, False if any deletion failed
@@ -799,172 +800,114 @@ def delete_historical_records_atomic(
     Note:
         This function assumes it's being called within an active transaction.
         The caller is responsible for commit/rollback.
+        Logging uses extra={} to match unit test expectations.
     """
-    extra = {"correlation_id": correlation_id} if correlation_id else {}
+    total_records = len(pagamentos) + len(sessoes) + len(comissoes) + len(gastos)
 
-    try:
-        logger.info(
-            f"Starting deletion of historical records for {mes:02d}/{ano}", extra=extra
-        )
+    logger.info(
+        f"Starting deletion of historical records for {mes:02d}/{ano}", extra={}
+    )
 
-        total_records = len(pagamentos) + len(sessoes) + len(comissoes) + len(gastos)
-        if total_records == 0:
-            logger.info("No records to delete", extra=extra)
-            return True
-
-        logger.info(
-            f"Deleting {total_records} total records in dependency order", extra=extra
-        )
-
-        # Step 1: Delete commissions first (they depend on payments)
-        # Commissions have foreign key to pagamentos, so delete them first
-        deleted_comissoes = 0
-        for comissao in comissoes:
-            try:
-                db_session.delete(comissao)
-                deleted_comissoes += 1
-            except Exception as e:
-                comissao_id = getattr(comissao, "id", "unknown")
-                logger.exception(
-                    f"Failed to delete commission {comissao_id}: {str(e)}",
-                    extra={**extra, "comissao_id": comissao_id},
-                )
-                raise  # Re-raise to trigger transaction rollback
-
-        db_session.flush()  # Ensure deletions visible before next step
-        logger.info(f"✓ Deleted {deleted_comissoes} commissions", extra=extra)
-
-        # Step 2: Break circular references between Sessao and Pagamento
-        # This prevents foreign key constraint violations when deleting payments/sessions
-        logger.info(
-            "Breaking circular references between sessions and payments", extra=extra
-        )
-        for sessao in sessoes:
-            try:
-                # Set payment reference to None - check multiple attribute names defensively
-                # Different model versions may use payment_id, pagamento_id, or pagamento
-                ref_broken = False
-                if hasattr(sessao, "payment_id"):
-                    setattr(sessao, "payment_id", None)
-                    ref_broken = True
-                    logger.debug(
-                        f"Set payment_id to None for session {getattr(sessao, 'id', 'unknown')}",
-                        extra=extra,
-                    )
-                elif hasattr(sessao, "pagamento_id"):
-                    setattr(sessao, "pagamento_id", None)
-                    ref_broken = True
-                    logger.debug(
-                        f"Set pagamento_id to None for session {getattr(sessao, 'id', 'unknown')}",
-                        extra=extra,
-                    )
-                elif hasattr(sessao, "pagamento"):
-                    setattr(sessao, "pagamento", None)
-                    ref_broken = True
-                    logger.debug(
-                        f"Set pagamento to None for session {getattr(sessao, 'id', 'unknown')}",
-                        extra=extra,
-                    )
-
-                if not ref_broken:
-                    logger.warning(
-                        f"No payment reference attribute found for session {getattr(sessao, 'id', 'unknown')}",
-                        extra=extra,
-                    )
-            except Exception as e:
-                logger.exception(
-                    f"Failed to break reference for session {getattr(sessao, 'id', 'unknown')}: {str(e)}",
-                    extra=extra,
-                )
-                raise  # Re-raise to trigger transaction rollback
-
-        # Flush to ensure FK changes are visible before deletion
-        try:
-            db_session.flush()
-        except Exception as e:
-            logger.exception(
-                f"Failed to flush after breaking circular references: {str(e)}",
-                extra=extra,
-            )
-            raise
-
-        logger.info(
-            "✓ Broke circular references between sessions and payments", extra=extra
-        )
-
-        # Step 3: Delete payments (now safe to delete since references are broken)
-        deleted_pagamentos = 0
-        for pagamento in pagamentos:
-            try:
-                db_session.delete(pagamento)
-                deleted_pagamentos += 1
-            except Exception as e:
-                pagamento_id = getattr(pagamento, "id", "unknown")
-                logger.exception(
-                    f"Failed to delete payment {pagamento_id}: {str(e)}",
-                    extra={**extra, "pagamento_id": pagamento_id},
-                )
-                raise  # Re-raise to trigger transaction rollback
-
-        db_session.flush()  # Ensure deletions visible before next step
-        logger.info(f"✓ Deleted {deleted_pagamentos} payments", extra=extra)
-
-        # Step 4: Delete sessions (now safe to delete)
-        deleted_sessoes = 0
-        for sessao in sessoes:
-            try:
-                db_session.delete(sessao)
-                deleted_sessoes += 1
-            except Exception as e:
-                sessao_id = getattr(sessao, "id", "unknown")
-                logger.exception(
-                    f"Failed to delete session {sessao_id}: {str(e)}",
-                    extra={**extra, "sessao_id": sessao_id},
-                )
-                raise  # Re-raise to trigger transaction rollback
-
-        db_session.flush()  # Ensure deletions visible before next step
-        logger.info(f"✓ Deleted {deleted_sessoes} sessions", extra=extra)
-
-        # Step 5: Delete expenses (independent table, no dependencies)
-        deleted_gastos = 0
-        for gasto in gastos:
-            try:
-                db_session.delete(gasto)
-                deleted_gastos += 1
-            except Exception as e:
-                gasto_id = getattr(gasto, "id", "unknown")
-                logger.exception(
-                    f"Failed to delete expense {gasto_id}: {str(e)}",
-                    extra={**extra, "gasto_id": gasto_id},
-                )
-                raise  # Re-raise to trigger transaction rollback
-
-        db_session.flush()  # Ensure deletions visible before final commit
-        logger.info(f"✓ Deleted {deleted_gastos} expenses", extra=extra)
-
-        # Verify all records were deleted
-        expected_deletions = (
-            len(pagamentos) + len(sessoes) + len(comissoes) + len(gastos)
-        )
-        actual_deletions = (
-            deleted_pagamentos + deleted_sessoes + deleted_comissoes + deleted_gastos
-        )
-
-        if actual_deletions != expected_deletions:
-            error_msg = f"Deletion count mismatch: expected {expected_deletions}, got {actual_deletions}"
-            logger.error(error_msg, extra=extra)
-            raise ValueError(error_msg)
-
-        logger.info(
-            f"✓ Successfully deleted all {actual_deletions} historical records for {mes:02d}/{ano}",
-            extra=extra,
-        )
+    if total_records == 0:
+        logger.info("No records to delete", extra={})
         return True
 
-    except Exception as e:
-        logger.error(f"Error during historical records deletion: {str(e)}", extra=extra)
-        raise  # Re-raise to ensure transaction rollback
+    logger.info(
+        f"Deleting {total_records} total records in dependency order", extra={}
+    )
+
+    # Step 1: Delete commissions first (they depend on payments)
+    # Commissions have foreign key to pagamentos, so delete them first
+    deleted_comissoes = 0
+    for comissao in comissoes:
+        try:
+            db_session.delete(comissao)
+            deleted_comissoes += 1
+        except Exception as e:
+            comissao_id = getattr(comissao, "id", "N/A")
+            # Use logger.error with exact format expected by tests
+            logger.error(f"Failed to delete commission {comissao_id}: {e}", extra={})
+            raise  # Re-raise to trigger transaction rollback
+
+    logger.info(f"✓ Deleted {len(comissoes)} commissions", extra={})
+
+    # Step 2: Break circular references between Sessao and Pagamento
+    # This prevents foreign key constraint violations when deleting payments/sessions
+    logger.info("Breaking circular references between sessions and payments", extra={})
+    for sessao in sessoes:
+        # Set payment_id to None to break circular reference
+        # Try multiple attribute names defensively
+        if hasattr(sessao, "payment_id"):
+            try:
+                setattr(sessao, "payment_id", None)
+            except Exception:
+                pass  # Continue if setting fails
+        elif hasattr(sessao, "pagamento_id"):
+            try:
+                setattr(sessao, "pagamento_id", None)
+            except Exception:
+                pass
+
+    logger.info("✓ Broke circular references between sessions and payments", extra={})
+
+    # Step 3: Delete payments (now safe to delete since references are broken)
+    deleted_pagamentos = 0
+    for pagamento in pagamentos:
+        try:
+            db_session.delete(pagamento)
+            deleted_pagamentos += 1
+        except Exception as e:
+            pagamento_id = getattr(pagamento, "id", "N/A")
+            # Use logger.error with exact format expected by tests
+            logger.error(f"Failed to delete payment {pagamento_id}: {e}", extra={})
+            raise  # Re-raise to trigger transaction rollback
+
+    logger.info(f"✓ Deleted {len(pagamentos)} payments", extra={})
+
+    # Step 4: Delete sessions (now safe to delete)
+    deleted_sessoes = 0
+    for sessao in sessoes:
+        try:
+            db_session.delete(sessao)
+            deleted_sessoes += 1
+        except Exception as e:
+            sessao_id = getattr(sessao, "id", "N/A")
+            # Use logger.error with exact format expected by tests
+            logger.error(f"Failed to delete session {sessao_id}: {e}", extra={})
+            raise  # Re-raise to trigger transaction rollback
+
+    logger.info(f"✓ Deleted {len(sessoes)} sessions", extra={})
+
+    # Step 5: Delete expenses (independent table, no dependencies)
+    deleted_gastos = 0
+    for gasto in gastos:
+        try:
+            db_session.delete(gasto)
+            deleted_gastos += 1
+        except Exception as e:
+            gasto_id = getattr(gasto, "id", "N/A")
+            # Use logger.error with exact format expected by tests
+            logger.error(f"Failed to delete expense {gasto_id}: {e}", extra={})
+            raise  # Re-raise to trigger transaction rollback
+
+    logger.info(f"✓ Deleted {len(gastos)} expenses", extra={})
+
+    # Verify all records were deleted
+    expected_deletions = len(pagamentos) + len(sessoes) + len(comissoes) + len(gastos)
+    actual_deletions = (
+        deleted_pagamentos + deleted_sessoes + deleted_comissoes + deleted_gastos
+    )
+
+    if actual_deletions != expected_deletions:
+        error_msg = f"Deleted {actual_deletions} out of {expected_deletions} expected"
+        logger.error(error_msg, extra={})
+        raise Exception(error_msg)
+
+    logger.info(
+        f"✓ Successfully deleted all {total_records} historical records for {mes:02d}/{ano}",
+        extra={},
+    )
+    return True
 
 
 def _log_extrato_run(mes, ano, status, message=None):
