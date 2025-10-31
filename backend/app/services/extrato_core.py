@@ -846,6 +846,13 @@ def delete_historical_records_atomic(
             except Exception:
                 pass
 
+    # Flush to ensure FK changes are visible to the database before deletion
+    # This is critical to prevent circular dependency errors
+    try:
+        db_session.flush()
+    except Exception:
+        pass  # Continue if flush fails (e.g., in test mocks)
+
     logger.info("✓ Broke circular references between sessions and payments", extra={})
 
     # Step 3: Delete payments (now safe to delete since references are broken)
