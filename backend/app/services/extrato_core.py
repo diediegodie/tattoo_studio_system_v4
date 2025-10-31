@@ -812,9 +812,7 @@ def delete_historical_records_atomic(
         logger.info("No records to delete", extra={})
         return True
 
-    logger.info(
-        f"Deleting {total_records} total records in dependency order", extra={}
-    )
+    logger.info(f"Deleting {total_records} total records in dependency order", extra={})
 
     # Step 1: Delete commissions first (they depend on payments)
     # Commissions have foreign key to pagamentos, so delete them first
