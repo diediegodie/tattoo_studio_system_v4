@@ -824,11 +824,14 @@ def delete_historical_records_atomic(
                 db_session.delete(comissao)
                 deleted_comissoes += 1
             except Exception as e:
-                logger.error(
-                    f"Failed to delete commission {comissao.id}: {str(e)}", extra=extra
+                comissao_id = getattr(comissao, "id", "unknown")
+                logger.exception(
+                    f"Failed to delete commission {comissao_id}: {str(e)}",
+                    extra={**extra, "comissao_id": comissao_id},
                 )
                 raise  # Re-raise to trigger transaction rollback
 
+        db_session.flush()  # Ensure deletions visible before next step
         logger.info(f"✓ Deleted {deleted_comissoes} commissions", extra=extra)
 
         # Step 2: Break circular references between Sessao and Pagamento
@@ -838,17 +841,52 @@ def delete_historical_records_atomic(
         )
         for sessao in sessoes:
             try:
-                # Set payment_id to None to break the circular reference
-                setattr(sessao, "payment_id", None)
-                logger.debug(
-                    f"Set payment_id to None for session {sessao.id}", extra=extra
-                )
+                # Set payment reference to None - check multiple attribute names defensively
+                # Different model versions may use payment_id, pagamento_id, or pagamento
+                ref_broken = False
+                if hasattr(sessao, "payment_id"):
+                    setattr(sessao, "payment_id", None)
+                    ref_broken = True
+                    logger.debug(
+                        f"Set payment_id to None for session {getattr(sessao, 'id', 'unknown')}",
+                        extra=extra,
+                    )
+                elif hasattr(sessao, "pagamento_id"):
+                    setattr(sessao, "pagamento_id", None)
+                    ref_broken = True
+                    logger.debug(
+                        f"Set pagamento_id to None for session {getattr(sessao, 'id', 'unknown')}",
+                        extra=extra,
+                    )
+                elif hasattr(sessao, "pagamento"):
+                    setattr(sessao, "pagamento", None)
+                    ref_broken = True
+                    logger.debug(
+                        f"Set pagamento to None for session {getattr(sessao, 'id', 'unknown')}",
+                        extra=extra,
+                    )
+
+                if not ref_broken:
+                    logger.warning(
+                        f"No payment reference attribute found for session {getattr(sessao, 'id', 'unknown')}",
+                        extra=extra,
+                    )
             except Exception as e:
-                logger.error(
-                    f"Failed to break reference for session {sessao.id}: {str(e)}",
+                logger.exception(
+                    f"Failed to break reference for session {getattr(sessao, 'id', 'unknown')}: {str(e)}",
                     extra=extra,
                 )
                 raise  # Re-raise to trigger transaction rollback
+
+        # Flush to ensure FK changes are visible before deletion
+        try:
+            db_session.flush()
+        except Exception as e:
+            logger.exception(
+                f"Failed to flush after breaking circular references: {str(e)}",
+                extra=extra,
+            )
+            raise
 
         logger.info(
             "✓ Broke circular references between sessions and payments", extra=extra
@@ -861,11 +899,14 @@ def delete_historical_records_atomic(
                 db_session.delete(pagamento)
                 deleted_pagamentos += 1
             except Exception as e:
-                logger.error(
-                    f"Failed to delete payment {pagamento.id}: {str(e)}", extra=extra
+                pagamento_id = getattr(pagamento, "id", "unknown")
+                logger.exception(
+                    f"Failed to delete payment {pagamento_id}: {str(e)}",
+                    extra={**extra, "pagamento_id": pagamento_id},
                 )
                 raise  # Re-raise to trigger transaction rollback
 
+        db_session.flush()  # Ensure deletions visible before next step
         logger.info(f"✓ Deleted {deleted_pagamentos} payments", extra=extra)
 
         # Step 4: Delete sessions (now safe to delete)
@@ -875,11 +916,14 @@ def delete_historical_records_atomic(
                 db_session.delete(sessao)
                 deleted_sessoes += 1
             except Exception as e:
-                logger.error(
-                    f"Failed to delete session {sessao.id}: {str(e)}", extra=extra
+                sessao_id = getattr(sessao, "id", "unknown")
+                logger.exception(
+                    f"Failed to delete session {sessao_id}: {str(e)}",
+                    extra={**extra, "sessao_id": sessao_id},
                 )
                 raise  # Re-raise to trigger transaction rollback
 
+        db_session.flush()  # Ensure deletions visible before next step
         logger.info(f"✓ Deleted {deleted_sessoes} sessions", extra=extra)
 
         # Step 5: Delete expenses (independent table, no dependencies)
@@ -889,11 +933,14 @@ def delete_historical_records_atomic(
                 db_session.delete(gasto)
                 deleted_gastos += 1
             except Exception as e:
-                logger.error(
-                    f"Failed to delete expense {gasto.id}: {str(e)}", extra=extra
+                gasto_id = getattr(gasto, "id", "unknown")
+                logger.exception(
+                    f"Failed to delete expense {gasto_id}: {str(e)}",
+                    extra={**extra, "gasto_id": gasto_id},
                 )
                 raise  # Re-raise to trigger transaction rollback
 
+        db_session.flush()  # Ensure deletions visible before final commit
         logger.info(f"✓ Deleted {deleted_gastos} expenses", extra=extra)
 
         # Verify all records were deleted
