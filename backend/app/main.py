@@ -29,7 +29,7 @@ from app.core.custom_oauth_storage import CustomOAuthStorage  # noqa: E402
 from sqlalchemy import select, text  # noqa: E402
 
 # Load environment variables conditionally
-# Only load from .env when DATABASE_URL is not already defined by the environment
+# Only load from .env when DATABASE_URL is not already defined
 if not os.getenv("DATABASE_URL"):
     load_dotenv()
 
@@ -123,7 +123,7 @@ def create_app():  # noqa: C901
     # Check if we're in Docker by looking for the /app mount point
     if script_dir.startswith("/app"):
         # Running in Docker container
-        # In Docker: script is at /app/app/main.py, frontend is at /app/frontend
+        # Docker: script at /app/app/main.py, frontend at /app/frontend
         template_folder = "/app/frontend/templates"
         static_folder = "/app/frontend/assets"
         environment = "docker"
@@ -152,7 +152,8 @@ def create_app():  # noqa: C901
     )
 
     if os.path.exists(template_folder):
-        index_exists = os.path.exists(os.path.join(template_folder, "index.html"))
+        index_path = os.path.join(template_folder, "index.html")
+        index_exists = os.path.exists(index_path)
         contents = os.listdir(template_folder)[:5]
         early_logger.debug(
             "Template folder verification",
@@ -357,12 +358,17 @@ def create_app():  # noqa: C901
     if _is_test_mode_for_limiter() and os.getenv("RATE_LIMIT_ENABLED", "1") == "0":
         limiter.enabled = False
         logger.info(
-            "Rate limiting disabled for testing", extra={"context": {"test_mode": True}}
+            "Rate limiting disabled for testing",
+            extra={"context": {"test_mode": True}},
         )
 
     # Production validation: fail fast if weak secrets are used
     if is_production:
-        weak_secrets = ["dev-secret-change-me", "dev-jwt-secret-change-me", "secret123"]
+        weak_secrets = [
+            "dev-secret-change-me",
+            "dev-jwt-secret-change-me",
+            "secret123",
+        ]
         secret_key = app.config["SECRET_KEY"]
         if secret_key in weak_secrets or len(secret_key) < 32:
             raise ValueError(
@@ -421,8 +427,14 @@ def create_app():  # noqa: C901
                 "https://fonts.gstatic.com",
                 "https://cdnjs.cloudflare.com",
             ],
-            # Allow external profile pictures (Google) and inline images via data URIs and blob URLs
-            "img-src": ["'self'", "https://lh3.googleusercontent.com", "data:", "blob:"],
+            # Allow external profile pictures (Google), inline images via data URIs
+            # and blob URLs
+            "img-src": [
+                "'self'",
+                "https://lh3.googleusercontent.com",
+                "data:",
+                "blob:",
+            ],
         }
 
         # Initialize Talisman with most headers
@@ -540,7 +552,10 @@ def create_app():  # noqa: C901
                     "Primary DB unavailable; falling back to SQLite dev database",
                     extra={"context": {"sqlite_path": sqlite_path}},
                 )
-                from app.db.session import create_tables as _ct, get_engine as _ge
+                from app.db.session import (
+                    create_tables as _ct,
+                    get_engine as _ge,
+                )
 
                 _ct()
                 eng = _ge()
@@ -550,7 +565,9 @@ def create_app():  # noqa: C901
                         "context": {
                             "url": str(getattr(eng, "url", "")),
                             "driver": getattr(
-                                getattr(eng, "dialect", None), "name", "unknown"
+                                getattr(eng, "dialect", None),
+                                "name",
+                                "unknown",
                             ),
                         }
                     },
@@ -612,7 +629,10 @@ def create_app():  # noqa: C901
             """Return 401 instead of redirecting to login during tests."""
             return (
                 jsonify(
-                    {"error": "Unauthorized", "message": "Authentication required"}
+                    {
+                        "error": "Unauthorized",
+                        "message": "Authentication required",
+                    }
                 ),
                 401,
             )
@@ -1364,7 +1384,8 @@ def create_app():  # noqa: C901
             execution_time = datetime.now(APP_TZ).isoformat()
 
             logger.info(
-                f"Running scheduled monthly_extrato generation for target_month={target_month}, target_year={target_year}",
+                f"Running scheduled monthly_extrato generation for "
+                f"target_month={target_month}, target_year={target_year}",
                 extra={
                     "context": {
                         "job": "monthly_extrato",
@@ -1378,10 +1399,14 @@ def create_app():  # noqa: C901
             )
 
             try:
-                # Resolve the function at call time so tests that patch app.services.extrato_atomic.check_and_generate_extrato_with_transaction are effective
+                # Resolve the function at call time so tests that patch
+                # app.services.extrato_atomic.check_and_generate_extrato_with_transaction
+                # are effective
                 import importlib
 
-                extrato_atomic = importlib.import_module("app.services.extrato_atomic")
+                extrato_atomic = importlib.import_module(
+                    "app.services.extrato_atomic"
+                )
 
                 # Use atomic version with backup check (Task 3)
                 # No args → previous month by default inside the service
