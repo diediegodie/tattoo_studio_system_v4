@@ -68,8 +68,28 @@ def get_engine():
                 echo=False,  # Controlled by logging config; keep SQL echo off by default
             )
         else:
-            # Default safe engine for other backends (e.g., SQLite in-memory during tests)
-            _engine = create_engine(database_url, echo=False)
+            # Default safe engine for other backends (e.g., SQLite during tests)
+            try:
+                from sqlalchemy.pool import StaticPool
+
+                db_url_str = str(database_url)
+                is_sqlite_memory = db_url_str.startswith("sqlite") and (
+                    ":memory:" in db_url_str
+                )
+                if is_sqlite_memory:
+                    # Use a single shared in-memory database across the process
+                    # so DDL persists across connections (important for tests
+                    # that create tables and then open new sessions).
+                    _engine = create_engine(
+                        database_url,
+                        echo=False,
+                        connect_args={"check_same_thread": False},
+                        poolclass=StaticPool,
+                    )
+                else:
+                    _engine = create_engine(database_url, echo=False)
+            except Exception:
+                _engine = create_engine(database_url, echo=False)
         register_query_timing(_engine)
         try:
             # Emit explicit debug about the constructed engine target and dialect
@@ -101,6 +121,23 @@ def SessionLocal():
     call `SessionLocal()` will continue to work."""
     try:
         session = get_sessionmaker()()
+        # In test runs, defensively ensure tables exist. Some integration
+        # fixtures drop all tables between tests; tests that use SessionLocal
+        # directly (without the app/db fixtures) may otherwise see missing
+        # tables. Creating tables is idempotent on SQLite and cheap.
+        if os.getenv("TESTING", "").lower() in ("1", "true", "yes"):
+            try:
+                # Ensure models are imported so Base.metadata is populated
+                try:
+                    import importlib
+
+                    importlib.import_module("app.db.base")
+                except Exception:
+                    pass
+                create_tables()
+            except Exception:
+                # Never fail session creation due to table creation attempts
+                pass
         print(">>> DEBUG: DB session created successfully")
         return session
     except Exception as e:
@@ -133,4 +170,18 @@ def get_db():
 
 def create_tables():
     """Create all tables in database using the lazy engine."""
-    Base.metadata.create_all(bind=get_engine())
+    eng = get_engine()
+    # Create tables using this module's Base (may be empty if models were bound to a
+    # different Base due to import/reload order in tests)
+    try:
+        Base.metadata.create_all(bind=eng)
+    except Exception:
+        pass
+    # Also attempt with the Base from app.db.base where models are defined to cover
+    # cases where model Base != session.Base due to reloads in fixtures.
+    try:
+        from app.db.base import Base as ModelsBase
+
+        ModelsBase.metadata.create_all(bind=eng)
+    except Exception:
+        pass

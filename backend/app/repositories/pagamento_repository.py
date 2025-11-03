@@ -2,7 +2,6 @@ import logging
 from typing import Any, Dict, List, Optional, Union
 
 from app.db.base import Pagamento
-from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 

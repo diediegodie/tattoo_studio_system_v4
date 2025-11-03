@@ -7,17 +7,7 @@ Following SOLID principles:
 """
 
 import logging
-from datetime import date, datetime, time
-from decimal import Decimal
-from typing import Union
-
-from app.db.base import Client, Sessao
-from app.repositories.user_repo import UserRepository
-from app.services.user_service import UserService
-from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
-from flask_login import current_user, login_required
-from sqlalchemy.exc import IntegrityError
-from werkzeug.wrappers.response import Response
+from flask import Blueprint
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -25,11 +15,11 @@ logger = logging.getLogger(__name__)
 # Create Blueprint FIRST (before imports to avoid circular imports)
 sessoes_bp = Blueprint("sessoes", __name__, url_prefix="/sessoes")
 
-from app.controllers.sessoes_api import *  # noqa: E402
-
-# Import from split modules
 from app.controllers.sessoes_helpers import (
     _get_user_service,
     api_response,
-)  # noqa: E402
-from app.controllers.sessoes_routes import *  # noqa: E402
+)  # noqa: E402, F401
+from app.controllers.sessoes_api import *  # noqa: E402, F401, F403
+
+# Import from split modules
+from app.controllers.sessoes_routes import *  # noqa: E402, F401, F403

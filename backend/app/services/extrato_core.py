@@ -5,30 +5,24 @@ This module contains the core utilities for extrato processing,
 including data querying, serialization, calculation, and validation.
 """
 
-import json
 import logging
 import os
 from pathlib import Path
-import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from logging.handlers import RotatingFileHandler
-from typing import Any, Iterable, List, Optional, Tuple
+from typing import Any, Iterable, List, Optional
 
 from app.core import config
 from app.db.base import (
-    Client,
     Comissao,
     Extrato,
     ExtratoRunLog,
     Gasto,
     Pagamento,
     Sessao,
-    User,
 )
 from app.db.session import SessionLocal
 from app.services.backup_service import BackupService
-from app.services.undo_service import UndoService
-from sqlalchemy import and_, or_
 from sqlalchemy.orm import joinedload
 
 # Configure logging
@@ -958,18 +952,17 @@ def current_month_range():
                the first day of the current month at 00:00:00 and the first day
                of the next month at 00:00:00 in the application's configured timezone.
 
-    Note:
-        Uses APP_TZ from core.config to ensure timezone consistency.
-        Returns timezone-aware datetime objects for proper comparison.
+    Design choice:
+        Derive the boundaries from the application's timezone-aware current time
+        (datetime.now(APP_TZ)) so tests can patch datetime.now and APP_TZ.
+        Avoid local imports that shadow the module attribute to ensure patching works.
     """
-    from datetime import datetime
-
     now = datetime.now(config.APP_TZ)
-    start_date = datetime(now.year, now.month, 1, tzinfo=config.APP_TZ)
-    if now.month == 12:
-        end_date = datetime(now.year + 1, 1, 1, tzinfo=config.APP_TZ)
+    start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    if start_date.month == 12:
+        end_date = start_date.replace(year=start_date.year + 1, month=1)
     else:
-        end_date = datetime(now.year, now.month + 1, 1, tzinfo=config.APP_TZ)
+        end_date = start_date.replace(month=start_date.month + 1)
     return start_date, end_date
 
 

@@ -85,8 +85,16 @@ GOOGLE_CLIENT_SECRET
 OAUTHLIB_INSECURE_TRANSPORT (dev only, set to 1)
 OAUTHLIB_RELAX_TOKEN_SCOPE (dev only, set to 1)
 JOTFORM_API_KEY, JOTFORM_FORM_ID (if using JotForm sync)
+HEALTH_CHECK_TOKEN (secure token for /internal/health endpoint monitoring)
+AUTHORIZED_EMAILS (comma-separated list of authorized email addresses - REQUIRED for production)
 
 See .env.example for examples.
+
+### Timezone (TZ)
+- Default: UTC (safe and deterministic for tests and local dev)
+- Production: Set `TZ=America/Sao_Paulo` to use Brasília time for date windows and reports
+
+The app reads TZ from the environment at import time (via `app.core.config.APP_TZ`).
 
 ---
 
@@ -107,6 +115,51 @@ https://www.googleapis.com/auth/calendar.events
 
 ---
 
+## Authorization & Security
+
+### Email-Based Authorization
+
+The system implements email-based authorization to control access to sensitive operations:
+
+**Configuration:**
+Set the `AUTHORIZED_EMAILS` environment variable with a comma-separated list of authorized email addresses:
+
+```bash
+AUTHORIZED_EMAILS=admin@studio.com,manager@studio.com,artist@studio.com
+```
+
+**Behavior:**
+- **OAuth Login**: Users with emails NOT in the authorized list will be rejected during Google Sign-In
+- **API Access**: Sensitive CRUD endpoints require both valid JWT token AND authorized email
+- **Fail-Closed**: If `AUTHORIZED_EMAILS` is empty or not set, ALL users are denied access (secure default)
+- **Case-Insensitive**: Email comparison is case-insensitive for convenience
+
+**Protected Endpoints:**
+The following endpoints require authorization:
+- `/inventory/*` - Inventory management (POST, PUT, DELETE, PATCH)
+- `/gastos/*` - Expense tracking (POST, PUT, DELETE)
+- `/sessoes/*` - Session management (POST, PUT, DELETE)
+- `/financeiro/*` - Financial operations (POST)
+- All other CRUD operations on sensitive data
+
+**HTTP Status Codes:**
+- `401 Unauthorized`: Missing or invalid JWT token
+- `403 Forbidden`: Valid token but email not authorized
+
+**Testing Authorization:**
+```bash
+# Generate token for testing
+python -c "from app.core.security import create_user_token; print(create_user_token(1, 'test@example.com'))"
+
+# Test with curl
+curl -X POST http://localhost:5000/inventory/ \
+  -H "Authorization: Bearer YOUR_TOKEN_HERE" \
+  -H "Content-Type: application/json" \
+  -d '{"nome":"Test","quantidade":10}'
+```
+
+---
+
 ## Key endpoints (paths & HTTP methods)
 
 GET / — Login page (web)
@@ -118,7 +171,8 @@ POST /auth/logout — API logout (clears access token cookie)
 GET /clients/ — Clients list page (web)
 GET /clients/sync — Trigger JotForm -> local sync (web, redirects back)
 GET /clients/api/list — Clients JSON API (internal)
-GET /health — Health check
+GET /health — Public health check (rate limited)
+GET /internal/health — Secure health check with token authentication (requires X-Health-Token header)
 GET /db-test — Database connection test
 
 (If you use the frontend, it expects the web routes; for API clients use the /auth/* and /clients/api/* endpoints.)
@@ -205,6 +259,35 @@ python backend/scripts/monitor_atomic_extrato.py --report
 - Use `ALERT_SLOW_QUERY_ENABLED` (default `true`) to toggle the feature.
 - Set `ALERT_QUERY_MS_THRESHOLD` to the number of milliseconds before a warning is emitted. Changes take effect immediately without restarting.
 - Optionally provide `ALERT_SINK_SLACK_WEBHOOK` to mirror the alert to Slack; transient sink failures are reported once per failure type and then muted.
+
+#### Health Check Endpoints
+
+The application provides two health check endpoints:
+
+**Public Health Check** (`GET /health`):
+- No authentication required
+- Subject to rate limiting
+- Returns basic service status
+
+**Secure Health Check** (`GET /internal/health`):
+- Requires `X-Health-Token` header with valid token
+- Exempt from rate limiting when authenticated
+- Includes database connectivity verification
+- Comprehensive logging for monitoring
+
+**Testing the secure endpoint:**
+```bash
+# With valid token (replace with your actual token)
+curl -i -H "X-Health-Token: 309f43190ae444f560d9a2bdde5baa1f3b4a4d70759a848ab4f07b1c124aa945" \
+  http://127.0.0.1:5000/internal/health
+
+# Without token (should return 401)
+curl -i http://127.0.0.1:5000/internal/health
+```
+
+**Environment Configuration:**
+- Set `HEALTH_CHECK_TOKEN` in all environments (Render, GitHub Actions, local .env)
+- Generate a secure token: `python3 -c "import secrets; print(secrets.token_hex(32))"`
 
 
 ### Testing

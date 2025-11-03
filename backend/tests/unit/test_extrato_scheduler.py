@@ -164,7 +164,7 @@ class TestExtratoScheduler:
 
         from app.services.extrato_core import should_run_monthly_extrato
 
-        result1 = should_run_monthly_extrato()
+        result1 = should_run_monthly_extrato(min_day_threshold=1)
         assert result1 is True
 
         # Second call: existing successful run
@@ -172,7 +172,7 @@ class TestExtratoScheduler:
         mock_existing.status = "success"
         mock_filter.first.return_value = mock_existing
 
-        result2 = should_run_monthly_extrato()
+        result2 = should_run_monthly_extrato(min_day_threshold=1)
         assert result2 is False
 
     def test_structured_logging_context(self, monkeypatch, caplog):

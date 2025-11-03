@@ -4,10 +4,9 @@ Contains deprecated endpoints for backwards compatibility.
 """
 
 import logging
-from typing import Union
 
 from app.controllers.sessoes_helpers import _get_user_service
-from flask import Blueprint, jsonify, request
+from flask import jsonify, request
 from werkzeug.wrappers.response import Response
 
 logger = logging.getLogger(__name__)

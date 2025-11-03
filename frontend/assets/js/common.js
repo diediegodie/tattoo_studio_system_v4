@@ -34,9 +34,30 @@ function toggleDetails(id) {
 
 // Add event listeners for options buttons
 function setupCommonEventListeners() {
-    // Remove potentially conflicting event delegation
-    // The inline onclick handlers should work without interference
-    console.log('Common event listeners setup complete');
+  // Delegate options toggle to avoid inline handlers (CSP-safe)
+  document.addEventListener('click', function (e) {
+    const optionsBtn = e.target.closest && e.target.closest('.options-btn');
+    if (optionsBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      try {
+        toggleOptions(optionsBtn);
+      } catch (err) {
+        console.warn('toggleOptions not available:', err);
+      }
+    }
+
+    // Clients list: toggle details row when clicking a client row
+    const clientRow = e.target.closest && e.target.closest('.client-row');
+    if (clientRow) {
+      const detailsRow = clientRow.nextElementSibling;
+      if (detailsRow && detailsRow.classList.contains('client-details-row')) {
+        detailsRow.classList.toggle('visible');
+      }
+    }
+  }, { capture: false });
+
+  console.log('Common delegated event listeners setup complete');
 }
 
 // Set up event listeners when DOM is ready
@@ -47,6 +68,8 @@ function initializeCommon() {
 // Expose functions to global scope for HTML onclick handlers
 window.toggleOptions = toggleOptions;
 window.toggleDetails = toggleDetails;
+// Initialize on DOM ready
+document.addEventListener('DOMContentLoaded', initializeCommon);
 
 // Centralized notification helpers
 window.notifySuccess = function(message) {
@@ -76,9 +99,18 @@ window.notifyWarning = function(message) {
 // Centralized confirmation dialog helper
 window.confirmAction = function(message, title = 'Confirmar exclusão') {
   console.log('[DEBUG] confirmAction called with message:', message);
+  
+  // Check if openModal is available
+  if (typeof window.openModal !== 'function') {
+    console.error('[ERROR] window.openModal is not available! Modal.js may not be loaded.');
+    // Fallback to native confirm
+    const confirmed = confirm(`${title}\n\n${message}`);
+    return Promise.resolve(confirmed);
+  }
+  
   return new Promise((resolve) => {
     // Use unified modal system
-    openModal({
+    window.openModal({
       title: title,
       body: `<p>${message}</p>`,
       confirmText: 'Confirmar',

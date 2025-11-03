@@ -67,7 +67,8 @@ class TestRegressionFlowComprehensive:
         db_session.add(client_with_payment)
 
         # Create sessions for different scenarios
-        today = date.today()
+        # Use a mid-month date to avoid boundary flakiness on day 1 causing previous-month records
+        today = date.today().replace(day=15)
 
         session_with_client = Sessao(
             id=301,

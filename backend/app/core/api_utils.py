@@ -4,7 +4,7 @@ Common API utilities for consistent response formatting across all controllers.
 
 from typing import Any, Optional
 
-from flask import jsonify
+from flask import jsonify, request, current_app, abort
 
 
 def api_response(
@@ -28,3 +28,33 @@ def api_response(
         response["data"] = data
 
     return jsonify(response), status_code
+
+
+def verify_health_token() -> bool:
+    """
+    Verify the health check token from request headers.
+
+    Returns:
+        bool: True if token is valid, False otherwise
+    """
+    token = request.headers.get("X-Health-Token")
+    expected = current_app.config.get("HEALTH_CHECK_TOKEN")
+    # If no token expected, deny access (more secure)
+    if not expected:
+        return False
+    return bool(token and token == expected)
+
+
+def health_endpoint_decorator(f):
+    """
+    Decorator for health endpoints that verifies token and exempts from rate limiting if valid.
+    """
+    from functools import wraps
+
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        if verify_health_token():
+            return f(*args, **kwargs)
+        abort(401)
+
+    return wrapper

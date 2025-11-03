@@ -8,6 +8,7 @@ using the google_login blueprint, which handles user login only
 
 import uuid
 from unittest.mock import Mock, patch
+import os
 import pytest
 from flask import url_for, session
 
@@ -18,6 +19,21 @@ from tests.conftest import google_login_endpoint, google_login_session_state_key
 
 class TestGoogleLoginBlueprint:
     """Test suite for Google Login blueprint functionality."""
+
+    @pytest.fixture(autouse=True)
+    def mock_authorized_emails(self):
+        """Allow test emails for OAuth login in unit tests."""
+        with patch.dict(
+            "os.environ",
+            {"AUTHORIZED_EMAILS": "newuser@example.com,user@example.com"},
+        ):
+            import app.core.config
+
+            app.core.config.AUTHORIZED_EMAILS = (
+                app.core.config.get_authorized_emails()
+            )
+            yield
+            app.core.config.AUTHORIZED_EMAILS = set()
 
     def test_google_login_blueprint_registered(self, app):
         """Verify google_login blueprint is registered with correct URL prefix."""

@@ -9,6 +9,7 @@ import os
 import sys
 import requests
 from datetime import date
+import pytest
 
 # Add the backend directory to the Python path
 backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -19,6 +20,9 @@ from app.core.logging_config import get_logger
 logger = get_logger(__name__)
 
 
+@pytest.mark.skip(
+    reason="Script-oriented test; run via __main__ with a prepared environment"
+)
 def test_payment_registration_without_client():
     """Test payment registration via HTTP POST without client."""
 
@@ -72,7 +76,7 @@ def test_payment_registration_without_client():
             logger.info("Empty string correctly converted to None")
         else:
             logger.error("Expected None", extra={"context": {"got": cliente_id}})
-            return False
+            assert False, f"Expected cliente_id None, got {cliente_id!r}"
 
         # Create payment directly to test
         payment = Pagamento(
@@ -99,7 +103,10 @@ def test_payment_registration_without_client():
             },
         )
 
-        return True
+        # Assert that cliente_id is None as expected
+        assert (
+            payment.cliente_id is None
+        ), "Payment should be created without a client (cliente_id is not None)"
 
     except Exception as e:
         logger.error(
@@ -108,7 +115,7 @@ def test_payment_registration_without_client():
         import traceback
 
         traceback.print_exc()
-        return False
+        raise
     finally:
         try:
             if "db" in locals() and db is not None:
@@ -121,11 +128,11 @@ if __name__ == "__main__":
     # Set environment for SQLite
     os.environ["DATABASE_URL"] = "sqlite:///tattoo_studio_dev.db"
 
-    success = test_payment_registration_without_client()
-    if success:
+    try:
+        test_payment_registration_without_client()
         logger.info(
             "Integration test PASSED! Payments can be registered without selecting a client."
         )
-    else:
+    except AssertionError:
         logger.error("Integration test FAILED!")
         sys.exit(1)

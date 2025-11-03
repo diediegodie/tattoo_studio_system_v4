@@ -9,12 +9,27 @@ Tests the complete flow:
 Validates that tokens are stored with correct providers and operations work correctly.
 """
 
+import os
 import uuid
 from datetime import datetime, timezone, timedelta
 from typing import cast
 from unittest.mock import Mock, patch
 import pytest
 from flask import url_for
+
+
+@pytest.fixture(autouse=True)
+def mock_authorized_emails():
+    """Mock AUTHORIZED_EMAILS for OAuth integration tests."""
+    with patch.dict(
+        "os.environ",
+        {"AUTHORIZED_EMAILS": "integration@example.com,loginonly@example.com,calendar@test.com,admin@test.com"},
+    ):
+        import app.core.config
+        app.core.config.AUTHORIZED_EMAILS = app.core.config.get_authorized_emails()
+        yield
+        app.core.config.AUTHORIZED_EMAILS = set()
+
 
 from app.config.oauth_provider import PROVIDER_GOOGLE_LOGIN, PROVIDER_GOOGLE_CALENDAR
 from app.db.base import User as DbUser, OAuth

@@ -21,10 +21,19 @@ def get_gastos_for_month(
     - Includes joinedload for the creator relationship for convenience.
     - The function is intentionally generic and reusable by controllers/services.
     """
+    # Normalize to date-only for Date column comparison
+    try:
+        start_date_date = (
+            start_date.date() if hasattr(start_date, "date") else start_date
+        )
+        end_date_date = end_date.date() if hasattr(end_date, "date") else end_date
+    except Exception:
+        start_date_date, end_date_date = start_date, end_date
+
     return (
         db.query(Gasto)
         .options(joinedload(Gasto.creator))
-        .filter(Gasto.data >= start_date, Gasto.data < end_date)
+        .filter(Gasto.data >= start_date_date, Gasto.data < end_date_date)
         .order_by(Gasto.data.asc())
         .all()
     )

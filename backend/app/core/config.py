@@ -34,6 +34,8 @@ def get_app_timezone() -> ZoneInfo:
         >>> tz = get_app_timezone()
         >>> print(tz)  # America/Sao_Paulo
     """
+    # Default to UTC when TZ is not set to keep deterministic behavior in tests
+    # and align with baseline expectations; production can override via TZ.
     tz_name = os.getenv("TZ", "UTC")
 
     try:
@@ -127,5 +129,132 @@ def log_extrato_config():
         extra={
             "require_backup": EXTRATO_REQUIRE_BACKUP,
             "env_var": os.getenv("EXTRATO_REQUIRE_BACKUP", "true (default)"),
+        },
+    )
+
+
+# ===========================
+# Health Check Configuration
+# ===========================
+
+
+def get_health_check_token() -> str | None:
+    """
+    Get the health check token from environment variable.
+
+    Returns:
+        str | None: Health check token if configured, None otherwise
+
+    Environment Variables:
+        HEALTH_CHECK_TOKEN: Token required for internal health checks
+            Default: None (health checks disabled if not set)
+            Production: Should be set to a secure random string
+            Development: Can be set for testing
+
+    Examples:
+        >>> # In .env file:
+        >>> # HEALTH_CHECK_TOKEN=secure-random-token-123
+        >>> token = get_health_check_token()
+    """
+    return os.getenv("HEALTH_CHECK_TOKEN", None)
+
+
+# Global health check token
+HEALTH_CHECK_TOKEN = get_health_check_token()
+
+
+# ===========================
+# Authorization Configuration
+# ===========================
+
+
+def get_authorized_emails() -> set[str]:
+    """
+    Get the set of authorized email addresses from environment variable.
+
+    Returns:
+        set[str]: Set of authorized email addresses (lowercased for comparison)
+
+    Environment Variables:
+        AUTHORIZED_EMAILS: Comma-separated list of authorized email addresses
+            Default: Empty (no users authorized by default)
+            Production: Should contain admin email addresses
+            Development: Can contain test email addresses
+
+    Examples:
+        >>> # In .env file:
+        >>> # AUTHORIZED_EMAILS=admin@example.com,user@example.com,dev@example.com
+        >>> authorized = get_authorized_emails()
+        >>> print(authorized)  # {'admin@example.com', 'user@example.com', 'dev@example.com'}
+    """
+    emails_str = os.getenv("AUTHORIZED_EMAILS", "")
+
+    if not emails_str.strip():
+        logger.warning(
+            "AUTHORIZED_EMAILS is not configured - no users will be authorized by default",
+            extra={
+                "environment": os.getenv("FLASK_ENV", "unknown"),
+            },
+        )
+        return set()
+
+    # Split by comma, strip whitespace, lowercase for case-insensitive comparison
+    emails = {email.strip().lower() for email in emails_str.split(",") if email.strip()}
+
+    logger.info(
+        "Authorized emails configuration loaded",
+        extra={
+            "email_count": len(emails),
+            "environment": os.getenv("FLASK_ENV", "unknown"),
+        },
+    )
+
+    return emails
+
+
+def is_email_authorized(email: str) -> bool:
+    """
+    Check if an email address is authorized.
+
+    Args:
+        email: Email address to check
+
+    Returns:
+        bool: True if email is authorized, False otherwise
+
+    Examples:
+        >>> # With AUTHORIZED_EMAILS=admin@example.com,user@example.com
+        >>> is_email_authorized("admin@example.com")  # True
+        >>> is_email_authorized("ADMIN@EXAMPLE.COM")  # True (case-insensitive)
+        >>> is_email_authorized("hacker@evil.com")    # False
+    """
+    if not email:
+        return False
+
+    authorized = get_authorized_emails()
+
+    # Empty set means no authorization configured - reject all
+    if not authorized:
+        return False
+
+    return email.strip().lower() in authorized
+
+
+# Global authorized emails set - cached at module load time
+AUTHORIZED_EMAILS = get_authorized_emails()
+
+
+def log_authorization_config():
+    """
+    Log the active authorization configuration.
+
+    Should be called during application startup to provide visibility
+    into the authorization settings (without exposing actual emails).
+    """
+    logger.info(
+        "Authorization configuration initialized",
+        extra={
+            "authorized_count": len(AUTHORIZED_EMAILS),
+            "env_var_set": bool(os.getenv("AUTHORIZED_EMAILS")),
         },
     )

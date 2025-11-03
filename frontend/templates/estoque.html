@@ -53,8 +53,7 @@
 									</td>
 									<td>{{ item.observacoes }}</td>
 									<td>
-										<button class="button small options-btn"
-											onclick="toggleOptions(this)">Opções</button>
+										<button class="button small options-btn">Opções</button>
 										<span class="options-actions">
 											<button class="button small edit-item-btn"
 												data-id="{{ item.id }}">Editar</button>
@@ -78,27 +77,7 @@
 		{% include 'partials/_sidebar.html' %}
 	</div>
 	{% include 'partials/_base_scripts.html' %}
-	<script>
-		// Inventory-specific functions
-		window.INVENTORY_LOCKED = true;
-		function toggleLockMode() {
-			window.INVENTORY_LOCKED = !window.INVENTORY_LOCKED;
-			document.getElementById('lock-icon').style.display = window.INVENTORY_LOCKED ? 'inline' : 'none';
-			document.getElementById('edit-icon').style.display = window.INVENTORY_LOCKED ? 'none' : 'inline';
-			updateLockerControls();
-		}
-		document.getElementById('lock-toggle').onclick = toggleLockMode;
-
-		function updateLockerControls() {
-			document.querySelectorAll('.qtd-controls').forEach(ctrl => {
-				ctrl.style.display = window.INVENTORY_LOCKED ? 'none' : 'inline-block';
-			});
-			document.querySelectorAll('.btn-up, .btn-down').forEach(btn => {
-				btn.disabled = window.INVENTORY_LOCKED;
-			});
-		}
-		document.addEventListener('DOMContentLoaded', updateLockerControls);
-	</script>
+    
 	<script src="{{ url_for('static', filename='js/inventory.js', v=config.get('GIT_SHA','')) }}"></script>
 </body>
 

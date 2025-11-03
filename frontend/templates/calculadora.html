@@ -40,7 +40,7 @@
                             </form>
                         </div>
 
-                        <!-- Result modal will be injected by frontend/assets/js/calculadora.js -->
+                        <div id="calc-resultado" class="box" style="display:none;"></div>
                     </section>
 
                 </section>
@@ -50,7 +50,6 @@
 
         {% include 'partials/_sidebar.html' %}
 
-        <script src="{{ url_for('static', filename='js/common.js', v=config.get('GIT_SHA','')) }}"></script>
         {% include 'partials/_base_scripts.html' %}
         <script src="{{ url_for('static', filename='js/calculadora.js', v=config.get('GIT_SHA','')) }}"></script>
 

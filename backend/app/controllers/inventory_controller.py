@@ -23,8 +23,9 @@ from app.db.session import SessionLocal  # noqa: E402
 from app.domain.entities import InventoryItem  # noqa: E402
 from app.repositories.inventory_repository import InventoryRepository  # noqa: E402
 from app.services.inventory_service import InventoryService  # noqa: E402
-from flask_login import current_user, login_required  # noqa: E402
+from flask_login import login_required  # noqa: E402
 from app.core.limiter_config import limiter  # noqa: E402
+from app.core.auth_decorators import require_session_authorization  # noqa: E402
 
 inventory_bp = Blueprint("inventory", __name__, url_prefix="/inventory")
 
@@ -66,7 +67,7 @@ def list_inventory():
 
 @inventory_bp.route("/", methods=["POST"])
 @limiter.limit("30 per minute")
-@login_required
+@require_session_authorization
 def add_inventory():
     """Add a new inventory item."""
     db = SessionLocal()
@@ -120,8 +121,8 @@ def add_inventory():
 
 @inventory_bp.route("/<int:item_id>", methods=["PUT"])
 @limiter.limit("30 per minute")
-@csrf.exempt  # JSON API - uses JWT authentication
-@login_required
+@csrf.exempt  # JSON API - uses session authentication
+@require_session_authorization
 def update_inventory(item_id):
     """Update an inventory item."""
     db = SessionLocal()
@@ -165,8 +166,8 @@ def update_inventory(item_id):
 
 @inventory_bp.route("/<int:item_id>", methods=["DELETE"])
 @limiter.limit("30 per minute")
-@csrf.exempt  # JSON API - uses JWT authentication
-@login_required
+@csrf.exempt  # JSON API - uses session authentication
+@require_session_authorization
 def delete_inventory(item_id):
     """Delete an inventory item."""
     db = SessionLocal()
@@ -190,7 +191,7 @@ def delete_inventory(item_id):
 
 @inventory_bp.route("/<int:item_id>/quantity", methods=["PATCH"])
 @limiter.limit("30 per minute")
-@login_required
+@require_session_authorization
 def change_quantity(item_id):
     """Change quantity of an inventory item."""
     db = SessionLocal()

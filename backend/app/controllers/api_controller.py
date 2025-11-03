@@ -14,6 +14,7 @@ from flask import (
     render_template,
     request,
     current_app,
+    abort,
 )
 from flask_login import current_user, login_required, logout_user
 from app.core.csrf_config import csrf
@@ -161,13 +162,41 @@ def admin_only():
         )
 
 
-@limiter.exempt
 @api_bp.route("/health", methods=["GET"])
 def health_check():
     """Health check endpoint (no auth required)."""
     return jsonify(
         {"status": "healthy", "service": "tattoo-studio-api", "auth": "jwt-ready"}
     )
+
+
+@api_bp.route("/internal/health", methods=["GET"])
+@limiter.exempt
+def internal_health():
+    """Internal health check endpoint with token authentication."""
+    from app.core.api_utils import verify_health_token
+    import logging
+
+    if not verify_health_token():
+        abort(401)
+
+    logger = logging.getLogger(__name__)
+    logger.info(
+        f"Health check authenticated: {request.remote_addr} {request.user_agent}"
+    )
+
+    # Basic DB check
+    try:
+        from app.db.session import SessionLocal
+        from sqlalchemy import text
+
+        with SessionLocal() as db:
+            db.execute(text("SELECT 1"))
+    except Exception as e:
+        logger.error(f"Health check DB error: {e}")
+        return jsonify({"status": "error", "message": "Database check failed"}), 500
+
+    return jsonify({"status": "ok"}), 200
 
 
 # Error handlers for the API blueprint

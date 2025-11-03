@@ -45,9 +45,27 @@ def mock_inventory_service():
 
 
 @pytest.fixture(autouse=True)
+def enable_login_disabled(app):
+    """Bypass authorization via app config for unit tests using the main app client."""
+    try:
+        app.config["LOGIN_DISABLED"] = True
+        yield
+    finally:
+        app.config["LOGIN_DISABLED"] = False
+
+
+@pytest.fixture(autouse=True)
 def bypass_login_required():
-    """Patch the login_required decorator to a no-op so endpoints are callable in unit tests."""
-    with patch("controllers.inventory_controller.login_required", lambda f: f):
+    """Patch auth decorators to no-ops so endpoints are callable in unit tests.
+
+    We bypass both Flask-Login's login_required and the custom require_session_authorization
+    (session/email auth) to focus these unit tests on controller behavior.
+    """
+    with patch("controllers.inventory_controller.login_required", lambda f: f), patch(
+        "controllers.inventory_controller.require_session_authorization", lambda f: f
+    ), patch("app.controllers.inventory_controller.login_required", lambda f: f), patch(
+        "app.controllers.inventory_controller.require_session_authorization", lambda f: f
+    ):
         yield
 
 

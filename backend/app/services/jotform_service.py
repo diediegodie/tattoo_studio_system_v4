@@ -9,7 +9,7 @@ This service:
 """
 
 import json
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 import requests
 from app.domain.interfaces import IJotFormService

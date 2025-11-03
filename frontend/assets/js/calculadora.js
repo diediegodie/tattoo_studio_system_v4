@@ -64,8 +64,26 @@ function initializeCalculadora() {
       <p><strong>${100 - pct}%:</strong> ${formattedRest}</p>
     `;
 
-    // Show results with "Novo cálculo" button
-    showResultModal('Resultado da Comissão', content, onNewCalc);
+    // Show results in centered block
+    var resultadoBlock = document.getElementById('calc-resultado');
+    if (resultadoBlock) {
+      resultadoBlock.innerHTML = `<h2>Resultado da Comissão</h2>${content}<button id='novo-calculo-btn' class='button primary'>Novo cálculo</button>`;
+      resultadoBlock.style.display = '';
+      // Scroll to result
+      resultadoBlock.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Novo cálculo button resets form and hides result
+      var novoCalcBtn = document.getElementById('novo-calculo-btn');
+      if (novoCalcBtn) {
+        novoCalcBtn.addEventListener('click', function() {
+          form.reset();
+          resultadoBlock.style.display = 'none';
+          document.getElementById('valor-total').focus();
+        });
+      }
+    }
+    // Optionally, hide modal if open
+    if (typeof closeModal === 'function') try { closeModal(); } catch(e) {}
+
   });
 }
 

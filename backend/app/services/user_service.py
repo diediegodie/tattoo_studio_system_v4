@@ -1,6 +1,6 @@
 from typing import Dict, List, Optional
 
-from app.core.security import hash_password, verify_password
+from app.core.security import hash_password
 from app.domain.entities import User as DomainUser
 from app.domain.interfaces import IUserRepository
 

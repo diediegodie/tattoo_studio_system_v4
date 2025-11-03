@@ -3,30 +3,20 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any, Iterable, List, Optional, Tuple, Union, cast
 
-from app.core.api_utils import api_response  # noqa: F401 - used in financeiro_api
 from app.db.base import Client, Pagamento
 from app.db.session import SessionLocal
-from app.repositories.pagamento_repository import (
-    PagamentoRepository,
-)  # noqa: F401 - used in financeiro_api
-from app.repositories.user_repo import (
-    UserRepository,
-)  # noqa: F401 - may be used in imported modules
-from app.services.user_service import (
-    UserService,
-)  # noqa: F401 - may be used in imported modules
 from flask import (
     Blueprint,
     flash,
-    jsonify,
     redirect,
     render_template,
     request,
     url_for,
-)  # noqa: F401 - jsonify used in financeiro_api
+)
 from flask_login import current_user, login_required
 from sqlalchemy.orm import joinedload
 from werkzeug.wrappers import Response
+from app.core.auth_decorators import require_session_authorization
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -252,7 +242,7 @@ def financeiro_home() -> str:
 
 
 @financeiro_bp.route("/registrar-pagamento", methods=["GET", "POST"])
-@login_required
+@require_session_authorization
 def registrar_pagamento() -> Union[str, Response, Tuple[str, int]]:
     """Create a new payment record."""
     db = None

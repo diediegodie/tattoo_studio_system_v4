@@ -11,6 +11,7 @@ import os
 import sys
 import logging
 from pathlib import Path
+from logging.handlers import RotatingFileHandler
 
 # Add backend to path
 backend_dir = Path(__file__).parent.parent
@@ -37,9 +38,7 @@ def test_log_to_file_enabled():
     # Check if handlers include file handlers
     root_logger = logging.getLogger()
     file_handlers = [
-        h
-        for h in root_logger.handlers
-        if isinstance(h, logging.handlers.RotatingFileHandler)
+        h for h in root_logger.handlers if isinstance(h, RotatingFileHandler)
     ]
 
     print(f"\nTotal handlers: {len(root_logger.handlers)}")
@@ -65,50 +64,55 @@ def test_log_to_file_disabled():
     print("=" * 60)
     print("Test 2: LOG_TO_FILE=0 (Production Mode - Stdout Only)")
     print("=" * 60)
+    prev = os.environ.get("LOG_TO_FILE")
+    try:
+        os.environ["LOG_TO_FILE"] = "0"
+        setup_logging(log_level=logging.INFO, use_json_format=True)
 
-    os.environ["LOG_TO_FILE"] = "0"
-    setup_logging(log_level=logging.INFO, use_json_format=True)
+        logger = get_logger("test.stdout_only")
+        logger.info(
+            "This should ONLY go to stdout as JSON",
+            extra={"context": {"mode": "stdout_only", "production": True}},
+        )
 
-    logger = get_logger("test.stdout_only")
-    logger.info(
-        "This should ONLY go to stdout as JSON",
-        extra={"context": {"mode": "stdout_only", "production": True}},
-    )
+        # Check if handlers include file handlers
+        root_logger = logging.getLogger()
+        file_handlers = [
+            h for h in root_logger.handlers if isinstance(h, RotatingFileHandler)
+        ]
+        stream_handlers = [
+            h
+            for h in root_logger.handlers
+            if isinstance(h, logging.StreamHandler)
+            and not isinstance(h, RotatingFileHandler)
+        ]
 
-    # Check if handlers include file handlers
-    root_logger = logging.getLogger()
-    file_handlers = [
-        h
-        for h in root_logger.handlers
-        if isinstance(h, logging.handlers.RotatingFileHandler)
-    ]
-    stream_handlers = [
-        h
-        for h in root_logger.handlers
-        if isinstance(h, logging.StreamHandler)
-        and not isinstance(h, logging.handlers.RotatingFileHandler)
-    ]
+        print(f"\nTotal handlers: {len(root_logger.handlers)}")
+        print(f"File handlers: {len(file_handlers)}")
+        print(f"Stream handlers (stdout): {len(stream_handlers)}")
 
-    print(f"\nTotal handlers: {len(root_logger.handlers)}")
-    print(f"File handlers: {len(file_handlers)}")
-    print(f"Stream handlers (stdout): {len(stream_handlers)}")
+        if not file_handlers:
+            print("✅ No file handlers (correct for LOG_TO_FILE=0)")
+        else:
+            print("❌ File handlers found (should be disabled with LOG_TO_FILE=0)")
+            for handler in file_handlers:
+                print(f"   - {handler.baseFilename}")
 
-    if not file_handlers:
-        print("✅ No file handlers (correct for LOG_TO_FILE=0)")
-    else:
-        print("❌ File handlers found (should be disabled with LOG_TO_FILE=0)")
-        for handler in file_handlers:
-            print(f"   - {handler.baseFilename}")
+        if stream_handlers:
+            print("✅ Stream handlers active for stdout")
 
-    if stream_handlers:
-        print("✅ Stream handlers active for stdout")
+        # Clear handlers
+        for handler in root_logger.handlers[:]:
+            handler.close()
+            root_logger.removeHandler(handler)
 
-    # Clear handlers
-    for handler in root_logger.handlers[:]:
-        handler.close()
-        root_logger.removeHandler(handler)
-
-    print()
+        print()
+    finally:
+        # Restore previous LOG_TO_FILE value to avoid leaking to other tests
+        if prev is None:
+            os.environ.pop("LOG_TO_FILE", None)
+        else:
+            os.environ["LOG_TO_FILE"] = prev
 
 
 def main():

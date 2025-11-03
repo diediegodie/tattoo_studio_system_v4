@@ -92,11 +92,13 @@ function openModal(options = {}) {
 
     if (cancelBtn) {
         cancelBtn.textContent = cancelText;
-        cancelBtn.style.display = showCancel ? 'inline-block' : 'none';
+        cancelBtn.classList.toggle('modal-btn-visible', showCancel);
+        cancelBtn.classList.toggle('modal-btn-hidden', !showCancel);
     }
     if (confirmBtn) {
         confirmBtn.textContent = confirmText;
-        confirmBtn.style.display = showConfirm ? 'inline-block' : 'none';
+        confirmBtn.classList.toggle('modal-btn-visible', showConfirm);
+        confirmBtn.classList.toggle('modal-btn-hidden', !showConfirm);
     }
 
     // Add custom buttons
@@ -129,8 +131,10 @@ function openModal(options = {}) {
     // Store previous focus element
     previousFocusElement = document.activeElement;
 
-    // Show modal
-    modalInstance.style.display = 'flex';
+    // Show modal (ensure inline style overrides don't keep it hidden)
+    modalInstance.style.display = 'block';
+    modalInstance.classList.remove('modal-hidden');
+    modalInstance.classList.add('modal-visible');
 
     // Set up focus trap for this modal instance
     setupFocusTrap();
@@ -142,7 +146,7 @@ function openModal(options = {}) {
     }
 
     // Prevent body scroll
-    document.body.style.overflow = 'hidden';
+    document.body.classList.add('modal-open');
 }
 
 /**
@@ -162,11 +166,13 @@ function closeModal() {
         containerElement.className = 'modal-container';
     }
 
-    // Hide modal
+    // Hide modal (ensure inline style hides it)
+    modalInstance.classList.remove('modal-visible');
+    modalInstance.classList.add('modal-hidden');
     modalInstance.style.display = 'none';
 
     // Restore body scroll
-    document.body.style.overflow = '';
+    document.body.classList.remove('modal-open');
 
     // Restore focus
     if (previousFocusElement && typeof previousFocusElement.focus === 'function') {
@@ -196,7 +202,7 @@ function setupModalEventListeners() {
 
     // ESC key to close
     document.addEventListener('keydown', function(e) {
-        if (modalInstance.style.display !== 'none' && e.key === 'Escape') {
+    if (modalInstance.classList.contains('modal-visible') && e.key === 'Escape') {
             handleCancel();
         }
     });
@@ -341,10 +347,14 @@ function handleConfirm() {
  * @param {string} options.containerClass - Custom CSS class for container (default: "modal-container")
  */
 function openCustomModal(options = {}) {
+    console.log('[MODAL] openCustomModal called with options:', options);
+    
     if (!modalInstance) {
-        console.error('Modal not initialized');
+        console.error('[MODAL] Modal not initialized - modalInstance is null!');
         return;
     }
+    
+    console.log('[MODAL] modalInstance exists:', modalInstance);
 
     const {
         title = '',
@@ -361,6 +371,8 @@ function openCustomModal(options = {}) {
         overlayClass = 'modal-overlay',
         containerClass = 'modal-container'
     } = options;
+    
+    console.log('[MODAL] Parsed options - title:', title, 'showConfirm:', showConfirm, 'showCancel:', showCancel);
 
     // Store callbacks and options
     modalCallbacks = { 
@@ -421,11 +433,13 @@ function openCustomModal(options = {}) {
 
     if (cancelBtn) {
         cancelBtn.textContent = cancelText;
-        cancelBtn.style.display = showCancel ? 'inline-block' : 'none';
+        cancelBtn.classList.toggle('modal-btn-visible', showCancel);
+        cancelBtn.classList.toggle('modal-btn-hidden', !showCancel);
     }
     if (confirmBtn) {
         confirmBtn.textContent = confirmText;
-        confirmBtn.style.display = showConfirm ? 'inline-block' : 'none';
+        confirmBtn.classList.toggle('modal-btn-visible', showConfirm);
+        confirmBtn.classList.toggle('modal-btn-hidden', !showConfirm);
     }
 
     // Add custom buttons
@@ -460,8 +474,14 @@ function openCustomModal(options = {}) {
     // Store previous focus element
     previousFocusElement = document.activeElement;
 
+    console.log('[MODAL] About to show modal, current display:', modalInstance.style.display);
+    
     // Show modal
     modalInstance.style.display = 'flex';
+    modalInstance.classList.remove('modal-hidden');
+    modalInstance.classList.add('modal-visible');
+    
+    console.log('[MODAL] Modal should now be visible, display:', modalInstance.style.display);
 
     // Set up focus trap for this modal instance
     setupFocusTrap();
@@ -473,7 +493,9 @@ function openCustomModal(options = {}) {
     }
 
     // Prevent body scroll
-    document.body.style.overflow = 'hidden';
+    document.body.classList.add('modal-open');
+    
+    console.log('[MODAL] openCustomModal completed successfully');
 }
 
 // Export functions for global use

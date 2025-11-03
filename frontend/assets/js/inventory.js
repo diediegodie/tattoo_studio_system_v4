@@ -61,7 +61,13 @@ function renderInventory() {
     // Arrows inside same td, with spacing
     const qtdControls = document.createElement('span');
     qtdControls.className = 'qtd-controls';
-    qtdControls.style.display = window.INVENTORY_LOCKED ? 'none' : 'inline-block';
+    
+    // Aplica estado de lock aos controles (oculta se bloqueado)
+    const isLocked = window.INVENTORY_LOCKED === true;
+    if (isLocked) {
+        qtdControls.classList.add('hidden-with-margin');
+    }
+    
     qtdControls.style.marginLeft = '0.75em';
     const btnUp = document.createElement('button');
     btnUp.className = 'btn-up btn-icon';
@@ -175,8 +181,12 @@ async function changeQuantity(id, delta) {
 
 // Editar item
 function editItem(id) {
+    console.log('[DEBUG] editItem called with id:', id);
     const item = inventoryData.find(i => i.id == id);
+    console.log('[DEBUG] Found item:', item);
+    
     if (!item) {
+        console.error('[DEBUG] Item not found in inventoryData');
         if (window.showToast) window.showToast('Item não encontrado.', 'error');
         return;
     }
@@ -190,8 +200,19 @@ function editItem(id) {
         </form>
     `;
 
+    console.log('[DEBUG] Checking if window.openCustomModal is available:', typeof window.openCustomModal);
+    
+    // Check if modal system is available
+    if (typeof window.openCustomModal !== 'function') {
+        console.error('[ERROR] window.openCustomModal is not available! Modal.js may not be loaded.');
+        alert('Sistema de modal não disponível. Recarregue a página.');
+        return;
+    }
+
+    console.log('[DEBUG] Opening custom modal for edit...');
+    
     // Open modal with unified system
-    openCustomModal({
+    window.openCustomModal({
         title: 'Editar Item',
         content: formContent,
         confirmText: 'Salvar',
@@ -230,7 +251,7 @@ function editItem(id) {
                     Object.assign(item, json.data);
                     renderInventory();
                     window.notifySuccess(json.message);
-                    closeModal();
+                        window.closeModal();
                 } else {
                     const msg = (json && json.message) || 'Erro ao salvar.';
                     window.notifyError(msg);
@@ -287,7 +308,7 @@ async function deleteItem(id) {
                     renderInventory();
                 }
                     window.notifySuccess(json.message);
-                    try { if (typeof closeModal === 'function') closeModal(); } catch(e) {}
+                        try { if (typeof window.closeModal === 'function') window.closeModal(); } catch(e) {}
             } else {
                 console.error('[DEBUG] Item deletion failed, id:', id, 'response:', json);
                 const msg = (json && json.message) || 'Erro ao excluir.';
@@ -304,21 +325,62 @@ async function deleteItem(id) {
 
 // ...existing code...
 
-// Locker controls logic
+// ====================================
+// LOCK/UNLOCK CONTROLS - Refatorado
+// ====================================
+/**
+ * Atualiza a visibilidade dos controles de quantidade (+/-) baseado no estado de lock
+ * Quando locked: esconde os controles
+ * Quando unlocked: mostra os controles
+ */
 function updateLockerControls() {
+    const isLocked = window.INVENTORY_LOCKED === true;
+    
+    // Toggle qty controls visibility
     document.querySelectorAll('.qtd-controls').forEach(ctrl => {
-        ctrl.style.display = window.INVENTORY_LOCKED ? 'none' : 'inline-block';
+        if (isLocked) {
+            ctrl.classList.add('hidden-with-margin');
+        } else {
+            ctrl.classList.remove('hidden-with-margin');
+        }
     });
+    
+    console.log(`🔒 Controles atualizados: ${isLocked ? 'BLOQUEADO' : 'DESBLOQUEADO'}`);
 }
 
-// Options toggle logic - removed local function, using global window.toggleOptions
-
-// Locker toggle
+/**
+ * Alterna entre modo bloqueado e desbloqueado
+ * Atualiza ícones e controles de quantidade
+ */
 function toggleLockMode() {
+    // Toggle state
     window.INVENTORY_LOCKED = !window.INVENTORY_LOCKED;
-    document.getElementById('lock-icon').style.display = window.INVENTORY_LOCKED ? 'inline' : 'none';
-    document.getElementById('edit-icon').style.display = window.INVENTORY_LOCKED ? 'none' : 'inline';
+    const isLocked = window.INVENTORY_LOCKED;
+    
+    // Update icons
+    const lockIcon = document.getElementById('lock-icon');
+    const editIcon = document.getElementById('edit-icon');
+    
+    if (lockIcon) {
+        if (isLocked) {
+            lockIcon.classList.remove('hidden');
+        } else {
+            lockIcon.classList.add('hidden');
+        }
+    }
+    
+    if (editIcon) {
+        if (isLocked) {
+            editIcon.classList.add('hidden');
+        } else {
+            editIcon.classList.remove('hidden');
+        }
+    }
+    
+    // Update quantity controls
     updateLockerControls();
+    
+    console.log(`🔓 Lock toggle: Agora ${isLocked ? 'BLOQUEADO' : 'DESBLOQUEADO'}`);
 }
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -327,7 +389,8 @@ document.addEventListener('DOMContentLoaded', function() {
         loadInventory();
     }, 500);
     // Locker button
-    document.getElementById('lock-toggle').onclick = toggleLockMode;
+    const lockToggle = document.getElementById('lock-toggle');
+    if (lockToggle) lockToggle.onclick = toggleLockMode;
     // Delegate clicks for quantity buttons (works for server-rendered and JS-rendered rows)
     document.addEventListener('click', function(e) {
         const btn = e.target.closest('.btn-up, .btn-down');
@@ -341,22 +404,18 @@ document.addEventListener('DOMContentLoaded', function() {
             changeQuantity(id, delta);
         }
     });
-    // Delegate clicks for options, edit, and delete buttons
+    // Delegate clicks for edit and delete buttons (options handled globally in common.js)
     document.addEventListener('click', function(e) {
-        const optionsBtn = e.target.closest('.options-btn');
-        if (optionsBtn) {
-            e.preventDefault();
-            e.stopPropagation();
-            console.log('🔽 Botão opções clicado');
-            window.toggleOptions(optionsBtn);
-            return;
-        }
+        console.log('[INVENTORY] Click detected on:', e.target, 'with classes:', e.target.className);
+        
         const editBtn = e.target.closest('.edit-item-btn');
         if (editBtn) {
+            console.log('[INVENTORY] ✅ Edit button detected:', editBtn);
             e.preventDefault();
             e.stopPropagation();
             const row = editBtn.closest('tr');
             const id = row ? row.getAttribute('data-id') : editBtn.getAttribute('data-id');
+            console.log('[INVENTORY] Row:', row, 'ID:', id);
             if (id) {
                 console.log(`✏️ Botão editar clicado: ID=${id}`);
                 editItem(id);
@@ -380,6 +439,28 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
     });
+    // ====================================
+    // INICIALIZAÇÃO DO ESTADO DE LOCK
+    // ====================================
+    // Sempre inicializa como BLOQUEADO (true) por segurança
+    window.INVENTORY_LOCKED = true;
+    console.log('🔐 Estado inicial: BLOQUEADO (inventory locked)');
+    
+    // Sincroniza ícones com estado inicial
+    const lockIconInit = document.getElementById('lock-icon');
+    const editIconInit = document.getElementById('edit-icon');
+    
+    if (lockIconInit) {
+        // Lock icon visível quando bloqueado
+        lockIconInit.classList.remove('hidden');
+    }
+    
+    if (editIconInit) {
+        // Edit icon escondido quando bloqueado
+        editIconInit.classList.add('hidden');
+    }
+    
+    // Aplica estado aos controles de quantidade
     updateLockerControls();
 
     // Intercept add item form (on /estoque/novo) and submit via fetch to insert locally

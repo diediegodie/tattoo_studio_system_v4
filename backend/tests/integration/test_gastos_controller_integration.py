@@ -13,6 +13,7 @@ from datetime import date
 from decimal import Decimal
 from typing import Dict
 import uuid
+from unittest.mock import patch
 
 import pytest
 from tests.config.test_paths import ensure_domain_imports
@@ -28,6 +29,18 @@ except ImportError as exc:  # pragma: no cover - keep test discovery resilient
     Gasto = None
     User = None
     IMPORTS_AVAILABLE = False
+
+
+@pytest.fixture(autouse=True)
+def mock_authorized_emails():
+    """Mock AUTHORIZED_EMAILS to allow test users to pass authorization checks."""
+    with patch.dict("os.environ", {"AUTHORIZED_EMAILS": "test@example.com,admin@test.com"}):
+        # Reload the config module to pick up the new env var
+        import app.core.config
+        app.core.config.AUTHORIZED_EMAILS = app.core.config.get_authorized_emails()
+        yield
+        # Reset after test
+        app.core.config.AUTHORIZED_EMAILS = set()
 
 
 @pytest.fixture

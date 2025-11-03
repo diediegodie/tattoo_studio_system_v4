@@ -19,6 +19,18 @@ from app.db.base import Client, Sessao, User
 class TestSessoesControllerGoogleIntegration:
     """Test Google Calendar integration with Sessoes controller."""
 
+    @pytest.fixture(autouse=True)
+    def bypass_authorization(self, app):
+        """Disable authorization checks for these UI-driven tests.
+
+        The /sessoes/nova route is decorated with require_authorization, which expects
+        JWT + authorized email. For these integration tests we exercise the UI flow
+        with Flask-Login session auth only, so we bypass the auth decorator.
+        """
+        app.config["LOGIN_DISABLED"] = True
+        yield
+        app.config["LOGIN_DISABLED"] = False
+
     @pytest.fixture
     def sample_client(self, db_session):
         submission_id = f"test_submission_{uuid.uuid4().hex[:8]}"

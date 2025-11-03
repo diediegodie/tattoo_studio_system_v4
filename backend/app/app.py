@@ -1,8 +1,6 @@
 import logging
 import os
 
-from .controllers.drag_drop_controller import drag_drop_bp
-from .db.base import Client, Inventory, OAuth, Pagamento, Sessao, TestModel, User
 from .db.session import create_tables
 from .main import create_app
 

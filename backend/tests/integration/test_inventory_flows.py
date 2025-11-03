@@ -11,6 +11,8 @@ setup_test_imports()
 @pytest.mark.integration
 def test_full_inventory_crud_flow(app, db_session, mock_authenticated_user):
     """End-to-end create/read/list/update/delete using the real app and DB."""
+    app.config["LOGIN_DISABLED"] = True
+
     # Create a test user in the database
     from app.db.base import User
 
@@ -79,6 +81,8 @@ def test_full_inventory_crud_flow(app, db_session, mock_authenticated_user):
 
 @pytest.mark.integration
 def test_change_quantity_flow(app, db_session, mock_authenticated_user):
+    app.config["LOGIN_DISABLED"] = True
+
     client = app.test_client()
 
     from app.db.base import User

@@ -3,13 +3,13 @@ import os
 from datetime import date, datetime
 
 from app.core.api_utils import api_response
-from app.db.base import Comissao, Gasto, Pagamento, Sessao
+from app.db.base import Comissao, Pagamento, Sessao
 from app.db.session import SessionLocal
 from app.repositories.user_repo import UserRepository
 from app.services.gastos_service import get_gastos_for_month, serialize_gastos
 from app.services.user_service import UserService
-from flask import Blueprint, flash, jsonify, render_template, request
-from flask_login import current_user, login_required
+from flask import Blueprint, flash, render_template, request
+from flask_login import login_required, current_user  # noqa: F401
 from numbers import Number
 from sqlalchemy.orm import joinedload
 from typing import Any, Iterable
@@ -309,6 +309,14 @@ def historico_home():
         from app.services.extrato_core import current_month_range
 
         start_date, end_date = current_month_range()
+        # Normalize to date objects when filtering Date columns (Pagamento.data, Sessao.data, Gasto.data)
+        try:
+            start_date_date = (
+                start_date.date() if hasattr(start_date, "date") else start_date
+            )
+            end_date_date = end_date.date() if hasattr(end_date, "date") else end_date
+        except Exception:
+            start_date_date, end_date_date = start_date, end_date
 
         # Get pagination parameters early for reuse
         page = request.args.get("page", 1, type=int)
@@ -320,8 +328,8 @@ def historico_home():
                 db.query(Sessao.id)
                 .filter(
                     Sessao.status == "completed",
-                    Sessao.data >= start_date,
-                    Sessao.data < end_date,
+                    Sessao.data >= start_date_date,
+                    Sessao.data < end_date_date,
                     Sessao.payment_id.is_(None),
                 )
                 .count()
@@ -339,8 +347,8 @@ def historico_home():
                                 db.query(Sessao.id)
                                 .filter(
                                     Sessao.status == "completed",
-                                    Sessao.data >= start_date,
-                                    Sessao.data < end_date,
+                                    Sessao.data >= start_date_date,
+                                    Sessao.data < end_date_date,
                                     Sessao.payment_id.is_(None),
                                 )
                                 .order_by(Sessao.data.desc())
@@ -372,7 +380,7 @@ def historico_home():
                 joinedload(Pagamento.sessao),
                 joinedload(Pagamento.comissoes),
             )
-            .filter(Pagamento.data >= start_date, Pagamento.data < end_date)
+            .filter(Pagamento.data >= start_date_date, Pagamento.data < end_date_date)
             .order_by(Pagamento.data.desc())
             .distinct()
         )
@@ -420,8 +428,8 @@ def historico_home():
                 db.query(Sessao)
                 .options(joinedload(Sessao.cliente), joinedload(Sessao.artista))
                 .filter(
-                    Sessao.data >= start_date,
-                    Sessao.data < end_date,
+                    Sessao.data >= start_date_date,
+                    Sessao.data < end_date_date,
                     Sessao.payment_id.is_(None),
                     # Only include unlinked sessions that are truly paid
                     Sessao.status.in_(["paid"]),
@@ -460,8 +468,8 @@ def historico_home():
                     db.query(Sessao)
                     .options(joinedload(Sessao.cliente), joinedload(Sessao.artista))
                     .filter(
-                        Sessao.data >= start_date,
-                        Sessao.data < end_date,
+                        Sessao.data >= start_date_date,
+                        Sessao.data < end_date_date,
                         Sessao.payment_id.is_(None),
                         Sessao.status == "completed",
                     )
@@ -505,8 +513,8 @@ def historico_home():
                     db.query(Sessao)
                     .options(joinedload(Sessao.cliente), joinedload(Sessao.artista))
                     .filter(
-                        Sessao.data >= start_date,
-                        Sessao.data < end_date,
+                        Sessao.data >= start_date_date,
+                        Sessao.data < end_date_date,
                         Sessao.payment_id.is_(None),
                         Sessao.status.in_(["completed", "paid"]),
                     )

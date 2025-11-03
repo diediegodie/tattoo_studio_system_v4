@@ -148,9 +148,7 @@ class TestFormaPagamentoValidation:
 
         sessao_stub = SessaoStub(5)
 
-        with patch(
-            "app.controllers.sessoes_api.SessionLocal"
-        ) as mock_session_local, patch("flask_login.login_required", lambda f: f):
+        with patch("app.controllers.sessoes_api.SessionLocal") as mock_session_local:
             _setup_session(mock_session_local, sessao_stub)
 
             resp = client.put("/sessoes/api/5", json=payload)
@@ -169,9 +167,7 @@ class TestFormaPagamentoValidation:
 
         sessao_stub = SessaoStub(6)
 
-        with patch(
-            "app.controllers.sessoes_api.SessionLocal"
-        ) as mock_session_local, patch("flask_login.login_required", lambda f: f):
+        with patch("app.controllers.sessoes_api.SessionLocal") as mock_session_local:
             _setup_session(mock_session_local, sessao_stub)
 
             resp = client.put("/sessoes/api/6", json=payload)

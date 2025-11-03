@@ -8,12 +8,13 @@ Following SOLID principles:
 """
 
 import logging
-from typing import Any, Dict, Tuple, Union
 
 from app.db.session import SessionLocal
 from app.repositories.user_repo import UserRepository
 from app.services.user_service import UserService
-from flask import Blueprint, Response, jsonify, request
+from flask import Blueprint, jsonify, request
+from flask_login import login_required
+from app.core.auth_decorators import require_session_authorization
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -34,6 +35,7 @@ def _get_user_service() -> UserService:
 
 
 @artist_bp.route("/create", methods=["POST"])
+@require_session_authorization
 def create_artist():
     """Create a new artist.
 
@@ -106,6 +108,7 @@ def create_artist():
 
 
 @artist_bp.route("/list", methods=["GET"])
+@login_required
 def list_artists():
     """Get all artists for dropdowns and selection.
 
@@ -141,6 +144,7 @@ def list_artists():
 
 # Form-based endpoint for backwards compatibility
 @artist_bp.route("/create_form", methods=["POST"])
+@require_session_authorization
 def create_artist_form():
     """Create artist from HTML form data.
 
@@ -183,6 +187,7 @@ def create_artist_form():
 
 
 @artist_bp.route("/<int:artist_id>", methods=["GET"])
+@login_required
 def get_artist(artist_id: int):
     """Get a specific artist by ID.
 
@@ -224,6 +229,7 @@ def get_artist(artist_id: int):
 
 
 @artist_bp.route("/<int:artist_id>", methods=["PUT"])
+@require_session_authorization
 def update_artist(artist_id: int):
     """Update an existing artist.
 
@@ -296,6 +302,7 @@ def update_artist(artist_id: int):
 
 
 @artist_bp.route("/<int:artist_id>", methods=["DELETE"])
+@require_session_authorization
 def delete_artist(artist_id: int):
     """Delete an artist by ID.
 

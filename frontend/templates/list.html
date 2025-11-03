@@ -41,7 +41,7 @@
                             {% endif %}
                             {% endfor %}
                             {% set nome = possible_names[0] if possible_names else None %}
-                            <tr class="client-row" onclick="toggleDetails('details-{{ submission.id }}')">
+                            <tr class="client-row">
                                 <td>
                                     <span class="client-name"><strong>{{ nome or 'Sem nome' }}</strong></span>
                                 </td>
@@ -80,7 +80,6 @@
         {% include 'partials/_sidebar.html' %}
     </div>
 
-    <script src="{{ url_for('static', filename='js/common.js', v=config.get('GIT_SHA','')) }}"></script>
     {% include 'partials/_base_scripts.html' %}
 
 </body>

@@ -4,10 +4,9 @@ Handles Google Calendar token authorization separately from user login.
 """
 
 import logging
-from flask import flash, redirect, url_for, session
+from flask import flash, redirect, url_for
 from flask_dance.consumer import oauth_authorized
 from flask_dance.contrib.google import make_google_blueprint
-from flask_dance.consumer.storage.sqla import SQLAlchemyStorage
 from flask_login import current_user
 
 logger = logging.getLogger(__name__)

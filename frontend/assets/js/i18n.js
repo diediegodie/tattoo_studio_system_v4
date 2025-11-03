@@ -6,19 +6,33 @@ let i18n = {};
 // Load i18n data with fallback logic
 async function loadI18n() {
     // Get browser language or default to pt-BR
-    const browserLang = (navigator.language || 'pt-BR').toLowerCase();
-    const langCodes = [browserLang];
+    // Keep the original casing as provided by the browser, but also
+    // generate several common variants so we handle filenames like
+    // `pt-BR.json` and `pt-br.json` (static file serving is case-sensitive).
+    const rawLang = navigator.language || 'pt-BR';
+    const lower = rawLang.toLowerCase();
+    const parts = rawLang.split('-');
 
-    // Add fallback language codes
-    if (browserLang.includes('-')) {
-        // If it's a regional variant (e.g., pt-BR), add the base language (pt)
-        langCodes.push(browserLang.split('-')[0]);
+    // Build a list of language code candidates in preferred order:
+    // 1) original raw value (e.g. 'pt-BR')
+    // 2) lowercased (e.g. 'pt-br')
+    // 3) lower base (e.g. 'pt')
+    // 4) base with upper region (e.g. 'pt-BR') — covers mixed-case filenames
+    const langCodes = [];
+    if (rawLang && !langCodes.includes(rawLang)) langCodes.push(rawLang);
+    if (lower && !langCodes.includes(lower)) langCodes.push(lower);
+    if (parts.length > 1) {
+        const base = parts[0].toLowerCase();
+        if (base && !langCodes.includes(base)) langCodes.push(base);
+        const regionUpper = `${base}-${parts[1].toUpperCase()}`;
+        if (regionUpper && !langCodes.includes(regionUpper)) langCodes.push(regionUpper);
+    } else {
+        const base = lower;
+        if (base && !langCodes.includes(base)) langCodes.push(base);
     }
 
     // Always try English as final fallback
-    if (!langCodes.includes('en')) {
-        langCodes.push('en');
-    }
+    if (!langCodes.includes('en')) langCodes.push('en');
 
     let loaded = false;
 

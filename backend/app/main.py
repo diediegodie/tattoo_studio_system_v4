@@ -233,7 +233,7 @@ def create_app():  # noqa: C901
     )
 
     # Log timezone configuration (Task 2)
-    from app.core.config import log_timezone_config, APP_TZ
+    from app.core.config import log_timezone_config, APP_TZ, HEALTH_CHECK_TOKEN
 
     log_timezone_config()
     logger.info(
@@ -336,7 +336,7 @@ def create_app():  # noqa: C901
     # Configure storage URI via app config and bind limiter
     app.config["RATELIMIT_STORAGE_URI"] = storage_uri
     # Exempt monitoring endpoints from rate limiting (Prometheus scraper access)
-    app.config["RATELIMIT_EXEMPT_PATHS"] = ["/metrics", "/health", "/pool-metrics"]
+    app.config["RATELIMIT_EXEMPT_PATHS"] = ["/metrics", "/pool-metrics"]
     limiter.init_app(app)
 
     # Disable rate limiting in test mode if RATE_LIMIT_ENABLED=0
@@ -418,6 +418,8 @@ def create_app():  # noqa: C901
                 "https://fonts.gstatic.com",
                 "https://cdnjs.cloudflare.com",
             ],
+            # Allow external profile pictures (Google) and inline images via data URIs
+            "img-src": ["'self'", "https://lh3.googleusercontent.com", "data:"],
         }
 
         # Initialize Talisman with most headers
@@ -472,6 +474,20 @@ def create_app():  # noqa: C901
     )
     app.config["SHOW_API_DOCS"] = os.getenv("SHOW_API_DOCS", "false").lower() == "true"
     app.config["GIT_SHA"] = os.getenv("GIT_SHA", "")
+    app.config["HEALTH_CHECK_TOKEN"] = HEALTH_CHECK_TOKEN
+
+    # Provide safe defaults for Google OAuth credentials in test mode
+    # so unit tests that exercise token refresh/validation can run without
+    # requiring real environment secrets.
+    if app.config.get("TESTING"):
+        if not app.config.get("GOOGLE_OAUTH_CLIENT_ID"):
+            app.config["GOOGLE_OAUTH_CLIENT_ID"] = os.getenv(
+                "GOOGLE_CLIENT_ID", "test-google-client-id"
+            )
+        if not app.config.get("GOOGLE_OAUTH_CLIENT_SECRET"):
+            app.config["GOOGLE_OAUTH_CLIENT_SECRET"] = os.getenv(
+                "GOOGLE_CLIENT_SECRET", "test-google-client-secret"
+            )
 
     # Ensure database tables exist early to avoid runtime failures like
     # "relation 'users' does not exist" or "no such table: extratos".

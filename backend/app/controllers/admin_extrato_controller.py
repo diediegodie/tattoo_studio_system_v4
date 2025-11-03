@@ -16,9 +16,8 @@ from app.db.session import SessionLocal
 from app.services.extrato_atomic import generate_extrato_with_atomic_transaction
 from app.services.extrato_core import get_previous_month
 from app.services.undo_service import UndoService
-from flask import Blueprint, current_app, jsonify, request
+from flask import Blueprint, jsonify, request
 from flask_login import current_user, login_required
-from sqlalchemy.exc import SQLAlchemyError
 
 logger = logging.getLogger(__name__)
 

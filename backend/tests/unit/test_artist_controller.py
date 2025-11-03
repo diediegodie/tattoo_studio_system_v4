@@ -35,6 +35,16 @@ class MockArtist:
     role: str = "artist"
 
 
+@pytest.fixture(autouse=True)
+def bypass_artist_auth(app):
+    """Enable LOGIN_DISABLED for artist controller unit tests."""
+    if hasattr(app, "config"):
+        app.config["LOGIN_DISABLED"] = True
+    yield
+    if hasattr(app, "config"):
+        app.config["LOGIN_DISABLED"] = False
+
+
 @pytest.mark.unit
 @pytest.mark.controllers
 @pytest.mark.artist

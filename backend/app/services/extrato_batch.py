@@ -7,7 +7,6 @@ for better performance and memory management.
 
 import logging
 import os
-from typing import Any, List, Tuple
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -46,8 +45,6 @@ def process_records_in_batches(records, batch_size, process_func, *args, **kwarg
     Raises:
         Exception: If any batch processing fails
     """
-    import logging
-
     if not records:
         return
 

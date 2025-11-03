@@ -17,6 +17,7 @@ from flask_login import login_required
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload
 from werkzeug.wrappers.response import Response
+from app.core.auth_decorators import require_session_authorization
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +68,7 @@ def sessoes_home() -> Response:
 
 
 @sessoes_bp.route("/nova", methods=["GET", "POST"])
-@login_required
+@require_session_authorization
 def nova_sessao() -> Union[str, Response]:
     """Create a new session/appointment."""
     db = None
@@ -218,7 +219,7 @@ def nova_sessao() -> Union[str, Response]:
 
 @sessoes_bp.route("/finalizar/<int:sessao_id>", methods=["POST"])
 @csrf.exempt
-@login_required
+@require_session_authorization
 def finalizar_sessao(sessao_id: int) -> Response:
     """Mark session as completed and redirect to payment registration."""
     db = None

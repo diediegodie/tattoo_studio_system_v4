@@ -68,8 +68,7 @@
                                         <td>{{ p.forma_pagamento or '' }}</td>
                                         <td>{{ p.observacoes or '' }}</td>
                                         <td>
-                                            <button type="button" class="button small options-btn"
-                                                onclick="toggleOptions(this)">Opções</button>
+                                            <button type="button" class="button small options-btn">Opções</button>
                                             <span class="options-actions">
                                                 <button class="button small edit-pagamento-btn btn-margin-right"
                                                     data-id="{{ p.id }}">Editar</button>
@@ -115,8 +114,7 @@
                                         <td>{{ format_currency_dot(c.valor) }}</td>
                                         <td>{{ c.observacoes or '' }}</td>
                                         <td>
-                                            <button type="button" class="button small options-btn"
-                                                onclick="toggleOptions(this)">Opções</button>
+                                            <button type="button" class="button small options-btn">Opções</button>
                                             <span class="options-actions">
                                                 <button class="button small edit-comissao-btn btn-margin-right"
                                                     data-id="{{ c.id }}">Editar</button>
@@ -164,8 +162,7 @@
                                         <td>{{ format_currency_dot(s.valor) }}</td>
                                         <td>{{ s.observacoes or '' }}</td>
                                         <td>
-                                            <button type="button" class="button small options-btn"
-                                                onclick="toggleOptions(this)">Opções</button>
+                                            <button type="button" class="button small options-btn">Opções</button>
                                             <span class="options-actions">
                                                 <button class="button small edit-sessao-btn btn-margin-right"
                                                     data-id="{{ s.id }}">Editar</button>

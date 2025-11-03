@@ -19,10 +19,12 @@ sys.path.insert(0, backend_dir)
 from app.core.logging_config import get_logger
 from app.db.session import get_engine
 from sqlalchemy import text
+import pytest
 
 logger = get_logger(__name__)
 
 
+@pytest.mark.skip(reason="Script-oriented test; run via __main__ if needed")
 def test_engine_configuration():
     """Test that the engine is properly configured with application_name."""
     logger.info("Testing engine configuration...")
@@ -56,31 +58,29 @@ def test_engine_configuration():
                         app_name = app_name_result[0]
                         logger.info(f"Application name: {app_name}")
 
-                        if app_name == "tattoo_studio":
-                            logger.info("✅ Application name is correctly set!")
-                            return True
-                        else:
-                            logger.error(
-                                f"❌ Application name is '{app_name}', expected 'tattoo_studio'"
-                            )
-                            return False
+                        # Assert correct application name when on PostgreSQL
+                        assert (
+                            app_name == "tattoo_studio"
+                        ), f"application_name is '{app_name}', expected 'tattoo_studio'"
                     else:
                         logger.error("❌ Could not retrieve application_name")
-                        return False
+                        assert False, "Could not retrieve application_name"
                 else:
                     logger.info(
                         "✅ Non-PostgreSQL database (application_name not applicable)"
                     )
-                    return True
+                    # No assertion needed for non-Postgres
+                    return
             else:
                 logger.error("❌ Could not get database version")
-                return False
+                assert False, "Could not get database version"
 
     except Exception as e:
         logger.error(f"❌ Test failed: {e}", exc_info=True)
-        return False
+        raise
 
 
+@pytest.mark.skip(reason="Script-oriented test; run via __main__ if needed")
 def test_pg_stat_activity():
     """Test that connections are visible in pg_stat_activity with correct application_name."""
     logger.info("Testing pg_stat_activity visibility...")
@@ -109,19 +109,18 @@ def test_pg_stat_activity():
                     logger.info(f"   Database: {activity_result[0]}")
                     logger.info(f"   Application: {activity_result[1]}")
                     logger.info(f"   State: {activity_result[2]}")
-                    return True
                 else:
                     logger.error("❌ Connection not found in pg_stat_activity")
-                    return False
+                    assert False, "Connection not found in pg_stat_activity"
             else:
                 logger.info(
                     "✅ Non-PostgreSQL database (pg_stat_activity not applicable)"
                 )
-                return True
+                return
 
     except Exception as e:
         logger.error(f"❌ Test failed: {e}", exc_info=True)
-        return False
+        raise
 
 
 def main():
@@ -133,12 +132,18 @@ def main():
     total_tests = 2
 
     # Test 1: Engine configuration
-    if test_engine_configuration():
+    try:
+        test_engine_configuration()
         tests_passed += 1
+    except Exception:
+        pass
 
     # Test 2: pg_stat_activity visibility
-    if test_pg_stat_activity():
+    try:
+        test_pg_stat_activity()
         tests_passed += 1
+    except Exception:
+        pass
 
     # Summary
     logger.info("=" * 60)

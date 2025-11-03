@@ -10,7 +10,7 @@ from app.core.api_utils import api_response
 from app.db.base import Pagamento
 from app.db.session import SessionLocal
 from app.repositories.pagamento_repository import PagamentoRepository
-from flask import Blueprint, jsonify, request
+from flask import request
 from flask_login import login_required
 from sqlalchemy.orm import joinedload
 from app.core.csrf_config import csrf

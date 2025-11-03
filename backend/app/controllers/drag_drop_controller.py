@@ -1,7 +1,7 @@
 from app.db.session import SessionLocal
 from app.repositories.inventory_repository import InventoryRepository
 from app.services.inventory_service import InventoryService
-from flask import Blueprint, render_template
+from flask import Blueprint, render_template, jsonify, request, url_for
 from flask_login import login_required
 
 drag_drop_bp = Blueprint("drag_drop", __name__)
@@ -10,11 +10,7 @@ drag_drop_bp = Blueprint("drag_drop", __name__)
 @drag_drop_bp.route("/drag_drop", methods=["GET", "POST", "PATCH"])
 @login_required
 def drag_drop():
-    from flask import flash, redirect, request, url_for
-
     if request.method in ["POST", "PATCH"]:
-        from flask import jsonify
-
         if request.is_json:
             data = request.get_json()
             order = data.get("order", [])

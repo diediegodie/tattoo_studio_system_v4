@@ -1,0 +1,20 @@
+/* Modal visibility classes */
+.modal-visible {
+	display: flex !important;
+}
+.modal-hidden {
+	display: none !important;
+}
+
+/* Modal open body class */
+.modal-open {
+	overflow: hidden !important;
+}
+
+/* Modal button visibility classes */
+.modal-btn-visible {
+	display: inline-block !important;
+}
+.modal-btn-hidden {
+	display: none !important;
+}

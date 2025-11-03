@@ -12,7 +12,7 @@ from app.db.base import (
     Sessao,
     User,
 )
-from sqlalchemy import and_, desc, extract, or_, text
+from sqlalchemy import and_, desc, extract, or_
 from sqlalchemy.orm import Session
 
 

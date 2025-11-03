@@ -62,8 +62,7 @@
 										<td>{{ format_currency(sessao.valor) }}</td>
 										<td>{{ sessao.observacoes or '' }}</td>
 										<td>
-											<button class="button small options-btn"
-												onclick="toggleOptions(this)">Opções</button>
+											<button class="button small options-btn">Opções</button>
 											<span class="options-actions">
 												{# Finalizar button triggers JS fetch to /sessoes/finalizar/<id> (not a
 													form, no CSRF token). CSRF is exempted at the route level. #}
@@ -90,9 +89,7 @@
 						</div>
 					</section>
 
-					<script>
-						// toggleOptions removed - using global window.toggleOptions
-					</script>
+                    
 
 				</section>
 			</div>

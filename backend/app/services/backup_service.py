@@ -10,7 +10,7 @@ from pathlib import Path
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
-from app.db.base import Client, Comissao, Gasto, Pagamento, Sessao, User
+from app.db.base import Comissao, Gasto, Pagamento, Sessao
 from app.db.session import SessionLocal
 from sqlalchemy.orm import joinedload
 

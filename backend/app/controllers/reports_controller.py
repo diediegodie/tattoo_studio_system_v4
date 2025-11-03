@@ -15,9 +15,9 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, List
 
 import matplotlib.pyplot as plt
-from app.db.base import Extrato, ExtratoRunLog
+from app.db.base import Extrato
 from app.db.session import SessionLocal
-from flask import Blueprint, current_app, jsonify, request
+from flask import Blueprint, jsonify, request
 from flask_login import current_user, login_required
 
 logger = logging.getLogger(__name__)

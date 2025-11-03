@@ -12,9 +12,7 @@ import requests
 from app.db.base import OAuth
 from app.db.session import SessionLocal
 from flask import current_app
-
-# Import OAuth provider constants for consistency
-from app.config.oauth_provider import PROVIDER_GOOGLE_CALENDAR, PROVIDER_GOOGLE_LOGIN
+from app.config.oauth_provider import PROVIDER_GOOGLE_CALENDAR
 
 logger = logging.getLogger(__name__)
 

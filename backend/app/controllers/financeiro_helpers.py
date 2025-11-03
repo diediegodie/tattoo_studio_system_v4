@@ -1,13 +1,11 @@
 import asyncio
 import inspect
 import logging
-from typing import Union
 
 from app.db.session import SessionLocal
 from app.repositories.user_repo import UserRepository
 from app.services.user_service import UserService
 from flask import redirect, render_template, url_for
-from werkzeug.wrappers import Response
 
 # Configure logger
 logger = logging.getLogger(__name__)

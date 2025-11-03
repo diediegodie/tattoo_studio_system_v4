@@ -7,6 +7,7 @@ import os
 import sys
 from datetime import datetime
 from app.core.logging_config import get_logger
+import pytest
 
 # Add the app directory to the Python path
 sys.path.insert(
@@ -18,6 +19,7 @@ from app.services.backup_service import BackupService
 logger = get_logger(__name__)
 
 
+@pytest.mark.skip(reason="Script-oriented test; run via __main__ if needed")
 def test_backup_service():
     """Test the backup service functionality."""
     logger.info("Testing Backup Service")
@@ -35,37 +37,33 @@ def test_backup_service():
     # Create backup
     success, message = backup_service.create_backup(year=year, month=month)
 
-    if success:
-        logger.info(
-            "Backup created successfully", extra={"context": {"message": message}}
-        )
+    # Assert backup creation succeeded
+    assert success, f"Backup failed: {message}"
+    logger.info("Backup created successfully", extra={"context": {"message": message}})
 
-        # Verify backup exists
-        exists = backup_service.verify_backup_exists(year, month)
-        logger.info(
-            "Backup verification",
-            extra={"context": {"status": "PASS" if exists else "FAIL"}},
-        )
+    # Verify backup exists
+    exists = backup_service.verify_backup_exists(year, month)
+    logger.info(
+        "Backup verification",
+        extra={"context": {"status": "PASS" if exists else "FAIL"}},
+    )
+    assert exists, "Backup verification failed: backup file does not exist"
 
-        # Get backup info
-        info = backup_service.get_backup_info(year, month)
-        logger.info(
-            "Backup info",
-            extra={
-                "context": {
-                    "file": info.get("file_path"),
-                    "size": info.get("file_size"),
-                    "records": info.get("record_count"),
-                }
-            },
-        )
-
-        return True
-    else:
-        logger.error("Backup failed", extra={"context": {"message": message}})
-        return False
+    # Get backup info
+    info = backup_service.get_backup_info(year, month)
+    logger.info(
+        "Backup info",
+        extra={
+            "context": {
+                "file": info.get("file_path"),
+                "size": info.get("file_size"),
+                "records": info.get("record_count"),
+            }
+        },
+    )
 
 
+@pytest.mark.skip(reason="Script-oriented test; run via __main__ if needed")
 def test_csv_readability():
     """Test that the CSV file is readable and properly formatted."""
     logger.info("Testing CSV Readability")
@@ -78,7 +76,7 @@ def test_csv_readability():
 
         if not info["exists"]:
             logger.error("No backup file found to test")
-            return False
+            assert False, "Expected backup file to exist for CSV readability test"
 
         file_path = info["file_path"]
 
@@ -92,7 +90,7 @@ def test_csv_readability():
 
         if headers is None:
             logger.error("No headers found in CSV file")
-            return False
+            assert False, "CSV file has no headers"
 
         logger.info(
             "CSV file is readable",
@@ -113,10 +111,9 @@ def test_csv_readability():
             logger.error(
                 "Missing required columns", extra={"context": {"missing": missing_cols}}
             )
-            return False
+            assert False, f"Missing required columns: {missing_cols}"
 
         logger.info("All required columns present")
-        return True
 
     except Exception as e:
         logger.error(
@@ -124,7 +121,7 @@ def test_csv_readability():
             extra={"context": {"error": str(e)}},
             exc_info=True,
         )
-        return False
+        raise
 
 
 def cleanup_test_files():
@@ -147,9 +144,18 @@ def main():
     logger.info("BACKUP SYSTEM TEST SUITE", extra={"context": {"delimiter": "=" * 50}})
 
     try:
-        # Run tests
-        backup_test = test_backup_service()
-        csv_test = test_csv_readability()
+        # Run tests (treat assertion failures as test failures)
+        backup_test = True
+        csv_test = True
+        try:
+            test_backup_service()
+        except Exception:
+            backup_test = False
+
+        try:
+            test_csv_readability()
+        except Exception:
+            csv_test = False
 
         logger.info("TEST RESULTS", extra={"context": {"delimiter": "=" * 50}})
         logger.info(

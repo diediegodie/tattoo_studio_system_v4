@@ -46,6 +46,9 @@ os.environ["DISABLE_AUTH_REDIRECTS"] = (
 os.environ["RATE_LIMIT_ENABLED"] = "0"  # Disable rate limiting in tests
 os.environ["JOTFORM_API_KEY"] = "test-api-key"  # Set test JotForm credentials
 os.environ["JOTFORM_FORM_ID"] = "test-form-id"
+# Ensure file-based logging is enabled during tests so runtime logging
+# integration tests can assert on log files growing after requests.
+os.environ["LOG_TO_FILE"] = "1"
 
 # Base URL for API integration tests (configurable for Docker Compose)
 # In CI (Docker Compose), set BASE_URL=http://app:5000 to reach the app service

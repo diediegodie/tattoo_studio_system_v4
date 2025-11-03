@@ -4,7 +4,6 @@ Contains utility functions and dependency injection factories.
 """
 
 import logging
-from typing import Union
 
 from app.repositories.user_repo import UserRepository
 from app.services.user_service import UserService

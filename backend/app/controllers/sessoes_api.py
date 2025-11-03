@@ -4,18 +4,18 @@ Handles JSON API operations for sessions.
 """
 
 import logging
-from datetime import date, datetime, time
+from datetime import date
 from decimal import Decimal
-from typing import Union
 
 from app.controllers.sessoes_helpers import api_response
 from app.db.base import Sessao
 from app.db.session import SessionLocal
-from flask import Blueprint, jsonify, request
+from flask import request
 from flask_login import login_required
 from sqlalchemy.orm import joinedload
 from app.core.csrf_config import csrf
 from app.core.limiter_config import limiter
+from app.core.auth_decorators import require_session_authorization
 
 logger = logging.getLogger(__name__)
 
@@ -105,7 +105,7 @@ def api_get_sessao(sessao_id: int):
 @csrf.exempt
 @limiter.limit("30 per minute")
 @sessoes_bp.route("/api/<int:sessao_id>", methods=["PUT"])
-@login_required
+@require_session_authorization
 def api_update_sessao(sessao_id: int):
     db = None
     try:
@@ -181,7 +181,7 @@ def api_update_sessao(sessao_id: int):
 @csrf.exempt
 @limiter.limit("30 per minute")
 @sessoes_bp.route("/api/<int:sessao_id>", methods=["DELETE"])
-@login_required
+@require_session_authorization
 def api_delete_sessao(sessao_id: int):
     db = None
     try:

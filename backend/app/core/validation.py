@@ -8,7 +8,7 @@ and API endpoints, ensuring data integrity and proper error handling.
 import logging
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 

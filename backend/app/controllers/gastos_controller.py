@@ -6,11 +6,12 @@ from app.core.api_utils import api_response
 from app.db.base import Gasto
 from app.db.session import SessionLocal
 from app.services.gastos_service import get_gastos_for_month, serialize_gastos
-from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
+from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 from sqlalchemy.orm import joinedload
 from app.core.csrf_config import csrf
 from app.core.limiter_config import limiter
+from app.core.auth_decorators import require_session_authorization
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +48,7 @@ def gastos_home():
 
 @gastos_bp.route("/create", methods=["POST"])
 @limiter.limit("30 per minute")
-@login_required
+@require_session_authorization
 def create_gasto():
     db = None
     try:
@@ -196,7 +197,7 @@ def api_get_gasto(gasto_id):
 @csrf.exempt
 @limiter.limit("30 per minute")
 @gastos_bp.route("/api/<int:gasto_id>", methods=["PUT"])
-@login_required
+@require_session_authorization
 def api_update_gasto(gasto_id):
     """Update a gasto by ID via JSON payload."""
     db = None
@@ -266,7 +267,7 @@ def api_update_gasto(gasto_id):
 @csrf.exempt
 @limiter.limit("30 per minute")
 @gastos_bp.route("/api/<int:gasto_id>", methods=["DELETE"])
-@login_required
+@require_session_authorization
 def api_delete_gasto(gasto_id):
     """Delete a gasto by ID."""
     db = None

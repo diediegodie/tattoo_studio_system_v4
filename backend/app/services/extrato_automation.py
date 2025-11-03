@@ -13,7 +13,6 @@ from datetime import datetime
 
 from app.db.base import ExtratoRunLog
 from app.db.session import SessionLocal
-from app.services.extrato_core import _log_extrato_run
 
 # Configure logging
 logger = logging.getLogger(__name__)

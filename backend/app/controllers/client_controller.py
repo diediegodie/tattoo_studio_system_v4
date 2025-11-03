@@ -14,8 +14,8 @@ from app.db.session import SessionLocal
 from app.repositories.client_repo import ClientRepository
 from app.services.client_service import ClientService
 from app.services.jotform_service import JotFormService
-from flask import Blueprint, flash, jsonify, redirect, render_template, url_for
-from flask_login import current_user, login_required
+from flask import Blueprint, flash, redirect, render_template, url_for
+from flask_login import login_required
 
 client_bp = Blueprint("client", __name__, url_prefix="/clients")
 

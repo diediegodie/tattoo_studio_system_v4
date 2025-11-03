@@ -7,8 +7,7 @@ import logging
 from flask import flash, redirect, url_for, current_app
 from flask_dance.consumer import oauth_authorized
 from flask_dance.contrib.google import make_google_blueprint
-from flask_dance.consumer.storage.sqla import SQLAlchemyStorage
-from flask_login import login_user, current_user
+from flask_login import login_user
 
 logger = logging.getLogger(__name__)
 
@@ -104,6 +103,26 @@ def create_google_login_blueprint(
                     }
                 },
             )
+
+            # ✅ AUTHORIZATION CHECK: Verify email is authorized before proceeding
+            from app.core.config import is_email_authorized
+
+            if not is_email_authorized(google_email):
+                flash(
+                    "Acesso negado. Seu e-mail não está autorizado a acessar este sistema.",
+                    category="error",
+                )
+                logger.warning(
+                    "Unauthorized email attempted to login via Google",
+                    extra={
+                        "context": {
+                            "provider": PROVIDER_GOOGLE_LOGIN,
+                            "email": google_email,
+                            "google_user_id": google_user_id,
+                        }
+                    },
+                )
+                return redirect(url_for("login_page"))
 
             # Create or update user in database
             from app.db.session import SessionLocal

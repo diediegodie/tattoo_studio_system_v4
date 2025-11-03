@@ -7,9 +7,8 @@ the main service for better maintainability.
 
 import json
 import logging
-from datetime import datetime
 
-from app.db.base import Comissao, Extrato, Gasto, Pagamento, Sessao
+from app.db.base import Extrato, Gasto, Pagamento, Sessao
 from app.db.session import SessionLocal
 from app.services.extrato_core import (
     _log_extrato_run,
@@ -116,6 +115,14 @@ def get_current_month_totals(db):
     )
 
     start_date, end_date = current_month_range()
+    # When filtering Date columns, normalize boundaries to dates
+    try:
+        start_date_date = (
+            start_date.date() if hasattr(start_date, "date") else start_date
+        )
+        end_date_date = end_date.date() if hasattr(end_date, "date") else end_date
+    except Exception:
+        start_date_date, end_date_date = start_date, end_date
 
     # Debug logging if enabled
     if os.getenv("HISTORICO_DEBUG", "").lower() in ("1", "true", "yes"):
@@ -132,7 +139,7 @@ def get_current_month_totals(db):
             joinedload(Pagamento.sessao),
             joinedload(Pagamento.comissoes),
         )
-        .filter(Pagamento.data >= start_date, Pagamento.data < end_date)
+        .filter(Pagamento.data >= start_date_date, Pagamento.data < end_date_date)
         .order_by(Pagamento.data.desc())
         .all()
     )
@@ -178,7 +185,7 @@ def get_current_month_totals(db):
     gastos = (
         db.query(Gasto)
         .options(joinedload(Gasto.creator))
-        .filter(Gasto.data >= start_date, Gasto.data < end_date)
+        .filter(Gasto.data >= start_date_date, Gasto.data < end_date_date)
         .all()
     )
 

@@ -14,7 +14,7 @@ from app.db.base import Client
 from app.db.base import Pagamento as PagamentoModel
 from app.db.session import SessionLocal
 from app.repositories.pagamento_repository import PagamentoRepository
-from flask import Blueprint, flash
+from flask import flash
 from flask_login import login_required
 
 logger = logging.getLogger(__name__)

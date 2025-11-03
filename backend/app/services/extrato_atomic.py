@@ -10,12 +10,12 @@ import logging
 import uuid
 from datetime import datetime
 
-from app.db.base import Comissao, Extrato, Gasto, Pagamento, Sessao
+from app.db.base import Extrato
 from app.db.session import SessionLocal
-from app.services.extrato_automation import _log_extrato_run
+from app.services.extrato_core import _log_extrato_run
+from app.services.extrato_core import check_existing_extrato  # noqa: F401
 from app.services.extrato_core import (
     calculate_totals,
-    check_existing_extrato,
     delete_historical_records_atomic,
     query_data,
     serialize_data,
@@ -23,7 +23,6 @@ from app.services.extrato_core import (
 )
 from app.services.undo_service import UndoService
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import joinedload
 
 # Configure logging
 logger = logging.getLogger(__name__)
