@@ -421,8 +421,8 @@ def create_app():  # noqa: C901
                 "https://fonts.gstatic.com",
                 "https://cdnjs.cloudflare.com",
             ],
-            # Allow external profile pictures (Google) and inline images via data URIs
-            "img-src": ["'self'", "https://lh3.googleusercontent.com", "data:"],
+            # Allow external profile pictures (Google) and inline images via data URIs and blob URLs
+            "img-src": ["'self'", "https://lh3.googleusercontent.com", "data:", "blob:"],
         }
 
         # Initialize Talisman with most headers
