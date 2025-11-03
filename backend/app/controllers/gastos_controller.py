@@ -161,6 +161,7 @@ def create_gasto():
 
 @gastos_bp.route("/api/<int:gasto_id>", methods=["GET"])
 @limiter.limit("100 per minute")
+@csrf.exempt  # JSON API - uses session authentication
 @login_required
 def api_get_gasto(gasto_id):
     """Get a single gasto by ID."""
@@ -267,6 +268,7 @@ def api_update_gasto(gasto_id):
 @csrf.exempt
 @limiter.limit("30 per minute")
 @gastos_bp.route("/api/<int:gasto_id>", methods=["DELETE"])
+@csrf.exempt  # JSON API - uses session authentication
 @require_session_authorization
 def api_delete_gasto(gasto_id):
     """Delete a gasto by ID."""

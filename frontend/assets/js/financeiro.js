@@ -48,7 +48,7 @@
         data = await financeiroClient.get(id);
       } else {
         console.log('Using fetch API');
-        const r = await fetch(`/financeiro/api/${id}`, { headers: { 'Accept': 'application/json' } });
+        const r = await fetch(`/financeiro/api/${id}`, { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' });
         console.log('Fetch response status:', r.status);
         if (r.ok) {
           data = await r.json();
@@ -167,7 +167,7 @@
       if (financeiroClient && typeof financeiroClient.get === 'function') {
         res = await financeiroClient.get(id);
       } else {
-        const r = await fetch(`${apiBase}/${id}`, { headers: { 'Accept': 'application/json' } });
+        const r = await fetch(`${apiBase}/${id}`, { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' });
         const ct = r.headers.get('Content-Type') || '';
         if (ct.includes('application/json')) {
           res = await r.json();
@@ -300,6 +300,7 @@
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
                 body: JSON.stringify(payload),
+                credentials: 'same-origin'
               });
               const ct = r.headers.get('Content-Type') || '';
               if (ct.includes('application/json')) {

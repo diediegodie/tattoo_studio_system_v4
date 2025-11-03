@@ -67,6 +67,7 @@ def list_inventory():
 
 @inventory_bp.route("/", methods=["POST"])
 @limiter.limit("30 per minute")
+@csrf.exempt  # JSON API - uses session authentication
 @require_session_authorization
 def add_inventory():
     """Add a new inventory item."""
@@ -191,6 +192,7 @@ def delete_inventory(item_id):
 
 @inventory_bp.route("/<int:item_id>/quantity", methods=["PATCH"])
 @limiter.limit("30 per minute")
+@csrf.exempt  # JSON API - uses session authentication
 @require_session_authorization
 def change_quantity(item_id):
     """Change quantity of an inventory item."""

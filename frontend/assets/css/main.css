@@ -1885,3 +1885,25 @@ button.primary:active,
     grid-template-columns: 1fr;
   }
 }
+
+/* Classes for dynamic styles to avoid CSP inline style blocks */
+
+/* Object-fit fallback */
+.image.object-fallback img {
+  opacity: 0;
+}
+
+/* Sidebar lock positioning */
+.sidebar-inner-locked {
+  position: fixed !important;
+}
+
+.sidebar-inner-unlocked {
+  position: static !important;
+  top: auto !important;
+}
+
+/* Chrome/Android scrollbar fix */
+.android-chrome #sidebar .inner::-webkit-scrollbar {
+  display: none;
+}

@@ -166,8 +166,15 @@ async function changeQuantity(id, delta) {
         if (response.ok) {
             console.log('✅ Quantidade atualizada com sucesso');
         } else {
-            const errorData = await response.json();
-            console.error('❌ Erro na atualização:', errorData);
+            // Handle non-JSON responses
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                const errorData = await response.json();
+                console.error('❌ Erro na atualização:', errorData);
+            } else {
+                const errorText = await response.text();
+                console.error('❌ Erro na atualização (não-JSON):', response.status, errorText.substring(0, 200));
+            }
         }
     } catch (error) {
         console.error('❌ Erro na requisição:', error);
@@ -240,6 +247,16 @@ function editItem(id) {
                         credentials: 'same-origin',
                         body: JSON.stringify(payload)
                     });
+                    if (!res.ok) {
+                        const contentType = res.headers.get('content-type');
+                        if (contentType && contentType.includes('application/json')) {
+                            const errorData = await res.json();
+                            throw new Error(errorData.message || 'Erro na atualização');
+                        } else {
+                            const errorText = await res.text();
+                            throw new Error(`Erro ${res.status}: ${errorText.substring(0, 100)}`);
+                        }
+                    }
                     json = await res.json();
                 }
 
@@ -290,6 +307,16 @@ async function deleteItem(id) {
                 const headers = {};
                 if (csrf) { headers['X-CSRFToken'] = csrf; headers['X-CSRF-Token'] = csrf; }
                 const res = await fetch(`/inventory/${id}`, { method: 'DELETE', headers: headers, credentials: 'same-origin' });
+                if (!res.ok) {
+                    const contentType = res.headers.get('content-type');
+                    if (contentType && contentType.includes('application/json')) {
+                        const errorData = await res.json();
+                        throw new Error(errorData.message || 'Erro na exclusão');
+                    } else {
+                        const errorText = await res.text();
+                        throw new Error(`Erro ${res.status}: ${errorText.substring(0, 100)}`);
+                    }
+                }
                 json = await res.json();
             }
 
@@ -483,6 +510,15 @@ document.addEventListener('DOMContentLoaded', function() {
                     addItemLocally(created);
                     window.location.href = '/estoque';
                 } else {
+                    // Check if response is JSON
+                    const contentType = res.headers.get('content-type');
+                    if (contentType && contentType.includes('application/json')) {
+                        const errorData = await res.json();
+                        console.error('Erro ao adicionar item:', errorData);
+                    } else {
+                        const errorText = await res.text();
+                        console.error('Erro ao adicionar item (não-JSON):', res.status, errorText.substring(0, 100));
+                    }
                     // Fallback: let the form submit normally to preserve behavior
                     addForm.submit();
                 }

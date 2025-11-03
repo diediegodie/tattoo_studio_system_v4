@@ -24,6 +24,7 @@ from app.controllers.financeiro_controller import financeiro_bp  # noqa: E402
 
 @financeiro_bp.route("/api", methods=["GET"])
 @limiter.limit("100 per minute")
+@csrf.exempt  # JSON API - uses session authentication
 @login_required
 def api_list_pagamentos():
     """Return JSON array of payments."""
@@ -86,6 +87,7 @@ def api_list_pagamentos():
 
 @financeiro_bp.route("/api/<int:pagamento_id>", methods=["GET"])
 @limiter.limit("100 per minute")
+@csrf.exempt  # JSON API - uses session authentication
 @login_required
 def api_get_pagamento(pagamento_id: int):
     """Get a single payment by ID."""

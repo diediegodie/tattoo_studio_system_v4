@@ -25,6 +25,7 @@ from app.controllers.sessoes_controller import sessoes_bp  # noqa: E402
 
 @sessoes_bp.route("/api", methods=["GET"])
 @limiter.limit("100 per minute")
+@csrf.exempt  # JSON API - uses session authentication
 @login_required
 def api_list_sessoes():
     """Return JSON array of sessions."""
@@ -69,6 +70,7 @@ def api_list_sessoes():
 
 @sessoes_bp.route("/api/<int:sessao_id>", methods=["GET"])
 @limiter.limit("100 per minute")
+@csrf.exempt  # JSON API - uses session authentication
 @login_required
 def api_get_sessao(sessao_id: int):
     db = None

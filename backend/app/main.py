@@ -396,6 +396,9 @@ def create_app():  # noqa: C901
     app.config["WTF_CSRF_TIME_LIMIT"] = None  # Tokens don't expire
     app.config["WTF_CSRF_SSL_STRICT"] = is_production  # HTTPS in prod
     app.config["WTF_CSRF_ENABLED"] = True  # Explicitly enable
+    app.config["WTF_CSRF_CHECK_DEFAULT"] = (
+        False  # Disable referrer check (breaks with no-referrer policy)
+    )
 
     # HTTPS Enforcement with Talisman (Task 3 & 7 - Production Security)
     # Force HTTPS, add HSTS, XFO, XCTO, CSP, Referrer-Policy,

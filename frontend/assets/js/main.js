@@ -53,14 +53,9 @@
 					var $this = $(this),
 						$img = $this.children('img');
 
-					// Hide original image.
-						$img.css('opacity', '0');
-
-					// Set background.
-						$this
-							.css('background-image', 'url("' + $img.attr('src') + '")')
-							.css('background-size', $img.css('object-fit') ? $img.css('object-fit') : 'cover')
-							.css('background-position', $img.css('object-position') ? $img.css('object-position') : 'center');
+					// Add fallback class and set background image
+					$this.addClass('object-fallback');
+					$this.css('background-image', 'url("' + $img.attr('src') + '")');
 
 				});
 
@@ -80,8 +75,7 @@
 		// Hack: Workaround for Chrome/Android scrollbar position bug.
 			if (browser.os == 'android'
 			&&	browser.name == 'chrome')
-				$('<style>#sidebar .inner::-webkit-scrollbar { display: none; }</style>')
-					.appendTo($head);
+				$body.addClass('android-chrome');
 
 		// Toggle.
 			$('<a href="#sidebar" class="toggle">Alternar</a>')
@@ -180,8 +174,8 @@
 
 								$sidebar_inner
 									.data('locked', 0)
-									.css('position', '')
-									.css('top', '');
+									.removeClass('sidebar-inner-locked')
+									.addClass('sidebar-inner-unlocked');
 
 								return;
 
@@ -197,8 +191,8 @@
 								if (y <= 0)
 									$sidebar_inner
 										.data('locked', 0)
-										.css('position', '')
-										.css('top', '');
+										.removeClass('sidebar-inner-locked')
+										.addClass('sidebar-inner-unlocked');
 								else
 									$sidebar_inner
 										.css('top', -1 * x);
@@ -209,7 +203,8 @@
 								if (y > 0)
 									$sidebar_inner
 										.data('locked', 1)
-										.css('position', 'fixed')
+										.addClass('sidebar-inner-locked')
+										.removeClass('sidebar-inner-unlocked')
 										.css('top', -1 * x);
 
 							}
