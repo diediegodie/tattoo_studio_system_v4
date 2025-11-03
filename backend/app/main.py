@@ -1404,9 +1404,7 @@ def create_app():  # noqa: C901
                 # are effective
                 import importlib
 
-                extrato_atomic = importlib.import_module(
-                    "app.services.extrato_atomic"
-                )
+                extrato_atomic = importlib.import_module("app.services.extrato_atomic")
 
                 # Use atomic version with backup check (Task 3)
                 # No args → previous month by default inside the service
