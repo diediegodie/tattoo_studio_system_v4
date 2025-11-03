@@ -18,3 +18,12 @@
 .modal-btn-hidden {
 	display: none !important;
 }
+
+/* Inventory quantity controls spacing */
+.qtd-controls {
+	margin-left: 0.75em;
+}
+
+.qtd-controls .btn-icon {
+	margin-left: 0.25em;
+}

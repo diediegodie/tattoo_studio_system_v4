@@ -58,7 +58,7 @@ function renderInventory() {
     spanQtd.textContent = item.quantidade;
     tdQtd.appendChild(spanQtd);
 
-    // Arrows inside same td, with spacing
+    // Arrows inside same td, with spacing handled by CSS
     const qtdControls = document.createElement('span');
     qtdControls.className = 'qtd-controls';
     
@@ -68,17 +68,14 @@ function renderInventory() {
         qtdControls.classList.add('hidden-with-margin');
     }
     
-    qtdControls.style.marginLeft = '0.75em';
     const btnUp = document.createElement('button');
     btnUp.className = 'btn-up btn-icon';
     btnUp.textContent = '↑';
-    btnUp.style.marginLeft = '0.25em';
     btnUp.onclick = function(e) { e.stopPropagation(); changeQuantity(item.id, 1); };
     qtdControls.appendChild(btnUp);
     const btnDown = document.createElement('button');
     btnDown.className = 'btn-down btn-icon';
     btnDown.textContent = '↓';
-    btnDown.style.marginLeft = '0.25em';
     btnDown.onclick = function(e) { e.stopPropagation(); changeQuantity(item.id, -1); };
     qtdControls.appendChild(btnDown);
     tdQtd.appendChild(qtdControls);

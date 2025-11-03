@@ -9,7 +9,7 @@ let previousFocusElement = null;
 document.addEventListener('DOMContentLoaded', function() {
     // Create modal instance from template
     const modalTemplate = `
-        <div id="unified-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title" style="display: none;">
+        <div id="unified-modal" class="modal-overlay modal-hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
             <div class="modal-container" tabindex="-1">
                 <div class="modal-scrollable">
                     <h2 id="modal-title"></h2>
@@ -118,25 +118,22 @@ function openModal(options = {}) {
             }
         });
 
-        // Insert before default buttons
-        if (confirmBtn && confirmBtn.style.display !== 'none') {
-            footerElement.insertBefore(button, confirmBtn);
-        } else if (cancelBtn && cancelBtn.style.display !== 'none') {
-            footerElement.insertBefore(button, cancelBtn);
-        } else {
-            footerElement.appendChild(button);
-        }
-    });
+            // Insert before default buttons
+            if (confirmBtn && confirmBtn.classList.contains('modal-btn-visible')) {
+                footerElement.insertBefore(button, confirmBtn);
+            } else if (cancelBtn && cancelBtn.classList.contains('modal-btn-visible')) {
+                footerElement.insertBefore(button, cancelBtn);
+            } else {
+                footerElement.appendChild(button);
+            }
+        });
 
     // Store previous focus element
     previousFocusElement = document.activeElement;
 
-    // Show modal (ensure inline style overrides don't keep it hidden)
-    modalInstance.style.display = 'block';
+    // Show modal using CSS classes only
     modalInstance.classList.remove('modal-hidden');
-    modalInstance.classList.add('modal-visible');
-
-    // Set up focus trap for this modal instance
+    modalInstance.classList.add('modal-visible');    // Set up focus trap for this modal instance
     setupFocusTrap();
 
     // Focus management
@@ -166,10 +163,9 @@ function closeModal() {
         containerElement.className = 'modal-container';
     }
 
-    // Hide modal (ensure inline style hides it)
+    // Hide modal using CSS classes only
     modalInstance.classList.remove('modal-visible');
     modalInstance.classList.add('modal-hidden');
-    modalInstance.style.display = 'none';
 
     // Restore body scroll
     document.body.classList.remove('modal-open');
@@ -461,9 +457,9 @@ function openCustomModal(options = {}) {
             });
 
             // Insert before default buttons
-            if (confirmBtn && confirmBtn.style.display !== 'none') {
+            if (confirmBtn && confirmBtn.classList.contains('modal-btn-visible')) {
                 footerElement.insertBefore(button, confirmBtn);
-            } else if (cancelBtn && cancelBtn.style.display !== 'none') {
+            } else if (cancelBtn && cancelBtn.classList.contains('modal-btn-visible')) {
                 footerElement.insertBefore(button, cancelBtn);
             } else {
                 footerElement.appendChild(button);
@@ -474,14 +470,13 @@ function openCustomModal(options = {}) {
     // Store previous focus element
     previousFocusElement = document.activeElement;
 
-    console.log('[MODAL] About to show modal, current display:', modalInstance.style.display);
+    console.log('[MODAL] About to show modal, classes before:', modalInstance.className);
     
-    // Show modal
-    modalInstance.style.display = 'flex';
+    // Show modal using CSS classes only
     modalInstance.classList.remove('modal-hidden');
     modalInstance.classList.add('modal-visible');
     
-    console.log('[MODAL] Modal should now be visible, display:', modalInstance.style.display);
+    console.log('[MODAL] Modal should now be visible, classes after:', modalInstance.className);
 
     // Set up focus trap for this modal instance
     setupFocusTrap();
