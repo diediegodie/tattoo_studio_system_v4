@@ -62,6 +62,57 @@ jobs:
           echo "Target: $MONTH/$YEAR"
           echo "Force: ${{ github.event.inputs.force || 'false' }}"
       
+      - name: Create backup
+        id: backup
+        env:
+          API_BASE_URL: ${{ secrets.EXTRATO_API_BASE_URL }}
+          API_TOKEN: ${{ secrets.EXTRATO_API_TOKEN }}
+          MONTH: ${{ steps.setup.outputs.month }}
+          YEAR: ${{ steps.setup.outputs.year }}
+        run: |
+          # Validate required secrets exist
+          if [ -z "$API_BASE_URL" ] || [ -z "$API_TOKEN" ]; then
+            echo "ERROR: EXTRATO_API_BASE_URL or EXTRATO_API_TOKEN not configured"
+            echo "Add these secrets in: Settings → Secrets and variables → Actions"
+            exit 1
+          fi
+          
+          # Build JSON payload for backup creation
+          PAYLOAD=$(jq -n \
+            --arg month "$MONTH" \
+            --arg year "$YEAR" \
+            '{month: ($month|tonumber), year: ($year|tonumber)}' )
+          
+          echo "Backup endpoint: $API_BASE_URL/api/backup/create_service"
+          echo "Payload: $PAYLOAD"
+          
+          # Make backup creation request
+          HTTP_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+            "$API_BASE_URL/api/backup/create_service" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $API_TOKEN" \
+            -d "$PAYLOAD")
+          
+          # Extract HTTP status code and body
+          HTTP_BODY=$(echo "$HTTP_RESPONSE" | head -n -1)
+          HTTP_STATUS=$(echo "$HTTP_RESPONSE" | tail -n 1)
+          
+          echo "Backup response status: $HTTP_STATUS"
+          echo "Backup response body: $HTTP_BODY"
+          
+          # Save response for debugging
+          echo "$HTTP_BODY" > backup_response.json
+          
+          # Check if backup creation was successful (200) or already exists (409)
+          if [ "$HTTP_STATUS" -eq 200 ] || [ "$HTTP_STATUS" -eq 409 ]; then
+            echo "SUCCESS: Backup creation completed (created or already exists)"
+            echo "backup_status=$HTTP_STATUS" >> $GITHUB_OUTPUT
+          else
+            echo "FAILED: Backup creation failed with status $HTTP_STATUS"
+            echo "backup_status=$HTTP_STATUS" >> $GITHUB_OUTPUT
+            # Continue anyway - extrato generation might still work if backup exists
+          fi
+      
       - name: Trigger extrato generation endpoint
         id: trigger
         env:
@@ -145,12 +196,14 @@ jobs:
             fi
           done
       
-      - name: Upload debug response on failure
+      - name: Upload debug responses on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: extrato-api-response
-          path: response.json
+          name: extrato-api-responses
+          path: |
+            response.json
+            backup_response.json
           retention-days: 7
       
       - name: Parse response
@@ -178,6 +231,16 @@ jobs:
           echo "**Date**: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
           echo "**Target**: ${{ steps.setup.outputs.month }}/${{ steps.setup.outputs.year }}" >> $GITHUB_STEP_SUMMARY
           echo "**Trigger**: ${{ github.event_name == 'schedule' && 'Scheduled' || 'Manual' }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Backup status
+          if [ "${{ steps.backup.outcome }}" == "success" ]; then
+            echo "### Backup Step" >> $GITHUB_STEP_SUMMARY
+            echo "- ✅ **Backup**: Created or already exists" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### Backup Step" >> $GITHUB_STEP_SUMMARY
+            echo "- ❌ **Backup**: Failed (status ${{ steps.backup.outputs.backup_status }})" >> $GITHUB_STEP_SUMMARY
+          fi
           echo "" >> $GITHUB_STEP_SUMMARY
           
           if [ "${{ steps.trigger.outcome }}" == "success" ]; then

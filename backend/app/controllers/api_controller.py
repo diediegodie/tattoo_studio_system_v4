@@ -446,6 +446,213 @@ def generate_extrato_manual():
 
 @csrf.exempt
 @limiter.limit("10 per minute")
+@api_bp.route("/backup/create_service", methods=["POST"])
+@jwt_required
+def create_backup_service():
+    """
+    Service account endpoint for automated backup creation (JWT-protected).
+
+    This endpoint is designed for automation systems (e.g., GitHub Actions) that
+    use JWT Bearer token authentication. It triggers the monthly backup creation
+    process for historical data.
+
+    Authentication: Requires valid JWT token in Authorization header (Bearer <token>).
+    The token must belong to a service account with admin role (user_id=999).
+
+    Request body (JSON):
+    - month: Month (1-12) - optional, defaults to current month
+    - year: Year (YYYY) - optional, defaults to current year
+
+    Returns:
+        JSON response with success status and message
+
+    Status codes:
+        200: Success
+        401: Unauthorized (invalid/missing JWT token)
+        400: Bad request (invalid parameters)
+        409: Backup already exists
+        500: Internal server error
+
+    Example:
+        POST /api/backup/create_service
+        Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        Content-Type: application/json
+
+        {
+            "month": 10,
+            "year": 2025
+        }
+    """
+    # Get current user from g (set by @jwt_required decorator)
+    user = g.current_user
+
+    try:
+        # Parse request body
+        data = request.get_json() or {}
+        month = data.get("month")
+        year = data.get("year")
+
+        # Validate parameters if provided
+        if month is not None:
+            if not isinstance(month, int) or month < 1 or month > 12:
+                return (
+                    jsonify(
+                        {
+                            "success": False,
+                            "error": "Month must be an integer between 1 and 12",
+                        }
+                    ),
+                    400,
+                )
+
+        if year is not None:
+            if not isinstance(year, int) or year < 2000 or year > 2100:
+                return (
+                    jsonify(
+                        {
+                            "success": False,
+                            "error": "Year must be an integer between 2000 and 2100",
+                        }
+                    ),
+                    400,
+                )
+
+        # Log the attempt
+        logger.info(
+            "Service backup creation triggered",
+            extra={
+                "context": {
+                    "job": "service_backup_creation",
+                    "user_id": user.id,
+                    "user_email": user.email,
+                    "month": month,
+                    "year": year,
+                    "status": "started",
+                }
+            },
+        )
+
+        # Import and call the backup service
+        from app.services.backup_service import BackupService
+
+        # Initialize backup service
+        backup_service = BackupService()
+
+        # Create backup
+        success, message = backup_service.create_backup(year=year, month=month)
+
+        if success:
+            # Determine actual month/year used (in case defaults were applied)
+            if month is None or year is None:
+                from datetime import datetime
+                now = datetime.now()
+                actual_month = month or now.month
+                actual_year = year or now.year
+            else:
+                actual_month, actual_year = month, year
+
+            logger.info(
+                "Service backup creation completed successfully",
+                extra={
+                    "context": {
+                        "job": "service_backup_creation",
+                        "user_id": user.id,
+                        "month": actual_month,
+                        "year": actual_year,
+                        "status": "success",
+                    }
+                },
+            )
+
+            return (
+                jsonify(
+                    {
+                        "success": True,
+                        "message": f"Backup created successfully for {actual_month:02d}/{actual_year}",
+                        "data": {
+                            "month": actual_month,
+                            "year": actual_year,
+                        },
+                    }
+                ),
+                200,
+            )
+        else:
+            # Determine actual month/year that was attempted
+            if month is None or year is None:
+                from datetime import datetime
+                now = datetime.now()
+                actual_month = month or now.month
+                actual_year = year or now.year
+            else:
+                actual_month, actual_year = month, year
+
+            logger.warning(
+                "Service backup creation failed",
+                extra={
+                    "context": {
+                        "job": "service_backup_creation",
+                        "user_id": user.id,
+                        "month": actual_month,
+                        "year": actual_year,
+                        "status": "failed",
+                        "reason": message,
+                    }
+                },
+            )
+
+            # Check if it's a "backup already exists" error
+            if "already exists" in message.lower():
+                return (
+                    jsonify(
+                        {
+                            "success": False,
+                            "error": message,
+                            "details": {
+                                "month": actual_month,
+                                "year": actual_year,
+                                "reason": "backup_already_exists",
+                            },
+                        }
+                    ),
+                    409,  # Conflict
+                )
+            else:
+                return (
+                    jsonify(
+                        {
+                            "success": False,
+                            "error": message,
+                            "details": {
+                                "month": actual_month,
+                                "year": actual_year,
+                            },
+                        }
+                    ),
+                    500,
+                )
+
+    except Exception as e:
+        logger.error(
+            "Error in service backup creation",
+            extra={
+                "context": {
+                    "job": "service_backup_creation",
+                    "user_id": user.id if 'user' in locals() else None,
+                    "status": "error",
+                    "error": str(e),
+                }
+            },
+            exc_info=True,
+        )
+        return (
+            jsonify({"success": False, "error": f"Internal server error: {str(e)}"}),
+            500,
+        )
+
+
+@csrf.exempt
+@limiter.limit("10 per minute")
 @api_bp.route("/extrato/generate_service", methods=["POST"])
 @jwt_required
 def generate_extrato_service():
