@@ -1,7 +1,7 @@
 {% set page_title = 'Financeiro' %}
 {% include 'partials/_head.html' %}
 
-<body class="is-preload">
+<body class="is-preload" data-financeiro-api-base="{{ url_for('financeiro.api_list_pagamentos') }}">
     {% include 'partials/_flash_messages.html' %}
     <div id="wrapper">
         <div id="main">
@@ -69,7 +69,7 @@
                                                     data-id="{{ pagamento.id }}">Editar</button>
                                                 <form method="POST"
                                                     action="{{ url_for('financeiro.delete_pagamento', pagamento_id=pagamento.id) }}"
-                                                    style="display:inline;">
+                                                    class="inline">
                                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
                                                     <button type="submit" class="button small delete-pagamento-btn"
                                                         data-id="{{ pagamento.id }}">Excluir</button>
@@ -93,9 +93,6 @@
         {% include 'partials/_sidebar.html' %}
     </div>
 
-    <script>
-        window.FINANCEIRO_API_BASE = "{{ url_for('financeiro.api_list_pagamentos') }}";
-    </script>
     {% include 'partials/_base_scripts.html' %}
     <script src="{{ url_for('static', filename='js/financeiro.js', v=config.get('GIT_SHA','')) }}"></script>
 

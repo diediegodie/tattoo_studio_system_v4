@@ -1453,6 +1453,10 @@ button.primary:active,
     margin-left: 0.75em;
 }
 
+.inline {
+    display: inline;
+}
+
 /* Button Layout Utilities */
 .login-button-container {
     display: flex;
@@ -1850,6 +1854,12 @@ button.primary:active,
 .alert-card--warning {
   border-color: rgba(184, 134, 11, 0.18);
   box-shadow: 0 6px 14px rgba(184, 134, 11, 0.14);
+}
+
+.calendar-warning {
+  background-color: #fff3cd;
+  border-left: 4px solid #ffc107;
+  margin-bottom: 2em;
 }
 
 .alert-summary-badge--info,

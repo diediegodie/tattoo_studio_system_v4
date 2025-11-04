@@ -7,7 +7,7 @@
   // - Backend API endpoints under /financeiro/api (GET /, GET /<id>, PUT /<id>, DELETE /<id>)
 
   // Safe feature-detect the shared utilities and api base
-  const apiBase = (typeof window !== 'undefined' && window.FINANCEIRO_API_BASE) ? window.FINANCEIRO_API_BASE : '/financeiro/api';
+  const apiBase = document.body.dataset.financeiroApiBase || (typeof window !== 'undefined' && window.FINANCEIRO_API_BASE) ? window.FINANCEIRO_API_BASE : '/financeiro/api';
   let financeiroClient = null;
   try {
     if (typeof makeResourceClient === 'function') financeiroClient = makeResourceClient(apiBase);

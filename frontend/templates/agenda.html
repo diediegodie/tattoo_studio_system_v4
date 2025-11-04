@@ -19,8 +19,7 @@
 
                     <!-- Calendar Connection Status -->
                     {% if not calendar_connected %}
-                    <div class="box"
-                        style="background-color: #fff3cd; border-left: 4px solid #ffc107; margin-bottom: 2em;">
+                    <div class="box calendar-warning">
                         <p><strong>⚠️ Google Calendar não conectado</strong></p>
                         <p>Para visualizar e sincronizar seus eventos do Google Calendar, você precisa autorizar o
                             acesso.</p>
@@ -46,7 +45,7 @@
                         </thead>
                         <tbody>
                             {% for event in events %}
-                            <tr class="client-row" onclick="toggleDetails('details-{{ loop.index }}')">
+                            <tr class="client-row" data-details-id="details-{{ loop.index }}">
                                 <td>
                                     <span class="client-name"><strong>{{ event.title or 'Evento sem título'
                                             }}</strong></span>
@@ -57,15 +56,14 @@
                                 <td>
                                     {% if event.google_event_id in events_with_sessions %}
                                     <a href="{{ url_for('sessoes.list_sessoes') }}"
-                                        class="button small options-btn float-right button-success-outline"
-                                        onclick="event.stopPropagation();">
+                                        class="button small options-btn float-right button-success-outline">
                                         Sessão criada
                                     </a>
 
 
                                     {% else %}
                                     <a href="{{ url_for('sessoes.nova_sessao') }}?event_id={{ event.google_event_id or event.id or loop.index }}"
-                                        class="button small options-btn float-right" onclick="event.stopPropagation();">
+                                        class="button small options-btn float-right">
                                         Criar Sessão
                                     </a>
                                     {% endif %}
@@ -143,6 +141,7 @@
     </div>
 
     {% include 'partials/_base_scripts.html' %}
+    <script src="{{ url_for('static', filename='js/agenda.js', v=config.get('GIT_SHA','')) }}"></script>
 
 </body>
 
