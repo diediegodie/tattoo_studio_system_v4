@@ -545,6 +545,7 @@ def create_backup_service():
             # Determine actual month/year used (in case defaults were applied)
             if month is None or year is None:
                 from datetime import datetime
+
                 now = datetime.now()
                 actual_month = month or now.month
                 actual_year = year or now.year
@@ -581,6 +582,7 @@ def create_backup_service():
             # Determine actual month/year that was attempted
             if month is None or year is None:
                 from datetime import datetime
+
                 now = datetime.now()
                 actual_month = month or now.month
                 actual_year = year or now.year
@@ -638,7 +640,7 @@ def create_backup_service():
             extra={
                 "context": {
                     "job": "service_backup_creation",
-                    "user_id": user.id if 'user' in locals() else None,
+                    "user_id": user.id if "user" in locals() else None,
                     "status": "error",
                     "error": str(e),
                 }
