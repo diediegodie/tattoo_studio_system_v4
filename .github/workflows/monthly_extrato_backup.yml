@@ -163,9 +163,12 @@ jobs:
             # Save response for debugging
             echo "$HTTP_BODY" > response.json
             
+            # Extract details for special handling
+            DETAILS=$(echo "$HTTP_BODY" | jq -r '.details // ""')
+            
             # Check if request was successful
-            if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 300 ]; then
-              echo "SUCCESS: Extrato generation triggered successfully"
+            if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 300 ] || { [ "$HTTP_STATUS" -eq 500 ] && [ "$DETAILS" = "Extrato already exists for month/year" ]; }; then
+              echo "SUCCESS: Extrato generation completed (generated or already exists)"
               echo "status=$HTTP_STATUS" >> $GITHUB_OUTPUT
               break
             else
