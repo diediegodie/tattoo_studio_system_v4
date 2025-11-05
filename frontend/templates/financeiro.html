@@ -66,7 +66,8 @@
                                             <button class="button small options-btn">Opções</button>
                                             <span class="options-actions">
                                                 <button class="button small edit-pagamento-btn"
-                                                    data-id="{{ pagamento.id }}">Editar</button>
+                                                    data-id="{{ pagamento.id }}"
+                                                    data-cliente-id="{{ pagamento.cliente.id if pagamento.cliente else '' }}">Editar</button>
                                                 <form method="POST"
                                                     action="{{ url_for('financeiro.delete_pagamento', pagamento_id=pagamento.id) }}"
                                                     class="inline">

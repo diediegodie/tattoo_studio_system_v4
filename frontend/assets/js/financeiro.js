@@ -7,7 +7,7 @@
   // - Backend API endpoints under /financeiro/api (GET /, GET /<id>, PUT /<id>, DELETE /<id>)
 
   // Safe feature-detect the shared utilities and api base
-  const apiBase = document.body.dataset.financeiroApiBase || (typeof window !== 'undefined' && window.FINANCEIRO_API_BASE) ? window.FINANCEIRO_API_BASE : '/financeiro/api';
+  const apiBase = '/financeiro/api';
   let financeiroClient = null;
   try {
     if (typeof makeResourceClient === 'function') financeiroClient = makeResourceClient(apiBase);
@@ -406,8 +406,8 @@
         e.preventDefault();
         e.stopPropagation();
         const id = editBtn.dataset.id || editBtn.getAttribute('data-id');
-        if (!id) {
-          console.warn('[financeiro] No data-id found for payment edit button');
+        if (!id || id === 'undefined' || id === '') {
+          console.warn('[financeiro] Invalid data-id for payment edit button:', id);
           return;
         }
         editPagamento(id);
