@@ -63,7 +63,7 @@
 
                                     {% else %}
                                     <a href="{{ url_for('sessoes.nova_sessao') }}?event_id={{ event.google_event_id or event.id or loop.index }}"
-                                        class="button small options-btn float-right">
+                                        class="button small options-btn create-session-btn float-right">
                                         Criar Sessão
                                     </a>
                                     {% endif %}

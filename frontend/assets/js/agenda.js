@@ -10,8 +10,8 @@ function toggleDetails(detailsId) {
 document.addEventListener('DOMContentLoaded', function() {
     // Event delegation for client rows and buttons
     document.addEventListener('click', function(e) {
-        // Handle options button clicks to stop propagation
-        if (e.target.closest('.options-btn')) {
+        // Handle create session button clicks to stop propagation
+        if (e.target.closest('.create-session-btn')) {
             e.stopPropagation();
             return;
         }
