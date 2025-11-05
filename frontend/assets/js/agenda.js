@@ -8,7 +8,7 @@ function toggleDetails(detailsId) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Event delegation for client rows and buttons
+    // Event delegation for create session button
     document.addEventListener('click', function(e) {
         // Handle create session button clicks to stop propagation
         if (e.target.closest('.create-session-btn')) {
@@ -16,13 +16,6 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        // Handle client row clicks
-        const clientRow = e.target.closest('.client-row');
-        if (clientRow) {
-            const detailsId = clientRow.getAttribute('data-details-id');
-            if (detailsId) {
-                toggleDetails(detailsId);
-            }
-        }
+        // Row toggle is handled by common.js
     });
 });
