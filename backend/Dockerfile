@@ -72,9 +72,9 @@ CMD ["flask", "run", "--host=0.0.0.0", "--port=5000"]
 # Production stage
 FROM base AS production
 
-# Install production WSGI server
+# Install production WSGI server (version 22.0.0+ fixes CVE-2024-6827)
 USER root
-RUN pip install --no-cache-dir gunicorn
+RUN pip install --no-cache-dir "gunicorn>=22.0.0"
 USER appuser
 
 # Set production environment

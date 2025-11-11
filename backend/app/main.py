@@ -268,6 +268,130 @@ def create_app():  # noqa: C901
         import sentry_sdk
         from sentry_sdk.integrations.flask import FlaskIntegration
         from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+        from sentry_sdk.integrations.logging import LoggingIntegration
+
+        # Security: Define before_send to scrub sensitive data
+        def before_send(event, hint):
+            """
+            Filter sensitive data before sending events to Sentry.
+            Removes PII, passwords, tokens, and other sensitive information.
+
+            Args:
+                event: The event dict to be sent to Sentry
+                hint: Optional hints about the event (e.g., original exception)
+            """
+            # Log if this is an exception event (using hint for debugging context)
+            if hint and "exc_info" in hint:
+                # hint contains the original exception - could be used for additional filtering
+                # For now, we just acknowledge its presence for potential future use
+                pass
+
+            # Scrub sensitive request data
+            if "request" in event:
+                request = event["request"]
+
+                # Remove sensitive headers
+                if "headers" in request:
+                    sensitive_headers = [
+                        "Authorization",
+                        "Cookie",
+                        "X-API-Key",
+                        "X-Auth-Token",
+                        "Proxy-Authorization",
+                        "X-CSRF-Token",
+                        "X-Session-Token",
+                    ]
+                    for header in sensitive_headers:
+                        if header in request["headers"]:
+                            request["headers"][header] = "[Filtered]"
+
+                # Remove sensitive query parameters
+                if "query_string" in request:
+                    sensitive_params = [
+                        "password",
+                        "token",
+                        "api_key",
+                        "secret",
+                        "auth",
+                    ]
+                    query = request.get("query_string", "")
+                    if any(param in query.lower() for param in sensitive_params):
+                        request["query_string"] = "[Filtered]"
+
+                # Scrub request body for sensitive fields
+                if "data" in request and isinstance(request["data"], dict):
+                    sensitive_fields = [
+                        "password",
+                        "password_confirmation",
+                        "current_password",
+                        "new_password",
+                        "token",
+                        "api_key",
+                        "secret",
+                        "access_token",
+                        "refresh_token",
+                        "credit_card",
+                        "ssn",
+                        "social_security",
+                    ]
+                    for field in sensitive_fields:
+                        if field in request["data"]:
+                            request["data"][field] = "[Filtered]"
+
+            # Scrub exception values for sensitive data patterns
+            if "exception" in event:
+                for exception in event["exception"].get("values", []):
+                    if "value" in exception:
+                        exception_value = exception["value"]
+                        # Mask potential tokens in error messages (e.g., "Token: abc123")
+                        import re
+
+                        exception_value = re.sub(
+                            r"(token|password|secret|key)[\s:=]+[\w\-]+",
+                            r"\1=[Filtered]",
+                            exception_value,
+                            flags=re.IGNORECASE,
+                        )
+                        exception["value"] = exception_value
+
+            # Remove user email if present (keep user ID for tracking)
+            if "user" in event and "email" in event["user"]:
+                event["user"]["email"] = "[Filtered]"
+
+            return event
+
+        # Security: Define before_breadcrumb to scrub breadcrumbs
+        def before_breadcrumb(crumb, hint):
+            """
+            Filter sensitive data from breadcrumbs before sending to Sentry.
+
+            Args:
+                crumb: The breadcrumb dict to be sent to Sentry
+                hint: Optional hints about the breadcrumb context
+            """
+            # Acknowledge hint parameter (contains breadcrumb context like logger name)
+            # Could be used for additional filtering based on breadcrumb source
+            _ = hint  # Explicitly mark as intentionally unused for now
+
+            # Scrub HTTP request breadcrumbs
+            if crumb.get("category") == "httplib":
+                if "data" in crumb and "headers" in crumb["data"]:
+                    sensitive_headers = ["Authorization", "Cookie", "X-API-Key"]
+                    for header in sensitive_headers:
+                        if header in crumb["data"]["headers"]:
+                            crumb["data"]["headers"][header] = "[Filtered]"
+
+                # Scrub URLs with sensitive query parameters
+                if "url" in crumb.get("data", {}):
+                    url = crumb["data"]["url"]
+                    if any(
+                        param in url.lower()
+                        for param in ["token=", "password=", "api_key="]
+                    ):
+                        # Keep the base URL but filter query string
+                        crumb["data"]["url"] = url.split("?")[0] + "?[Filtered]"
+
+            return crumb
 
         sentry_sdk.init(
             dsn=sentry_dsn,
@@ -276,10 +400,20 @@ def create_app():  # noqa: C901
             integrations=[
                 FlaskIntegration(),
                 SqlalchemyIntegration(),
+                LoggingIntegration(
+                    level=logging.INFO,  # Capture info and above as breadcrumbs
+                    event_level=logging.ERROR,  # Send errors as events
+                ),
             ],
             traces_sample_rate=0.1,  # 10% of transactions for performance monitoring
             profiles_sample_rate=0.1,  # 10% of transactions for profiling
             send_default_pii=False,  # Don't send PII by default
+            before_send=before_send,  # Scrub sensitive data before sending events
+            before_breadcrumb=before_breadcrumb,  # Scrub breadcrumbs
+            # Security: Don't send server name (hostname) to avoid exposing infrastructure
+            server_name=None,
+            # Note: Request body data is controlled by before_send callback
+            # which filters sensitive fields from request data
         )
         logger.info(
             "Sentry initialized",
@@ -288,6 +422,8 @@ def create_app():  # noqa: C901
                     "environment": env,
                     "release": os.getenv("GIT_SHA", "unknown"),
                     "traces_sample_rate": 0.1,
+                    "send_default_pii": False,
+                    "security": "Enhanced with before_send and before_breadcrumb filters",
                 }
             },
         )
