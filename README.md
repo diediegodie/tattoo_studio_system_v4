@@ -19,6 +19,13 @@ Management system for tattoo studios — Flask backend, PostgreSQL database, Goo
 - **Monitoring**: Comprehensive logging and health checks
 - **Testing**: High test coverage validates business logic correctness
 
+### Monthly Extrato Backup Automation
+- **Two-Layer Safety Net**: APScheduler (primary) + GitHub Actions (backup)
+- **Production-Ready**: Verified and documented for safe deployment
+- **Atomic Transactions**: All-or-nothing data transfers with rollback
+- **Backup Verification**: CSV backups created before data deletion
+- **Comprehensive Documentation**: See [Monthly Extrato Backup Guide](MONTHLY_EXTRATO_BACKUP_GUIDE.md) and [Technical Analysis](TECHNICAL_ANALYSIS_REPORT.md)
+
 ---
 
 ## Quick overview
@@ -289,6 +296,69 @@ curl -i http://127.0.0.1:5000/internal/health
 - Set `HEALTH_CHECK_TOKEN` in all environments (Render, GitHub Actions, local .env)
 - Generate a secure token: `python3 -c "import secrets; print(secrets.token_hex(32))"`
 
+---
+
+## Monthly Extrato Backup Automation
+
+The system features a **two-layer safety net** for automated monthly extrato generation:
+
+### Primary Automation (APScheduler)
+- **Schedule**: Day 1 of each month at 02:00 AM (São Paulo timezone)
+- **Function**: Automatically generates extrato for previous month
+- **Control**: `ENABLE_MONTHLY_EXTRATO_JOB=true` environment variable
+- **Location**: `backend/app/main.py` (lines 1360-1451)
+
+### Safety Net (GitHub Actions)
+- **Schedule**: Day 2 of each month at 03:00 UTC
+- **Purpose**: Backup if primary automation fails
+- **Location**: `.github/workflows/monthly_extrato_backup.yml`
+- **Manual Trigger**: Can be triggered manually via workflow_dispatch
+
+### Required Configuration
+
+#### Environment Variables
+```bash
+TZ=America/Sao_Paulo                  # REQUIRED for correct scheduling
+ENABLE_MONTHLY_EXTRATO_JOB=true       # Enable APScheduler
+EXTRATO_REQUIRE_BACKUP=true           # Require backup verification
+```
+
+#### GitHub Secrets (Required for Workflow)
+1. `EXTRATO_API_BASE_URL` - Production API URL
+2. `EXTRATO_API_TOKEN` - Service account JWT token
+
+### Setup Instructions
+
+**Complete setup guide**: See [MONTHLY_EXTRATO_BACKUP_GUIDE.md](MONTHLY_EXTRATO_BACKUP_GUIDE.md)
+
+**Quick setup**:
+```bash
+# 1. Generate service account JWT token
+docker-compose exec app python backend/scripts/verify_monthly_backup_system.py
+
+# 2. Configure GitHub Secrets
+# Go to: Settings → Secrets and variables → Actions
+# Add: EXTRATO_API_BASE_URL and EXTRATO_API_TOKEN
+
+# 3. Test manual workflow trigger
+# Go to: Actions → Monthly Extrato Backup Safety Net → Run workflow
+```
+
+### Verification
+
+```bash
+# Run comprehensive system verification
+python backend/scripts/verify_monthly_backup_system.py
+
+# Test workflow endpoints locally
+./test_workflow_locally.sh 10 2025 false
+```
+
+### Documentation
+- **Setup Guide**: [MONTHLY_EXTRATO_BACKUP_GUIDE.md](MONTHLY_EXTRATO_BACKUP_GUIDE.md) - Complete setup instructions
+- **Technical Analysis**: [TECHNICAL_ANALYSIS_REPORT.md](TECHNICAL_ANALYSIS_REPORT.md) - Detailed technical analysis and verification
+
+---
 
 ### Testing
 ```bash
