@@ -1,0 +1,136 @@
+name: Keep App Alive (Business Hours)
+
+# This workflow keeps the Render-hosted app responsive during business hours
+# by preventing the free tier from spinning down due to inactivity.
+# 
+# Schedule: Tuesday to Saturday, 10:00–19:00 São Paulo time (UTC-3)
+# Frequency: Every 10 minutes during business hours
+# Target: /api/health (lightweight, always 200, no DB)
+#
+# Why this works:
+# - Render free tier spins down after 15 minutes of inactivity
+# - Pinging every 10 minutes keeps the instance warm
+# - Using /api/health minimizes resource usage (no DB queries)
+# - Neon DB may still sleep (5 min inactivity), but app stays ready
+#
+# Resource optimization:
+# - Only runs during configured business hours
+# - Uses lightweight endpoint to minimize compute
+# - Single curl request per execution (fast, efficient)
+
+on:
+  schedule:
+    # Cron expressions run in UTC. São Paulo is UTC-3 (no DST as of 2019).
+    # Business hours: 10:00–19:00 BRT = 13:00–22:00 UTC
+    # Run every 10 minutes between 13:00 and 22:00 UTC
+    # Format: minute hour day-of-month month day-of-week
+    # Day-of-week: 2=Tuesday, 3=Wednesday, 4=Thursday, 5=Friday, 6=Saturday
+    
+    # Tuesday to Saturday, every 10 minutes from 13:00 to 21:50 UTC (10:00–18:50 BRT)
+    - cron: '*/10 13-21 * * 2-6'
+    
+    # Additional ping at 22:00 UTC to cover until 19:00 BRT
+    - cron: '0 22 * * 2-6'
+
+  # Allow manual trigger for testing
+  workflow_dispatch:
+
+jobs:
+  ping-app:
+    name: Ping Render App
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Get current time (BRT)
+        id: time
+        run: |
+          echo "utc_time=$(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_OUTPUT
+          echo "brt_time=$(TZ='America/Sao_Paulo' date +'%Y-%m-%d %H:%M:%S BRT')" >> $GITHUB_OUTPUT
+      
+      - name: Ping /api/health endpoint
+        run: |
+          echo "🏥 Pinging health endpoint at ${{ steps.time.outputs.brt_time }}"
+          
+          # Ping the lightweight /api/health endpoint
+          # This endpoint:
+          # - Always returns 200
+          # - Does not touch the database
+          # - Is exempt from rate limiting
+          # - Keeps the Render app instance awake
+          
+          response=$(curl -s -o /dev/null -w "%{http_code}" \
+            --connect-timeout 30 \
+            --max-time 60 \
+            --retry 2 \
+            --retry-delay 5 \
+            https://almanegra.onrender.com/api/health)
+          
+          if [ "$response" = "200" ]; then
+            echo "✅ App is alive (HTTP $response)"
+          else
+            echo "⚠️  Unexpected response: HTTP $response"
+            exit 1
+          fi
+      
+      - name: Log execution
+        if: always()
+        run: |
+          echo "Execution completed at ${{ steps.time.outputs.utc_time }}"
+          echo "Local time: ${{ steps.time.outputs.brt_time }}"
+
+# Best practices and recommendations:
+#
+# 1. ENDPOINT CHOICE:
+#    - Current: /api/health (lightweight, no DB, fastest)
+#    - Alternative: /ready (includes DB ping, keeps Neon awake but uses more resources)
+#    - Recommendation: Stick with /api/health unless you need guaranteed DB warmth
+#
+# 2. FREQUENCY:
+#    - Current: Every 10 minutes
+#    - Render timeout: 15 minutes
+#    - Safety margin: 5 minutes (adequate)
+#    - Increasing frequency (e.g., every 5 min) won't significantly improve UX
+#
+# 3. FREE TIER CONSIDERATIONS:
+#    GitHub Actions:
+#    - Free tier: 2,000 minutes/month for private repos, unlimited for public
+#    - This workflow: ~54 runs/day × 5 days = 270 runs/week = ~1,080 runs/month
+#    - Time per run: ~30 seconds = 540 minutes/month (well within limits)
+#    
+#    Render:
+#    - Free tier: 750 hours/month (31.25 days)
+#    - Keeping alive 9 hours/day × 5 days/week × 4.3 weeks = ~193 hours/month (safe)
+#    
+#    Neon:
+#    - Free tier: Active time limits vary by plan
+#    - /api/health doesn't wake Neon, so DB stays asleep when not needed
+#    - First real user request may still see Neon cold start (~2-5 seconds)
+#
+# 4. TO KEEP BOTH APP AND DB WARM:
+#    If you need to eliminate ALL cold starts (including Neon), change the endpoint:
+#    
+#    Replace:
+#      https://almanegra.onrender.com/api/health
+#    
+#    With:
+#      https://almanegra.onrender.com/ready
+#    
+#    Trade-off: Higher resource usage, but guaranteed warm DB on user arrival
+#
+# 5. MONITORING:
+#    - Check workflow runs in GitHub Actions tab
+#    - Look for failed runs (may indicate app issues)
+#    - Review Render logs to confirm pings are arriving
+#    - Monitor Render/Neon usage to stay within free tier limits
+#
+# 6. ADJUST SCHEDULE IF NEEDED:
+#    To modify business hours, adjust cron expressions:
+#    - Earlier start: decrease the starting hour in UTC (13-X)
+#    - Later end: increase the ending hour in UTC (X-22)
+#    - Different days: change day-of-week numbers (0=Sunday, 6=Saturday)
+#    - More frequent: change */10 to */5 (every 5 minutes)
+#
+# 7. SECURITY NOTE:
+#    - No secrets required for public health endpoints
+#    - If you add authentication in the future, use GitHub Secrets
+#    - Example: ${{ secrets.HEALTH_CHECK_TOKEN }}
