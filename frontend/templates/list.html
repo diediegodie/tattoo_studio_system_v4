@@ -32,18 +32,10 @@
                         </thead>
                         <tbody>
                             {% for submission in submissions %}
-                            {% set possible_names = [] %}
-                            {% for answer in submission.answers %}
-                            {% if answer.label|lower in ['full name', 'nome completo', 'nome'] and answer.value %}
-                            {% set _ = possible_names.append(answer.value) %}
-                            {% elif 'name' in answer.label|lower and answer.value %}
-                            {% set _ = possible_names.append(answer.value) %}
-                            {% endif %}
-                            {% endfor %}
-                            {% set nome = possible_names[0] if possible_names else None %}
                             <tr class="client-row">
                                 <td>
-                                    <span class="client-name"><strong>{{ nome or 'Sem nome' }}</strong></span>
+                                    <span class="client-name"><strong>{{ submission.client_name or 'Sem nome'
+                                            }}</strong></span>
                                 </td>
                             </tr>
                             <tr id="details-{{ submission.id }}" class="client-details-row details-row">
@@ -51,8 +43,9 @@
                                     <table class="client-table">
                                         <tbody>
                                             {% for answer in submission.answers %}
-                                            {% if not (answer.value == nome and (answer.label|lower in ['full name',
-                                            'nome completo', 'nome'] or 'name' in answer.label|lower)) %}
+                                            {# Don't duplicate the name field in details if it's a fullname control #}
+                                            {% if not (answer.type == 'control_fullname' and answer.value ==
+                                            submission.client_name) %}
                                             <tr>
                                                 <td><strong>{{ answer.label }}</strong></td>
                                                 <td>{{ answer.value|safe }}</td>

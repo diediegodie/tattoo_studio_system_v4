@@ -47,29 +47,70 @@ class JotFormService(IJotFormService):
             raise Exception(f"Failed to fetch JotForm submissions: {str(e)}")
 
     def parse_client_name(self, submission: dict) -> str:
-        """Extract client name from JotForm submission using your logic."""
+        """Extract client name from JotForm submission using robust field-type-first logic.
+
+        This method prioritizes field types over labels to ensure compatibility
+        with any form structure, regardless of language or custom labels.
+
+        Priority order:
+        1. control_fullname field type (most reliable)
+        2. Any field with 'name' in label (fallback)
+        3. First non-empty text field (last resort)
+        """
         answers = submission.get("answers", {})
 
+        # PRIORITY 1: Look for control_fullname field type (most reliable)
         for key, answer in answers.items():
             if answer.get("type") == "control_fullname":
                 name_data = answer.get("answer", {})
                 if isinstance(name_data, dict):
                     first = name_data.get("first", "")
                     last = name_data.get("last", "")
-                    # Normalize display name consistently
-                    return normalize_display_name(f"{first} {last}".strip())
+                    full_name = f"{first} {last}".strip()
+                    if full_name:  # Only return if not empty
+                        return normalize_display_name(full_name)
 
-        # Fallback: try to find any field with "name" in the label
+        # PRIORITY 2: Fallback - find any field with "name" in the label
         for key, answer in answers.items():
             label = answer.get("text", "").lower()
-            if "name" in label and "answer" in answer:
-                # Normalize fallback name too
-                return normalize_display_name(str(answer["answer"]))
+            answer_value = answer.get("answer")
+
+            if "name" in label and answer_value:
+                # Handle both string and dict answers
+                if isinstance(answer_value, dict):
+                    # Try to extract name parts from dict
+                    if "first" in answer_value or "last" in answer_value:
+                        first = answer_value.get("first", "")
+                        last = answer_value.get("last", "")
+                        full_name = f"{first} {last}".strip()
+                        if full_name:
+                            return normalize_display_name(full_name)
+                else:
+                    # Simple string answer
+                    name_str = str(answer_value).strip()
+                    if name_str:
+                        return normalize_display_name(name_str)
+
+        # PRIORITY 3: Last resort - use first non-empty text field
+        # This catches forms where the name field has an unusual label
+        for key, answer in answers.items():
+            field_type = answer.get("type", "")
+            answer_value = answer.get("answer")
+
+            # Look for simple text fields (textbox, email, etc.)
+            if field_type in ["control_textbox", "control_email"] and answer_value:
+                name_str = str(answer_value).strip()
+                if name_str and len(name_str) > 2:  # Avoid single-char fields
+                    return normalize_display_name(name_str)
 
         return "Nome não encontrado"
 
     def format_submission_data(self, submission: dict) -> dict:
-        """Format submission data for display using your existing logic."""
+        """Format submission data for display using your existing logic.
+
+        Now includes the extracted client_name at the root level for reliable
+        display in the frontend table, regardless of form structure.
+        """
         answers_list = []
 
         for key, answer in submission.get("answers", {}).items():
@@ -78,9 +119,18 @@ class JotFormService(IJotFormService):
             value = self._format_answer(answer.get("answer"), field_type)
 
             if value:  # só adiciona se tiver valor
-                answers_list.append({"label": label, "value": value})
+                answers_list.append(
+                    {"label": label, "value": value, "type": field_type}
+                )
 
-        return {"id": submission.get("id"), "answers": answers_list}
+        # Extract client name using the same robust logic as parse_client_name
+        client_name = self.parse_client_name(submission)
+
+        return {
+            "id": submission.get("id"),
+            "client_name": client_name,  # Reliable name extraction
+            "answers": answers_list,
+        }
 
     def _format_answer(self, answer, field_type: str) -> Optional[str]:
         """Format answers using your existing logic from format_answer function."""
