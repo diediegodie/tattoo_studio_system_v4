@@ -163,6 +163,7 @@ def admin_only():
 
 
 @api_bp.route("/health", methods=["GET"])
+@limiter.exempt
 def health_check():
     """Health check endpoint (no auth required)."""
     return jsonify(

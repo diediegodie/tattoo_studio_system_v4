@@ -8,6 +8,7 @@ from app.db.base import Extrato
 from app.db.session import SessionLocal
 from app.services.extrato_core import get_previous_month
 from flask import Blueprint, jsonify
+from app.core.limiter_config import limiter
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +16,7 @@ health_bp = Blueprint("health", __name__, url_prefix="/health")
 
 
 @health_bp.route("/extrato", methods=["GET"])
+@limiter.exempt
 def extrato_health_check():
     """
     Check if the extrato snapshot for the previous month exists.

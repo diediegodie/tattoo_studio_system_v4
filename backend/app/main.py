@@ -70,6 +70,7 @@ from app.auth.google_login import create_google_login_blueprint  # noqa: E402
 from app.auth.google_calendar import (  # noqa: E402
     create_google_calendar_blueprint,
 )
+from app.core.limiter_config import limiter  # noqa: E402
 
 # Get Google OAuth credentials
 google_client_id = os.getenv("GOOGLE_CLIENT_ID")
@@ -92,11 +93,30 @@ if not google_client_id or not google_client_secret:
 # Signal handlers are defined in the blueprint creation functions
 
 
+import time
+
+# Simple in-memory cache for DB status
+_DB_STATUS_TTL_SECONDS = int(os.getenv("DB_STATUS_TTL_SECONDS", "45"))
+_db_status_cache = {
+    "last_success_ts": 0.0,  # last time a ping succeeded
+    "last_attempt_ts": 0.0,  # last time a ping was attempted
+    "last_status": "unknown",  # one of: connected|error|unknown
+}
+
+
 def test_database_connection():
-    """Test database connection"""
+    """Test database connection by issuing a lightweight SELECT 1.
+
+    This function performs a blocking check and should not be called from
+    liveness endpoints. It updates the in-memory cache on success/failure.
+    """
+    now = time.time()
     try:
         with engine.connect() as connection:
             connection.execute(text("SELECT 1"))
+            _db_status_cache["last_success_ts"] = now
+            _db_status_cache["last_attempt_ts"] = now
+            _db_status_cache["last_status"] = "connected"
             return True
     except Exception as e:
         logger.error(
@@ -104,7 +124,37 @@ def test_database_connection():
             extra={"context": {"error": str(e)}},
             exc_info=True,
         )
+        _db_status_cache["last_attempt_ts"] = now
+        _db_status_cache["last_status"] = "error"
         return False
+
+
+def get_db_status(non_blocking: bool = True) -> str:
+    """Return database status as one of: connected|warming_up|error.
+
+    - If a successful ping occurred within TTL, returns "connected".
+    - If non_blocking is True and cache is stale, returns "warming_up" without pinging.
+    - If non_blocking is False, performs a ping and returns "connected" or "error".
+    - If the last attempt failed recently (within TTL), returns "error" in non-blocking mode.
+    """
+    now = time.time()
+    # Fresh successful status
+    if now - _db_status_cache["last_success_ts"] <= _DB_STATUS_TTL_SECONDS:
+        return "connected"
+
+    # In non-blocking mode, prefer not to hit the DB
+    if non_blocking:
+        # If we recently tried and it failed, surface error to callers
+        if (
+            _db_status_cache["last_status"] == "error"
+            and now - _db_status_cache["last_attempt_ts"] <= _DB_STATUS_TTL_SECONDS
+        ):
+            return "error"
+        return "warming_up"
+
+    # Blocking check for readiness
+    ok = test_database_connection()
+    return "connected" if ok else "error"
 
 
 def create_app():  # noqa: C901
@@ -1032,15 +1082,34 @@ def create_app():  # noqa: C901
         return redirect(url_for("calendar.calendar_page"))
 
     @app.route("/health")
+    @limiter.exempt
     def health_check():
-        """Health check endpoint for Docker"""
-        db_status = test_database_connection()
-        return jsonify(
-            {
-                "status": "healthy" if db_status else "unhealthy",
-                "database": "connected" if db_status else "disconnected",
-            }
-        ), (200 if db_status else 503)
+        """Liveness endpoint (Render should use /api/health).
+
+        Always returns 200 and never blocks on DB. The database field reflects
+        cached status: "connected", "warming_up", or recent "error".
+        """
+        database_status = get_db_status(non_blocking=True)
+        return jsonify({"status": "ok", "database": database_status}), 200
+
+    @app.route("/ready")
+    @limiter.exempt
+    def ready_check():
+        """Readiness endpoint that checks database connectivity.
+
+        Returns 200 if DB reachable, otherwise 503.
+        """
+        database_status = get_db_status(non_blocking=False)
+        is_ok = database_status == "connected"
+        return (
+            jsonify(
+                {
+                    "status": "ok" if is_ok else "unavailable",
+                    "database": database_status,
+                }
+            ),
+            (200 if is_ok else 503),
+        )
 
     @app.route("/pool-metrics")
     def pool_metrics():

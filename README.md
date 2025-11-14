@@ -171,7 +171,10 @@ POST /auth/logout — API logout (clears access token cookie)
 GET /clients/ — Clients list page (web)
 GET /clients/sync — Trigger JotForm -> local sync (web, redirects back)
 GET /clients/api/list — Clients JSON API (internal)
-GET /health — Public health check (rate limited)
+GET /api/health — Liveness (Render health check). Always 200, lightweight, no DB. Exempt from rate limiting.
+GET /health — Liveness for humans/tools. Always 200 with `{database: connected|warming_up|error}`. Exempt from rate limiting.
+GET /ready — Readiness. DB connectivity check (200 if reachable, 503 otherwise). Exempt from rate limiting.
+GET /health/extrato — Business monitoring (previous month snapshot presence). Exempt from rate limiting.
 GET /internal/health — Secure health check with token authentication (requires X-Health-Token header)
 GET /db-test — Database connection test
 
@@ -188,6 +191,25 @@ Example to query database from host (when running via docker-compose):
 ```bash
 docker compose exec db psql -U admin -d tattoo_studio -c "SELECT id, name, email FROM users;"
 ```
+
+---
+
+## Health checks on Render
+
+- Liveness endpoint used by Render: `/api/health` (do not change unless you change Render settings)
+  - Always returns HTTP 200
+  - Does not touch the database
+  - Exempt from rate limiting
+- Liveness (aux): `/health` — Always 200; includes a `database` field:
+  - `connected`: recent successful DB ping within ~45s cache TTL
+  - `warming_up`: cache is stale and we avoid blocking while Neon wakes up
+  - `error`: a recent ping attempt failed within the TTL window
+- Readiness: `/ready` — Performs `SELECT 1` using SQLAlchemy
+  - Returns 200 if DB reachable, 503 otherwise
+  - Intended for manual diagnostics or orchestrators, not Render liveness
+- Monitoring: `/health/extrato` — Business-specific check; does a small ORM query
+
+Recommendation: Configure Render health checks to hit `/api/health`.
 
 ---
 
