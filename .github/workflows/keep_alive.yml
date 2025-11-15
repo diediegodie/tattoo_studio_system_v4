@@ -4,12 +4,12 @@ name: Keep App Alive (Business Hours)
 # by preventing the free tier from spinning down due to inactivity.
 # 
 # Schedule: Tuesday to Saturday, 10:00–19:00 São Paulo time (UTC-3)
-# Frequency: Every 10 minutes during business hours
+# Frequency: Every 14 minutes during business hours
 # Target: /api/health (lightweight, always 200, no DB)
 #
 # Why this works:
 # - Render free tier spins down after 15 minutes of inactivity
-# - Pinging every 10 minutes keeps the instance warm
+# - Pinging every 14 minutes keeps the instance warm with minimal margin
 # - Using /api/health minimizes resource usage (no DB queries)
 # - Neon DB may still sleep (5 min inactivity), but app stays ready
 #
@@ -22,14 +22,14 @@ on:
   schedule:
     # Cron expressions run in UTC. São Paulo is UTC-3 (no DST as of 2019).
     # Business hours: 10:00–19:00 BRT = 13:00–22:00 UTC
-    # Run every 10 minutes between 13:00 and 22:00 UTC
+    # Run every 14 minutes between 13:00 and 22:00 UTC
     # Format: minute hour day-of-month month day-of-week
     # Day-of-week: 2=Tuesday, 3=Wednesday, 4=Thursday, 5=Friday, 6=Saturday
     
-    # Tuesday to Saturday, every 10 minutes from 13:00 to 21:50 UTC (10:00–18:50 BRT)
-    - cron: '*/10 13-21 * * 2-6'
+        # Tuesday to Saturday, every 14 minutes from 13:00 to 21:56 UTC (10:00–18:56 BRT)
+    - cron: '0,14,28,42,56 13-21 * * 2-6'
     
-    # Additional ping at 22:00 UTC to cover until 19:00 BRT
+    # Final ping at 22:00 UTC (19:00 BRT) to cover the last hour
     - cron: '0 22 * * 2-6'
 
   # Allow manual trigger for testing
