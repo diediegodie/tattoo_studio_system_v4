@@ -124,6 +124,19 @@ def api_update_sessao(sessao_id: int):
         if not s:
             return api_response(False, "Sessão não encontrada", None, 404)
 
+        # Handle manual client name input (if provided instead of cliente_id)
+        cliente_nome = payload.get("cliente_nome")
+        if cliente_nome and cliente_nome.strip():
+            from app.controllers.sessoes_helpers import find_or_create_client
+
+            cliente_id = find_or_create_client(db, cliente_nome)
+            if cliente_id:
+                payload["cliente_id"] = cliente_id
+            else:
+                return api_response(
+                    False, "Erro ao processar nome do cliente", None, 400
+                )
+
         # Server-side validation: ensure required fields are present
         required_fields = ["data", "cliente_id", "artista_id", "valor"]
         for field in required_fields:

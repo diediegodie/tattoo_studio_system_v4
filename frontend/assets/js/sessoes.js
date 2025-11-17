@@ -125,7 +125,14 @@
     const formContent = `
       <form id="sessoes-edit-form">
         <label>Data:<br><input type="date" name="data" required></label><br><br>
-        <label>Cliente:<br><select name="cliente_id" id="modal_cliente_id" required></select></label><br><br>
+        <label>Cliente:<br>
+          <select name="cliente_id" id="modal_cliente_id" required>
+            <option value="">Selecione...</option>
+          </select>
+          <input type="text" name="cliente_nome" id="modal_cliente_nome" 
+                 placeholder="Digite o nome do cliente" 
+                 style="display: none;">
+        </label><br><br>
         <label>Artista:<br><select name="artista_id" id="modal_artista_id" required></select></label><br><br>
         <label>Valor:<br><input type="number" step="0.01" name="valor" required></label><br><br>
         <label>Observações:<br><textarea name="observacoes"></textarea></label><br><br>
@@ -146,7 +153,8 @@
         const data = new FormData(form);
         
         // Client-side validation: ensure required fields are present
-        const requiredFields = ['data', 'cliente_id', 'artista_id', 'valor'];
+        // Note: cliente_id OR cliente_nome must be present, but not both required at same time
+        const requiredFields = ['data', 'artista_id', 'valor'];
         for (const fieldName of requiredFields) {
           const fieldEl = form.querySelector(`[name="${fieldName}"]`);
           if (fieldEl && (!data.get(fieldName) || data.get(fieldName).trim() === '')) {
@@ -162,6 +170,14 @@
             return;
           }
         }
+        
+        // Validate that either cliente_id or cliente_nome is provided
+        const clienteId = data.get('cliente_id');
+        const clienteNome = data.get('cliente_nome');
+        if ((!clienteId || clienteId === '__MANUAL__') && !clienteNome) {
+          getStatusHelper()('Nome do cliente é obrigatório.', false);
+          return;
+        }
 
         const params = new URLSearchParams();
         for (const [k, v] of data.entries()) params.append(k, v);
@@ -170,11 +186,17 @@
         const fd = data;
         const payload = {
           data: fd.get('data'),
-          cliente_id: parseInt(fd.get('cliente_id'), 10) || null,
           artista_id: parseInt(fd.get('artista_id'), 10) || null,
           valor: parseFloat(fd.get('valor')) || 0,
           observacoes: fd.get('observacoes') || ''
         };
+        
+        // Include either cliente_id or cliente_nome in the payload
+        if (clienteNome && clienteNome.trim()) {
+          payload.cliente_nome = clienteNome.trim();
+        } else if (clienteId && clienteId !== '__MANUAL__') {
+          payload.cliente_id = parseInt(clienteId, 10) || null;
+        }
 
         console.log('[DEBUG] Submitting payload:', payload);
 
@@ -246,9 +268,42 @@
         
         if (tmplCliente && modalCliente) {
           modalCliente.innerHTML = tmplCliente.innerHTML;
+          // Add "Inserir manualmente" option at the beginning
+          const manualOption = document.createElement('option');
+          manualOption.value = '__MANUAL__';
+          manualOption.textContent = '✏️ Inserir manualmente';
+          modalCliente.insertBefore(manualOption, modalCliente.children[1]);
           console.log('Cliente options cloned');
         } else {
           console.warn('Missing cliente template or modal element');
+        }
+        
+        // Add toggle logic for manual input
+        if (modalCliente) {
+          const modalClienteNome = form.querySelector('#modal_cliente_nome');
+          modalCliente.addEventListener('change', function() {
+            if (this.value === '__MANUAL__' && modalClienteNome) {
+              // Hide dropdown, show text input
+              modalCliente.style.display = 'none';
+              modalCliente.removeAttribute('required');
+              modalClienteNome.style.display = 'block';
+              modalClienteNome.setAttribute('required', 'required');
+              modalClienteNome.focus();
+            }
+          });
+          
+          // Allow switching back to dropdown
+          if (modalClienteNome) {
+            modalClienteNome.addEventListener('blur', function() {
+              if (!this.value.trim()) {
+                modalClienteNome.style.display = 'none';
+                modalClienteNome.removeAttribute('required');
+                modalCliente.style.display = 'block';
+                modalCliente.setAttribute('required', 'required');
+                modalCliente.value = '';
+              }
+            });
+          }
         }
         
         if (tmplArtista && modalArtista) {

@@ -25,12 +25,18 @@
                                 </div>
                                 <div class="flex-form-field">
                                     <label for="cliente_id">Cliente</label>
+                                    <!-- Cliente dropdown with manual input option -->
                                     <select name="cliente_id" id="cliente_id" required class="full-width">
                                         <option value="">Selecione...</option>
+                                        <option value="__MANUAL__">✏️ Inserir manualmente</option>
                                         {% for client in clients %}
                                         <option value="{{ client.id }}">{{ client.name }}</option>
                                         {% endfor %}
                                     </select>
+                                    <!-- Hidden text input for manual client name -->
+                                    <input type="text" name="cliente_nome" id="cliente_nome"
+                                        placeholder="Digite o nome do cliente" class="full-width"
+                                        style="display: none;">
                                 </div>
                                 <div class="flex-form-field">
                                     <label for="artista_id">Artista</label>
@@ -70,6 +76,39 @@
         {% include 'partials/_sidebar.html' %}
     </div>
     {% include 'partials/_base_scripts.html' %}
+
+    <script>
+        // Toggle between cliente dropdown and manual text input
+        (function () {
+            const clienteSelect = document.getElementById('cliente_id');
+            const clienteInput = document.getElementById('cliente_nome');
+
+            if (clienteSelect && clienteInput) {
+                clienteSelect.addEventListener('change', function () {
+                    if (this.value === '__MANUAL__') {
+                        // Hide dropdown, show text input
+                        clienteSelect.style.display = 'none';
+                        clienteSelect.removeAttribute('required');
+                        clienteInput.style.display = 'block';
+                        clienteInput.setAttribute('required', 'required');
+                        clienteInput.focus();
+                    }
+                });
+
+                // Optional: Allow switching back to dropdown
+                clienteInput.addEventListener('blur', function () {
+                    if (!this.value.trim()) {
+                        // If input is empty on blur, switch back to dropdown
+                        clienteInput.style.display = 'none';
+                        clienteInput.removeAttribute('required');
+                        clienteSelect.style.display = 'block';
+                        clienteSelect.setAttribute('required', 'required');
+                        clienteSelect.value = '';
+                    }
+                });
+            }
+        })();
+    </script>
 </body>
 
 </html>

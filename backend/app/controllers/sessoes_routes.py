@@ -149,6 +149,18 @@ def nova_sessao() -> Union[str, Response]:
             "observacoes": request.form.get("observacoes"),
         }
 
+        # Handle manual client name input
+        cliente_nome = request.form.get("cliente_nome")
+        if cliente_nome and cliente_nome.strip():
+            from app.controllers.sessoes_helpers import find_or_create_client
+
+            cliente_id = find_or_create_client(db, cliente_nome)
+            if cliente_id:
+                sessao_request_data["cliente_id"] = str(cliente_id)
+            else:
+                flash("Erro ao processar nome do cliente.", "error")
+                return _render_nova_sessao_form(db, form_data=sessao_request_data)
+
         google_event_id = request.form.get("google_event_id")
 
         validator = SessaoValidator()

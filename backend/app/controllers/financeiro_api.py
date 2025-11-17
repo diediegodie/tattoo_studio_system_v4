@@ -159,6 +159,19 @@ def api_update_pagamento(pagamento_id: int):
 
         payload = request.get_json(force=True, silent=True) or {}
 
+        # Handle manual client name input (if provided instead of cliente_id)
+        cliente_nome = payload.get("cliente_nome")
+        if cliente_nome and cliente_nome.strip():
+            from app.controllers.sessoes_helpers import find_or_create_client
+
+            cliente_id = find_or_create_client(db, cliente_nome)
+            if cliente_id:
+                payload["cliente_id"] = cliente_id
+            else:
+                return api_response(
+                    False, "Erro ao processar nome do cliente", None, 400
+                )
+
         # Server-side validation: forma_pagamento must be present and non-empty for PUT updates
         if (
             "forma_pagamento" not in payload

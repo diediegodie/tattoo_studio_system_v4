@@ -333,11 +333,38 @@ def registrar_pagamento() -> Union[str, Response, Tuple[str, int]]:
             cliente_id = (
                 cliente_id_raw if cliente_id_raw and cliente_id_raw.strip() else None
             )
+            # Extract all form values BEFORE any error handling that renders template
+            cliente_nome = _maybe_await(request.form.get("cliente_nome"))
             artista_id = _maybe_await(request.form.get("artista_id"))
             observacoes = _maybe_await(request.form.get("observacoes"))
             sessao_id = _maybe_await(
                 request.form.get("sessao_id")
             )  # Optional session linkage
+
+            # Handle manual client name input
+            if cliente_nome and cliente_nome.strip():
+                from app.controllers.sessoes_helpers import find_or_create_client
+
+                cliente_id_from_nome = find_or_create_client(db, cliente_nome)
+                if cliente_id_from_nome:
+                    cliente_id = str(cliente_id_from_nome)
+                else:
+                    flash("Erro ao processar nome do cliente.", "error")
+                    return (
+                        _safe_render(
+                            "registrar_pagamento.html",
+                            clients=clients,
+                            artists=artists,
+                            data=data_str,
+                            cliente_id=cliente_id,
+                            artista_id=artista_id,
+                            valor=valor,
+                            forma_pagamento=forma_pagamento,
+                            observacoes=observacoes,
+                            sessao_id=sessao_id,
+                        ),
+                        400,
+                    )
 
             # Structured informational log about parsed values (no raw body or full form dump)
             try:

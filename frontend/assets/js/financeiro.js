@@ -199,8 +199,13 @@
               <option value="Outros">Outros</option>
             </select>
           </label><br><br>
-          <label>Cliente:<br>
-            <select name="cliente_id" id="financeiro-edit-cliente"></select>
+          <label>Cliente (Opcional):<br>
+            <select name="cliente_id" id="financeiro-edit-cliente">
+              <option value="">Nenhum / Não informado</option>
+            </select>
+            <input type="text" name="cliente_nome" id="financeiro-edit-cliente-nome" 
+                   placeholder="Digite o nome do cliente" 
+                   style="display: none;">
           </label><br><br>
           <label>Artista:<br>
             <select name="artista_id" id="financeiro-edit-artista"></select>
@@ -241,13 +246,40 @@
       const tmplArtista = document.getElementById('tmpl_artista_select');
       const tmplForma = document.getElementById('tmpl_forma_pagamento_select');
       const clienteSelect = form.querySelector('#financeiro-edit-cliente');
+      const clienteNomeInput = form.querySelector('#financeiro-edit-cliente-nome');
       const artistaSelect = form.querySelector('#financeiro-edit-artista');
       const formaSelect = form.querySelector('#financeiro-edit-forma_pagamento');
 
-      if (tmplCliente && clienteSelect) clienteSelect.innerHTML = tmplCliente.innerHTML;
+      if (tmplCliente && clienteSelect) {
+        clienteSelect.innerHTML = tmplCliente.innerHTML;
+        // Add "Inserir manualmente" option
+        const manualOption = document.createElement('option');
+        manualOption.value = '__MANUAL__';
+        manualOption.textContent = '✏️ Inserir manualmente';
+        clienteSelect.insertBefore(manualOption, clienteSelect.children[1]);
+      }
       if (tmplArtista && artistaSelect) artistaSelect.innerHTML = tmplArtista.innerHTML;
       // Use template select if available, otherwise keep the hardcoded options
       if (tmplForma && formaSelect) formaSelect.innerHTML = tmplForma.innerHTML;
+
+      // Add toggle logic for manual client input
+      if (clienteSelect && clienteNomeInput) {
+        clienteSelect.addEventListener('change', function() {
+          if (this.value === '__MANUAL__') {
+            clienteSelect.style.display = 'none';
+            clienteNomeInput.style.display = 'block';
+            clienteNomeInput.focus();
+          }
+        });
+        
+        clienteNomeInput.addEventListener('blur', function() {
+          if (!this.value.trim()) {
+            clienteNomeInput.style.display = 'none';
+            clienteSelect.style.display = 'block';
+            clienteSelect.value = '';
+          }
+        });
+      }
 
       // Prefill values
       form.elements['data'].value = p.data || '';
@@ -285,10 +317,18 @@
           data: formData.get('data') || null,
           valor: formData.get('valor') || null,
           forma_pagamento: formData.get('forma_pagamento') || null,
-          cliente_id: formData.get('cliente_id') || null,
           artista_id: formData.get('artista_id') || null,
           observacoes: formData.get('observacoes') || null,
         };
+        
+        // Include either cliente_id or cliente_nome (cliente is optional for payments)
+        const clienteId = formData.get('cliente_id');
+        const clienteNome = formData.get('cliente_nome');
+        if (clienteNome && clienteNome.trim()) {
+          payload.cliente_nome = clienteNome.trim();
+        } else if (clienteId && clienteId !== '__MANUAL__' && clienteId !== '') {
+          payload.cliente_id = clienteId;
+        }
 
         (async function () {
           try {

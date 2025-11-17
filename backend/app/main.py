@@ -826,6 +826,11 @@ def create_app():  # noqa: C901
     # Import models after app creation
     from app.db.base import User
 
+    # Apply database migrations (idempotent, safe to run on every startup)
+    from app.db.migrations import ensure_migration_001_applied
+
+    ensure_migration_001_applied()
+
     # Ensure service account user exists for GitHub Actions automation
     from app.db.seed import ensure_service_account_user
 
