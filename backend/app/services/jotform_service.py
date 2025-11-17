@@ -29,11 +29,11 @@ class JotFormService(IJotFormService):
 
     def fetch_submissions(self) -> List[dict]:
         """Fetch all relevant submissions from JotForm API with pagination.
-        
+
         This method implements pagination to fetch ALL submissions, not just
         the first 20 (API default). It makes multiple requests if needed to
         retrieve all records from JotForm.
-        
+
         Returns:
             List of all non-deleted submission dictionaries
         """
@@ -41,10 +41,10 @@ class JotFormService(IJotFormService):
         offset = 0
         limit = 100  # Fetch 100 records per request
         max_iterations = 50  # Safety limit: max 5000 records total
-        
+
         logger.info(
             "Starting JotForm submissions fetch with pagination",
-            extra={"context": {"form_id": self.form_id, "batch_size": limit}}
+            extra={"context": {"form_id": self.form_id, "batch_size": limit}},
         )
 
         try:
@@ -52,11 +52,7 @@ class JotFormService(IJotFormService):
             for iteration in range(max_iterations):
                 # Build URL with pagination parameters
                 url = f"{self.base_url}/form/{self.form_id}/submissions"
-                params = {
-                    "apiKey": self.api_key,
-                    "offset": offset,
-                    "limit": limit
-                }
+                params = {"apiKey": self.api_key, "offset": offset, "limit": limit}
 
                 # Fetch batch with timeout
                 response = requests.get(url, params=params, timeout=30)
@@ -64,11 +60,16 @@ class JotFormService(IJotFormService):
 
                 data = response.json()
                 batch = data.get("content", [])
-                
+
                 if not batch:  # Empty response, we're done
                     logger.debug(
                         "No more submissions to fetch",
-                        extra={"context": {"offset": offset, "total_fetched": len(all_submissions)}}
+                        extra={
+                            "context": {
+                                "offset": offset,
+                                "total_fetched": len(all_submissions),
+                            }
+                        },
                     )
                     break
 
@@ -87,16 +88,16 @@ class JotFormService(IJotFormService):
                             "offset": offset,
                             "batch_size": len(batch),
                             "valid_in_batch": valid_count,
-                            "total_valid": len(all_submissions)
+                            "total_valid": len(all_submissions),
                         }
-                    }
+                    },
                 )
 
                 # Stop if this was the last page
                 if len(batch) < limit:
                     logger.info(
                         "Reached last page of submissions",
-                        extra={"context": {"total_submissions": len(all_submissions)}}
+                        extra={"context": {"total_submissions": len(all_submissions)}},
                     )
                     break
 
@@ -105,7 +106,12 @@ class JotFormService(IJotFormService):
 
             logger.info(
                 f"JotForm fetch complete: {len(all_submissions)} total submissions retrieved",
-                extra={"context": {"total_submissions": len(all_submissions), "batches": iteration + 1}}
+                extra={
+                    "context": {
+                        "total_submissions": len(all_submissions),
+                        "batches": iteration + 1,
+                    }
+                },
             )
 
             return all_submissions
@@ -114,9 +120,11 @@ class JotFormService(IJotFormService):
             logger.error(
                 "Failed to fetch JotForm submissions",
                 extra={"context": {"offset": offset, "error": str(e)}},
-                exc_info=True
+                exc_info=True,
             )
-            raise Exception(f"Failed to fetch JotForm submissions at offset {offset}: {str(e)}")
+            raise Exception(
+                f"Failed to fetch JotForm submissions at offset {offset}: {str(e)}"
+            )
 
     def parse_client_name(self, submission: dict) -> str:
         """Extract client name from JotForm submission using robust field-type-first logic.
