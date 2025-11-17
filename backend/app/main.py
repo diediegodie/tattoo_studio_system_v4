@@ -674,7 +674,48 @@ def create_app():  # noqa: C901
         os.getenv("LOGIN_DISABLED", "false").lower() == "true"
     )
     app.config["SHOW_API_DOCS"] = os.getenv("SHOW_API_DOCS", "false").lower() == "true"
-    app.config["GIT_SHA"] = os.getenv("GIT_SHA", "")
+    # Robust cache-busting token resolution:
+    # Priority order:
+    # 1. Explicit GIT_SHA (set by CI/CD or environment)
+    # 2. Render/other platform provided commit env vars
+    # 3. Attempt to read local .git HEAD (may not exist in container images)
+    # 4. UTC build timestamp fallback (ensures change per deploy)
+    def _resolve_git_sha():
+        env_vars = [
+            "GIT_SHA",
+            "RENDER_GIT_COMMIT",  # Render specific
+            "SOURCE_VERSION",  # Railway / some platforms
+            "HEROKU_SLUG_COMMIT",  # Heroku
+        ]
+        for var in env_vars:
+            val = os.getenv(var)
+            if val:
+                return val.strip()
+        # Try reading .git HEAD if repository metadata present
+        git_dir = os.path.join(os.getcwd(), ".git")
+        head_path = os.path.join(git_dir, "HEAD")
+        try:
+            if os.path.isfile(head_path):
+                with open(head_path, "r", encoding="utf-8") as f:
+                    ref = f.read().strip()
+                if ref.startswith("ref:"):
+                    ref_file = ref.split("ref:", 1)[1].strip()
+                    ref_target = os.path.join(git_dir, ref_file)
+                    if os.path.isfile(ref_target):
+                        with open(ref_target, "r", encoding="utf-8") as rf:
+                            commit = rf.read().strip()
+                            if commit:
+                                return commit[:40]
+                else:
+                    # Detached HEAD contains the commit directly
+                    return ref[:40]
+        except Exception:
+            pass  # Fall back to timestamp
+        # Final fallback: UTC timestamp ensures asset cache bust on each deploy
+        from datetime import datetime, timezone
+        return datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+
+    app.config["GIT_SHA"] = _resolve_git_sha()
     app.config["HEALTH_CHECK_TOKEN"] = HEALTH_CHECK_TOKEN
 
     # Provide safe defaults for Google OAuth credentials in test mode
