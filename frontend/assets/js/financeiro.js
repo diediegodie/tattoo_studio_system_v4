@@ -203,9 +203,9 @@
             <select name="cliente_id" id="financeiro-edit-cliente">
               <option value="">Nenhum / Não informado</option>
             </select>
-            <input type="text" name="cliente_nome" id="financeiro-edit-cliente-nome" 
+                 <input type="text" name="cliente_nome" id="financeiro-edit-cliente-nome" 
                    placeholder="Digite o nome do cliente" 
-                   style="display: none;">
+                   class="hidden">
           </label><br><br>
           <label>Artista:<br>
             <select name="artista_id" id="financeiro-edit-artista"></select>
@@ -262,20 +262,26 @@
       // Use template select if available, otherwise keep the hardcoded options
       if (tmplForma && formaSelect) formaSelect.innerHTML = tmplForma.innerHTML;
 
-      // Add toggle logic for manual client input
+      // Add toggle logic for manual client input in modal (CSP-compliant with CSS classes)
       if (clienteSelect && clienteNomeInput) {
         clienteSelect.addEventListener('change', function() {
           if (this.value === '__MANUAL__') {
-            clienteSelect.style.display = 'none';
-            clienteNomeInput.style.display = 'block';
+            // Hide dropdown, show text input using CSS classes
+            clienteSelect.classList.add('hidden');
+            clienteNomeInput.classList.remove('hidden');
             clienteNomeInput.focus();
+          } else {
+            // Regular client selected (or empty): ensure dropdown visible, input hidden
+            clienteNomeInput.classList.add('hidden');
+            clienteNomeInput.value = ''; // Clear manual input
+            clienteSelect.classList.remove('hidden');
           }
         });
         
         clienteNomeInput.addEventListener('blur', function() {
           if (!this.value.trim()) {
-            clienteNomeInput.style.display = 'none';
-            clienteSelect.style.display = 'block';
+            clienteNomeInput.classList.add('hidden');
+            clienteSelect.classList.remove('hidden');
             clienteSelect.value = '';
           }
         });
@@ -491,11 +497,47 @@
     });
   }
 
+  // Initialize manual client input toggle for main registrar_pagamento form (CSP-compliant)
+  function initRegistrarPagamentoFormToggle() {
+    const clienteSelect = document.getElementById('cliente_id');
+    const clienteInput = document.getElementById('cliente_nome');
+
+    if (!clienteSelect || !clienteInput) {
+      return; // Elements not found, not on registrar_pagamento page
+    }
+
+    // Toggle to manual input when __MANUAL__ is selected
+    clienteSelect.addEventListener('change', function() {
+      if (this.value === '__MANUAL__') {
+        // Hide dropdown, show text input using CSS classes
+        clienteSelect.classList.add('hidden');
+        clienteInput.classList.remove('hidden');
+        clienteInput.focus();
+      } else {
+        // Regular client selected (or empty): ensure dropdown visible, input hidden
+        clienteInput.classList.add('hidden');
+        clienteInput.value = ''; // Clear manual input
+        clienteSelect.classList.remove('hidden');
+      }
+    });
+
+    // Allow switching back to dropdown if input is empty
+    clienteInput.addEventListener('blur', function() {
+      if (!this.value.trim()) {
+        clienteInput.classList.add('hidden');
+        clienteSelect.classList.remove('hidden');
+        clienteSelect.value = '';
+      }
+    });
+  }
+
   // Set up event listeners immediately if DOM is ready, otherwise wait for DOMContentLoaded
   if (document.readyState === 'loading' || document.readyState === 'interactive') {
     document.addEventListener('DOMContentLoaded', setupEventListeners);
+    document.addEventListener('DOMContentLoaded', initRegistrarPagamentoFormToggle);
   } else {
     setupEventListeners();
+    initRegistrarPagamentoFormToggle();
   }
   window.financeiroClient = financeiroClient;
   window.financeiroHelpers = { deletePagamento, editPagamento, finalizarPagamento };

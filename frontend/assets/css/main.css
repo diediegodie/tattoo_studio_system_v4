@@ -1445,11 +1445,11 @@ button.primary:active,
 
 /* Visibility Utilities */
 .hidden {
-    display: none;
+    display: none !important;
 }
 
 .hidden-with-margin {
-    display: none;
+    display: none !important;
     margin-left: 0.75em;
 }
 

@@ -129,9 +129,9 @@
           <select name="cliente_id" id="modal_cliente_id" required>
             <option value="">Selecione...</option>
           </select>
-          <input type="text" name="cliente_nome" id="modal_cliente_nome" 
-                 placeholder="Digite o nome do cliente" 
-                 style="display: none;">
+             <input type="text" name="cliente_nome" id="modal_cliente_nome" 
+               placeholder="Digite o nome do cliente" 
+               class="hidden">
         </label><br><br>
         <label>Artista:<br><select name="artista_id" id="modal_artista_id" required></select></label><br><br>
         <label>Valor:<br><input type="number" step="0.01" name="valor" required></label><br><br>
@@ -278,17 +278,24 @@
           console.warn('Missing cliente template or modal element');
         }
         
-        // Add toggle logic for manual input
+        // Add toggle logic for manual input in modal (CSP-compliant with CSS classes)
         if (modalCliente) {
           const modalClienteNome = form.querySelector('#modal_cliente_nome');
           modalCliente.addEventListener('change', function() {
             if (this.value === '__MANUAL__' && modalClienteNome) {
-              // Hide dropdown, show text input
-              modalCliente.style.display = 'none';
+              // Hide dropdown, show text input using CSS classes
+              modalCliente.classList.add('hidden');
               modalCliente.removeAttribute('required');
-              modalClienteNome.style.display = 'block';
+              modalClienteNome.classList.remove('hidden');
               modalClienteNome.setAttribute('required', 'required');
               modalClienteNome.focus();
+            } else if (modalClienteNome) {
+              // Regular client selected: ensure dropdown visible, input hidden
+              modalClienteNome.classList.add('hidden');
+              modalClienteNome.removeAttribute('required');
+              modalClienteNome.value = ''; // Clear manual input
+              modalCliente.classList.remove('hidden');
+              modalCliente.setAttribute('required', 'required');
             }
           });
           
@@ -296,9 +303,9 @@
           if (modalClienteNome) {
             modalClienteNome.addEventListener('blur', function() {
               if (!this.value.trim()) {
-                modalClienteNome.style.display = 'none';
+                modalClienteNome.classList.add('hidden');
                 modalClienteNome.removeAttribute('required');
-                modalCliente.style.display = 'block';
+                modalCliente.classList.remove('hidden');
                 modalCliente.setAttribute('required', 'required');
                 modalCliente.value = '';
               }
@@ -471,11 +478,53 @@
     });
   }
 
+  // Initialize manual client input toggle for main nova_sessao form (CSP-compliant)
+  function initNovaSessionFormToggle() {
+    const clienteSelect = document.getElementById('cliente_id');
+    const clienteInput = document.getElementById('cliente_nome');
+
+    if (!clienteSelect || !clienteInput) {
+      return; // Elements not found, not on nova_sessao page
+    }
+
+    // Toggle to manual input when __MANUAL__ is selected
+    clienteSelect.addEventListener('change', function() {
+      if (this.value === '__MANUAL__') {
+        // Hide dropdown, show text input using CSS classes
+        clienteSelect.classList.add('hidden');
+        clienteSelect.removeAttribute('required');
+        clienteInput.classList.remove('hidden');
+        clienteInput.setAttribute('required', 'required');
+        clienteInput.focus();
+      } else {
+        // Regular client selected: ensure dropdown visible, input hidden
+        clienteInput.classList.add('hidden');
+        clienteInput.removeAttribute('required');
+        clienteInput.value = ''; // Clear manual input
+        clienteSelect.classList.remove('hidden');
+        clienteSelect.setAttribute('required', 'required');
+      }
+    });
+
+    // Allow switching back to dropdown if input is empty
+    clienteInput.addEventListener('blur', function() {
+      if (!this.value.trim()) {
+        clienteInput.classList.add('hidden');
+        clienteInput.removeAttribute('required');
+        clienteSelect.classList.remove('hidden');
+        clienteSelect.setAttribute('required', 'required');
+        clienteSelect.value = '';
+      }
+    });
+  }
+
   // Set up event listeners immediately if DOM is ready, otherwise wait for DOMContentLoaded
   if (document.readyState === 'loading' || document.readyState === 'interactive') {
     document.addEventListener('DOMContentLoaded', setupEventListeners);
+    document.addEventListener('DOMContentLoaded', initNovaSessionFormToggle);
   } else {
     setupEventListeners();
+    initNovaSessionFormToggle();
   }
   window.sessoesClient = sessoesClient;
   window.sessoesHelpers = { deleteSessao, editSessao, finalizarSessao };
