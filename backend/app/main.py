@@ -674,6 +674,7 @@ def create_app():  # noqa: C901
         os.getenv("LOGIN_DISABLED", "false").lower() == "true"
     )
     app.config["SHOW_API_DOCS"] = os.getenv("SHOW_API_DOCS", "false").lower() == "true"
+
     # Robust cache-busting token resolution:
     # Priority order:
     # 1. Explicit GIT_SHA (set by CI/CD or environment)
@@ -713,6 +714,7 @@ def create_app():  # noqa: C901
             pass  # Fall back to timestamp
         # Final fallback: UTC timestamp ensures asset cache bust on each deploy
         from datetime import datetime, timezone
+
         return datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
 
     app.config["GIT_SHA"] = _resolve_git_sha()
