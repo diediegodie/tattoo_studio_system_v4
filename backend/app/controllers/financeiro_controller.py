@@ -474,8 +474,9 @@ def registrar_pagamento() -> Union[str, Response, Tuple[str, int]]:
             try:
                 from app.db.base import Comissao, Sessao
 
-                # Commission percent handling (optional):
-                # - empty or zero -> no commission created
+                # Commission percent handling (now required by business rule):
+                # - blank/None -> validation error (do not create payment)
+                # - zero -> allowed, but no commission created
                 # - numeric > 0 and <= 100 -> create commission
                 # - invalid or out-of-range -> validation error (do not create payment)
                 perc_raw = _maybe_await(
@@ -488,6 +489,25 @@ def registrar_pagamento() -> Union[str, Response, Tuple[str, int]]:
 
                 if isinstance(perc_raw, str):
                     perc_raw = perc_raw.strip()
+
+                # Reject when no percentage was provided (explicitly required)
+                if perc_raw in (None, ""):
+                    flash("Porcentagem de comissão é obrigatória.", "error")
+                    return (
+                        _safe_render(
+                            "registrar_pagamento.html",
+                            clients=clients,
+                            artists=artists,
+                            data=data_str,
+                            cliente_id=cliente_id,
+                            artista_id=artista_id,
+                            valor=valor,
+                            forma_pagamento=forma_pagamento,
+                            observacoes=observacoes,
+                            sessao_id=sessao_id,
+                        ),
+                        400,
+                    )
 
                 if perc_raw not in (None, ""):
                     # try parse to Decimal

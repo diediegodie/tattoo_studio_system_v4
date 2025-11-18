@@ -1310,6 +1310,38 @@ button.primary:active,
 }
 .calc-actions { text-align: center; }
 
+/* Calculator result display - centered and prominent */
+#calc-resultado {
+  max-width: 520px;
+  margin: 2em auto;
+  text-align: center;
+  background: #f9f9f9;
+  border: 2px solid rgba(210, 215, 217, 0.75);
+}
+
+#calc-resultado h2 {
+  margin-top: 0;
+  margin-bottom: 1em;
+  color: #333;
+  font-size: 1.5em;
+  border-bottom: 2px solid rgba(210, 215, 217, 0.75);
+  padding-bottom: 0.5em;
+}
+
+#calc-resultado p {
+  margin: 0.75em 0;
+  font-size: 1.1em;
+  line-height: 1.6;
+}
+
+#calc-resultado p strong {
+  color: #555;
+}
+
+#calc-resultado .button {
+  margin-top: 1.5em;
+}
+
 /* Search Results Page Styles */
 .search-result {
     border: 1px solid #ddd;

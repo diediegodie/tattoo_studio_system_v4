@@ -96,10 +96,9 @@
                                 <div class="flex-form-field">
                                     <label for="comissao_percent">Porcentagem de Comissão do Artista (%)</label>
                                     <input type="number" name="comissao_percent" id="comissao_percent" min="0" max="100"
-                                        step="0.01" placeholder="Opcional" class="full-width"
+                                        step="0.01" placeholder="Obrigatório" required class="full-width"
                                         value="{{ request.form.get('comissao_percent') or '' }}">
-                                    <small class="help-text">Deixe em branco ou zero
-                                        para não registrar comissão</small>
+                                    <small class="help-text">Digite 0 para não registrar comissão</small>
                                 </div>
                                 <div class="full-width-field">
                                     <label for="observacoes">Observações</label>

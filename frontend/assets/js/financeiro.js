@@ -501,6 +501,8 @@
   function initRegistrarPagamentoFormToggle() {
     const clienteSelect = document.getElementById('cliente_id');
     const clienteInput = document.getElementById('cliente_nome');
+    const registrarForm = document.getElementById('registrar-pagamento-form');
+    const comissaoInput = document.getElementById('comissao_percent');
 
     if (!clienteSelect || !clienteInput) {
       return; // Elements not found, not on registrar_pagamento page
@@ -531,13 +533,68 @@
     });
   }
 
+  // Client-side validation for commission percentage (required, 0 allowed, <= 100)
+  function initRegistrarPagamentoValidation() {
+    const form = document.getElementById('registrar-pagamento-form');
+    const comissaoEl = document.getElementById('comissao_percent');
+    if (!form || !comissaoEl) return;
+
+    form.addEventListener('submit', function (e) {
+      // clear previous error state
+      try {
+        comissaoEl.classList.remove('modal-error');
+        const prevErr = comissaoEl.parentNode && comissaoEl.parentNode.querySelector('.field-error-msg');
+        if (prevErr) prevErr.remove();
+      } catch (_) {}
+
+      const raw = (comissaoEl.value || '').trim();
+      if (raw === '') {
+        e.preventDefault();
+        const err = document.createElement('span');
+        err.className = 'field-error-msg';
+        err.textContent = 'Informe a porcentagem de comissão (use 0 para nenhuma).';
+        comissaoEl.classList.add('modal-error');
+        comissaoEl.parentNode.appendChild(err);
+        comissaoEl.focus();
+        return;
+      }
+
+      // Normalize comma/dot, then validate upper bound
+      const normalized = raw.replace(',', '.');
+      const num = Number(normalized);
+      if (Number.isNaN(num) || num < 0) {
+        e.preventDefault();
+        const err = document.createElement('span');
+        err.className = 'field-error-msg';
+        err.textContent = 'Valor inválido. Use um número entre 0 e 100.';
+        comissaoEl.classList.add('modal-error');
+        comissaoEl.parentNode.appendChild(err);
+        comissaoEl.focus();
+        return;
+      }
+      if (num > 100) {
+        e.preventDefault();
+        const err = document.createElement('span');
+        err.className = 'field-error-msg';
+        err.textContent = 'Porcentagem deve estar entre 0 e 100.';
+        comissaoEl.classList.add('modal-error');
+        comissaoEl.parentNode.appendChild(err);
+        comissaoEl.focus();
+        return;
+      }
+      // 0 is allowed and means no commission will be created server-side
+    });
+  }
+
   // Set up event listeners immediately if DOM is ready, otherwise wait for DOMContentLoaded
   if (document.readyState === 'loading' || document.readyState === 'interactive') {
     document.addEventListener('DOMContentLoaded', setupEventListeners);
     document.addEventListener('DOMContentLoaded', initRegistrarPagamentoFormToggle);
+    document.addEventListener('DOMContentLoaded', initRegistrarPagamentoValidation);
   } else {
     setupEventListeners();
     initRegistrarPagamentoFormToggle();
+    initRegistrarPagamentoValidation();
   }
   window.financeiroClient = financeiroClient;
   window.financeiroHelpers = { deletePagamento, editPagamento, finalizarPagamento };

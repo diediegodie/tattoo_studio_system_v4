@@ -89,15 +89,14 @@ function initializeCalculadora() {
       <p><strong>${100 - pct}%:</strong> ${formattedRest}</p>
     `;
 
-    // Show results in centered block
+    // Show results in centered block using CSS classes only (CSP-compliant)
     var resultadoBlock = document.getElementById('calc-resultado');
     if (resultadoBlock) {
       console.log('[calculadora] Displaying results in result block');
       resultadoBlock.innerHTML = `<h2>Resultado da Comissão</h2>${content}<button id='novo-calculo-btn' class='button primary'>Novo cálculo</button>`;
-      resultadoBlock.style.display = 'block';
       resultadoBlock.classList.remove('hidden');
       
-      // Scroll to result
+      // Scroll to result for better UX
       resultadoBlock.scrollIntoView({ behavior: 'smooth', block: 'center' });
       
       // Novo cálculo button resets form and hides result
@@ -106,7 +105,6 @@ function initializeCalculadora() {
         novoCalcBtn.addEventListener('click', function() {
           console.log('[calculadora] New calculation button clicked');
           form.reset();
-          resultadoBlock.style.display = 'none';
           resultadoBlock.classList.add('hidden');
           document.getElementById('valor-total').focus();
         });
