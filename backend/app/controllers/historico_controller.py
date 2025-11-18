@@ -591,15 +591,44 @@ def historico_home():
         ) or bool(gastos_json)
 
         # Also provide clients and artists for edit modals (reuse templates)
-        clients = []
-        artists = []
-        try:
-            from app.db.base import Client as _Client
+        # Prefer ALL clients from JotForm, but fall back to DB in TESTING or when env is missing
+        from app.repositories.client_repo import ClientRepository
+        from app.services.client_service import ClientService
+        import os as _import_os
 
-            clients = db.query(_Client).order_by(_Client.name).all()
-        except Exception:
+        _testing_flag = _import_os.getenv("TESTING", "").lower() in ("1", "true", "yes")
+        JOTFORM_API_KEY = _import_os.getenv("JOTFORM_API_KEY", "")
+        JOTFORM_FORM_ID = _import_os.getenv("JOTFORM_FORM_ID", "")
+
+        _use_jotform = (
+            (not _testing_flag) and bool(JOTFORM_API_KEY) and bool(JOTFORM_FORM_ID)
+        )
+
+        if _use_jotform:
+            from app.services.jotform_service import JotFormService
+
+            client_repo = ClientRepository(db)
+            jotform_service = JotFormService(JOTFORM_API_KEY, JOTFORM_FORM_ID)
+            client_service = ClientService(client_repo, jotform_service)
+
+            jotform_submissions = client_service.get_jotform_submissions_for_display()
+
             clients = []
+            for submission in jotform_submissions:
+                client_name = submission.get("client_name", "Sem nome")
+                submission_id = submission.get("id", "")
+                if client_name and client_name != "Sem nome":
+                    clients.append({"id": submission_id, "name": client_name})
+            clients.sort(key=lambda x: x["name"].lower())
+        else:
+            try:
+                from app.db.base import Client as _Client
 
+                clients = db.query(_Client).order_by(_Client.name).all()
+            except Exception:
+                clients = []
+
+        artists = []
         try:
             # Use service to list artists (reuses business logic)
             user_repo = UserRepository(db)

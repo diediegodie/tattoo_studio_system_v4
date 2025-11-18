@@ -202,15 +202,46 @@ def financeiro_home() -> str:
         has_prev = page > 1
         has_next = page < total_pages
 
-        # Load clients for dropdowns (limit to avoid performance issues)
-        clients_raw_query = db.query(Client)
-        clients_base_query = _safe_limit(clients_raw_query, 1000)
-        clients_query = _safe_order_by(clients_base_query, Client.name)
-        clients = _materialize_query(clients_query, fallback=clients_base_query)
-        if not clients:
-            clients = _materialize_query(clients_base_query, fallback=clients_raw_query)
-        if not clients:
-            clients = _materialize_query(clients_raw_query)
+        # Load clients for dropdowns: prefer ALL from JotForm at runtime; fallback to DB in TESTING or when env vars are missing
+        import os as _os
+
+        _testing_flag = _os.getenv("TESTING", "").lower() in ("1", "true", "yes")
+        _JOTFORM_API_KEY = _os.getenv("JOTFORM_API_KEY", "")
+        _JOTFORM_FORM_ID = _os.getenv("JOTFORM_FORM_ID", "")
+        _use_jotform = (
+            (not _testing_flag) and bool(_JOTFORM_API_KEY) and bool(_JOTFORM_FORM_ID)
+        )
+
+        if _use_jotform:
+            from app.repositories.client_repo import ClientRepository
+            from app.services.jotform_service import JotFormService
+            from app.services.client_service import ClientService
+
+            client_repo = ClientRepository(db)
+            jotform_service = JotFormService(_JOTFORM_API_KEY, _JOTFORM_FORM_ID)
+            client_service = ClientService(client_repo, jotform_service)
+
+            # Get all JotForm submissions (with pagination)
+            jotform_submissions = client_service.get_jotform_submissions_for_display()
+
+            # Convert to format expected by template
+            clients = []
+            for submission in jotform_submissions:
+                client_name = submission.get("client_name", "Sem nome")
+                submission_id = submission.get("id", "")
+                if client_name and client_name != "Sem nome":
+                    clients.append({"id": submission_id, "name": client_name})
+
+            # Sort by name (no cap – user requested ALL at once)
+            clients.sort(key=lambda x: x["name"].lower())
+        else:
+            # Fallback to DB clients list (keeps tests offline)
+            try:
+                clients_base_query = db.query(Client)
+                clients_query = _safe_order_by(clients_base_query, Client.name)
+                clients = _materialize_query(clients_query, fallback=clients_base_query)
+            except Exception:
+                clients = []
 
         try:
             user_service = _get_user_service()
