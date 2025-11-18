@@ -78,7 +78,38 @@ def nova_sessao() -> Union[str, Response]:
         db = SessionLocal()
 
         if request.method == "GET":
-            clients = db.query(Client).order_by(Client.name).all()
+            # Load clients for dropdown: prefer ALL from JotForm at runtime; fallback to DB in TESTING
+            from app.repositories.client_repo import ClientRepository
+            from app.services.client_service import ClientService
+            import os
+
+            testing_flag = os.getenv("TESTING", "").lower() in ("1", "true", "yes")
+            JOTFORM_API_KEY = os.getenv("JOTFORM_API_KEY", "")
+            JOTFORM_FORM_ID = os.getenv("JOTFORM_FORM_ID", "")
+            use_jotform = (
+                (not testing_flag) and bool(JOTFORM_API_KEY) and bool(JOTFORM_FORM_ID)
+            )
+
+            if use_jotform:
+                from app.services.jotform_service import JotFormService
+
+                client_repo = ClientRepository(db)
+                jotform_service = JotFormService(JOTFORM_API_KEY, JOTFORM_FORM_ID)
+                client_service = ClientService(client_repo, jotform_service)
+
+                jotform_submissions = (
+                    client_service.get_jotform_submissions_for_display()
+                )
+
+                clients = []
+                for submission in jotform_submissions:
+                    client_name = submission.get("client_name", "Sem nome")
+                    submission_id = submission.get("id", "")
+                    if client_name and client_name != "Sem nome":
+                        clients.append({"id": submission_id, "name": client_name})
+                clients.sort(key=lambda x: x["name"].lower())
+            else:
+                clients = db.query(Client).order_by(Client.name).all()
 
             user_service = _get_user_service()
             artists = user_service.list_artists()

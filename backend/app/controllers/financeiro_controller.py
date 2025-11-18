@@ -283,10 +283,42 @@ def registrar_pagamento() -> Union[str, Response, Tuple[str, int]]:
 
         # Branch on HTTP method
         if request.method == "GET":
-            # Load clients and artists for dropdowns
-            clients_base_query = db.query(Client)
-            clients_query = _safe_order_by(clients_base_query, Client.name)
-            clients = _materialize_query(clients_query, fallback=clients_base_query)
+            # Load clients for dropdowns: prefer ALL from JotForm at runtime; fallback to DB in TESTING
+            import os as _os
+
+            _testing_flag = _os.getenv("TESTING", "").lower() in ("1", "true", "yes")
+            _JOTFORM_API_KEY = _os.getenv("JOTFORM_API_KEY", "")
+            _JOTFORM_FORM_ID = _os.getenv("JOTFORM_FORM_ID", "")
+            _use_jotform = (
+                (not _testing_flag)
+                and bool(_JOTFORM_API_KEY)
+                and bool(_JOTFORM_FORM_ID)
+            )
+
+            if _use_jotform:
+                from app.repositories.client_repo import ClientRepository
+                from app.services.jotform_service import JotFormService
+                from app.services.client_service import ClientService
+
+                client_repo = ClientRepository(db)
+                jotform_service = JotFormService(_JOTFORM_API_KEY, _JOTFORM_FORM_ID)
+                client_service = ClientService(client_repo, jotform_service)
+
+                jotform_submissions = (
+                    client_service.get_jotform_submissions_for_display()
+                )
+
+                clients = []
+                for submission in jotform_submissions:
+                    client_name = submission.get("client_name", "Sem nome")
+                    submission_id = submission.get("id", "")
+                    if client_name and client_name != "Sem nome":
+                        clients.append({"id": submission_id, "name": client_name})
+                clients.sort(key=lambda x: x["name"].lower())
+            else:
+                clients_base_query = db.query(Client)
+                clients_query = _safe_order_by(clients_base_query, Client.name)
+                clients = _materialize_query(clients_query, fallback=clients_base_query)
 
             try:
                 user_service = _get_user_service()
@@ -322,10 +354,42 @@ def registrar_pagamento() -> Union[str, Response, Tuple[str, int]]:
 
         elif request.method == "POST":
             # Process form submission
-            # Load clients and artists so we can re-render the form with values on validation errors
-            clients_base_query = db.query(Client)
-            clients_query = _safe_order_by(clients_base_query, Client.name)
-            clients = _materialize_query(clients_query, fallback=clients_base_query)
+            # Load clients for re-rendering on validation errors: prefer ALL from JotForm at runtime
+            import os as _os
+
+            _testing_flag = _os.getenv("TESTING", "").lower() in ("1", "true", "yes")
+            _JOTFORM_API_KEY = _os.getenv("JOTFORM_API_KEY", "")
+            _JOTFORM_FORM_ID = _os.getenv("JOTFORM_FORM_ID", "")
+            _use_jotform = (
+                (not _testing_flag)
+                and bool(_JOTFORM_API_KEY)
+                and bool(_JOTFORM_FORM_ID)
+            )
+
+            if _use_jotform:
+                from app.repositories.client_repo import ClientRepository
+                from app.services.jotform_service import JotFormService
+                from app.services.client_service import ClientService
+
+                client_repo = ClientRepository(db)
+                jotform_service = JotFormService(_JOTFORM_API_KEY, _JOTFORM_FORM_ID)
+                client_service = ClientService(client_repo, jotform_service)
+
+                jotform_submissions = (
+                    client_service.get_jotform_submissions_for_display()
+                )
+
+                clients = []
+                for submission in jotform_submissions:
+                    client_name = submission.get("client_name", "Sem nome")
+                    submission_id = submission.get("id", "")
+                    if client_name and client_name != "Sem nome":
+                        clients.append({"id": submission_id, "name": client_name})
+                clients.sort(key=lambda x: x["name"].lower())
+            else:
+                clients_base_query = db.query(Client)
+                clients_query = _safe_order_by(clients_base_query, Client.name)
+                clients = _materialize_query(clients_query, fallback=clients_base_query)
 
             try:
                 user_service = _get_user_service()
