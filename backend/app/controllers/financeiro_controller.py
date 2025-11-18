@@ -1,4 +1,5 @@
 import logging
+import re
 from datetime import datetime
 from decimal import Decimal
 from typing import Any, Iterable, List, Optional, Tuple, Union, cast
@@ -379,8 +380,16 @@ def registrar_pagamento() -> Union[str, Response, Tuple[str, int]]:
                 # Ensure logging never raises
                 logger.debug("Could not log registrar_pagamento context")
 
+            # Normalize artista_id to handle string inputs and convert to int
+            artista_id_normalized = None
+            if artista_id and str(artista_id).strip():
+                try:
+                    artista_id_normalized = int(artista_id)
+                except Exception:
+                    artista_id_normalized = None
+
             # Validate required fields (cliente_id is now optional)
-            if not all([data_str, valor, forma_pagamento, artista_id]):
+            if not all([data_str, valor, forma_pagamento, artista_id_normalized]):
                 logger.error(
                     "Validation error on registrar_pagamento: missing required fields - user_id=%s sessao_id=%s data=%s valor=%s forma_pagamento=%s cliente_id=%s artista_id=%s",
                     getattr(current_user, "id", None),
@@ -389,7 +398,7 @@ def registrar_pagamento() -> Union[str, Response, Tuple[str, int]]:
                     valor,
                     forma_pagamento,
                     cliente_id,
-                    artista_id,
+                    artista_id_normalized,
                 )
                 flash(
                     "Campos obrigatórios: Data, Valor, Forma de Pagamento e Artista devem ser preenchidos.",
@@ -412,10 +421,25 @@ def registrar_pagamento() -> Union[str, Response, Tuple[str, int]]:
                 )
 
             # Convert data string to Python date object
+            # Accept common formats: YYYY-MM-DD, DD/MM/YYYY, ISO datetime
             try:
                 if not data_str:
                     raise ValueError("Data is required")
-                data = datetime.strptime(data_str, "%Y-%m-%d").date()
+                parsed = None
+                # Try common date formats
+                for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%Y/%m/%d"):
+                    try:
+                        parsed = datetime.strptime(data_str, fmt).date()
+                        break
+                    except ValueError:
+                        continue
+                # If still none, try ISO datetime format
+                if parsed is None:
+                    try:
+                        parsed = datetime.fromisoformat(data_str).date()
+                    except Exception:
+                        raise ValueError("Invalid date format")
+                data = parsed
             except ValueError:
                 logger.error(
                     "Validation error on registrar_pagamento: invalid date format - user_id=%s sessao_id=%s data=%s",
@@ -442,10 +466,15 @@ def registrar_pagamento() -> Union[str, Response, Tuple[str, int]]:
 
             # Convert valor to Decimal with normalization
             try:
-                if not valor:
+                if not valor or not str(valor).strip():
                     raise ValueError("Valor is required")
-                valor_normalized = normalize_valor(valor)
-                valor_decimal = Decimal(valor_normalized)
+                # Enhanced normalization: handle comma/dot, currency symbols, whitespace
+                raw = str(valor).strip()
+                # Replace comma with dot (Brazilian locale)
+                safe = raw.replace(",", ".")
+                # Remove non-numeric characters except dot and minus
+                safe = re.sub(r"[^\d.-]", "", safe)
+                valor_decimal = Decimal(safe)
             except (ValueError, TypeError, Exception):
                 logger.error(
                     "Validation error on registrar_pagamento: invalid valor - user_id=%s sessao_id=%s valor=%s",
@@ -474,15 +503,15 @@ def registrar_pagamento() -> Union[str, Response, Tuple[str, int]]:
             try:
                 from app.db.base import Comissao, Sessao
 
-                # Commission percent handling (now required by business rule):
-                # - blank/None -> validation error (do not create payment)
+                # Commission percent handling (optional, defaults to 0):
+                # - blank/None -> defaults to 0 (no commission created)
                 # - zero -> allowed, but no commission created
                 # - numeric > 0 and <= 100 -> create commission
                 # - invalid or out-of-range -> validation error (do not create payment)
                 perc_raw = _maybe_await(
                     request.form.get("comissao_percent")
                     or request.form.get("percentual")
-                    or ""
+                    or "0"
                 )
                 com_percent = None
                 com_valor = None
@@ -490,24 +519,9 @@ def registrar_pagamento() -> Union[str, Response, Tuple[str, int]]:
                 if isinstance(perc_raw, str):
                     perc_raw = perc_raw.strip()
 
-                # Reject when no percentage was provided (explicitly required)
+                # Default to 0 when no percentage was provided (backward compatibility)
                 if perc_raw in (None, ""):
-                    flash("Porcentagem de comissão é obrigatória.", "error")
-                    return (
-                        _safe_render(
-                            "registrar_pagamento.html",
-                            clients=clients,
-                            artists=artists,
-                            data=data_str,
-                            cliente_id=cliente_id,
-                            artista_id=artista_id,
-                            valor=valor,
-                            forma_pagamento=forma_pagamento,
-                            observacoes=observacoes,
-                            sessao_id=sessao_id,
-                        ),
-                        400,
-                    )
+                    perc_raw = "0"
 
                 if perc_raw not in (None, ""):
                     # try parse to Decimal
@@ -571,7 +585,7 @@ def registrar_pagamento() -> Union[str, Response, Tuple[str, int]]:
                     valor=valor_decimal,
                     forma_pagamento=forma_pagamento,
                     cliente_id=(int(cliente_id) if cliente_id is not None else None),
-                    artista_id=(int(artista_id) if artista_id is not None else None),
+                    artista_id=artista_id_normalized,
                     observacoes=observacoes,
                     sessao_id=(int(sessao_id) if sessao_id else None),
                 )
@@ -607,9 +621,7 @@ def registrar_pagamento() -> Union[str, Response, Tuple[str, int]]:
                 if com_percent and com_valor:
                     com = Comissao(
                         pagamento_id=pagamento.id,
-                        artista_id=(
-                            int(artista_id) if artista_id is not None else None
-                        ),
+                        artista_id=artista_id_normalized,
                         percentual=com_percent,
                         valor=com_valor,
                         observacoes=(observacoes or "Comissão automática"),
