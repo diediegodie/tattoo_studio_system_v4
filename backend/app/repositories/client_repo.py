@@ -43,6 +43,71 @@ class ClientRepository(IClientRepository):
         )
         return self._to_domain(db_client) if db_client else None
 
+    def get_all_by_jotform_ids(self, jotform_ids: List[str]) -> dict[str, DomainClient]:
+        """Batch fetch clients by JotForm IDs to avoid N+1 queries.
+
+        Returns:
+            dict: Map of jotform_id -> DomainClient
+        """
+        if not jotform_ids:
+            return {}
+
+        db_clients = (
+            self.db.query(DbClient)
+            .filter(DbClient.jotform_submission_id.in_(jotform_ids))
+            .all()
+        )
+
+        result = {}
+        for db_client in db_clients:
+            domain_client = self._to_domain(db_client)
+            if domain_client and db_client.jotform_submission_id:
+                result[db_client.jotform_submission_id] = domain_client
+
+        return result
+
+    def batch_create_and_update(
+        self,
+        clients_to_create: List[DomainClient],
+        clients_to_update: List[DomainClient],
+    ) -> List[DomainClient]:
+        """Batch create and update clients with a single commit.
+
+        Performance optimization: Single transaction for all operations.
+        """
+        synced_clients = []
+
+        # Batch create new clients
+        for client in clients_to_create:
+            full_name = self._domain_full_name(client)
+            stored_name = normalize_display_name(full_name)
+            db_client = DbClient(
+                name=stored_name,
+                jotform_submission_id=str(getattr(client, "jotform_submission_id", "")),
+            )
+            self.db.add(db_client)
+            synced_clients.append(client)
+
+        # Batch update existing clients
+        for client in clients_to_update:
+            if not getattr(client, "id", None):
+                continue
+
+            db_client = self.db.query(DbClient).filter_by(id=client.id).first()
+            if db_client:
+                full_name = self._domain_full_name(client)
+                db_client.name = normalize_display_name(full_name)
+                db_client.jotform_submission_id = str(
+                    getattr(client, "jotform_submission_id", "")
+                )
+                self.db.add(db_client)
+                synced_clients.append(client)
+
+        # Single commit for all operations
+        self.db.commit()
+
+        return synced_clients
+
     def create(self, client: DomainClient) -> DomainClient:
         full_name = self._domain_full_name(client)
         stored_name = normalize_display_name(full_name)

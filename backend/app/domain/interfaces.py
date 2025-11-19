@@ -184,7 +184,19 @@ class IClientReader(ABC):
 
     @abstractmethod
     def get_by_jotform_id(self, jotform_id: str) -> Optional[Client]:
-        """Get client by JotForm submission ID."""
+        """Retrieve a client by their JotForm submission ID."""
+        pass
+
+    @abstractmethod
+    def get_all_by_jotform_ids(self, jotform_ids: List[str]) -> dict[str, Client]:
+        """Batch retrieve clients by JotForm IDs. Returns map of jotform_id -> Client."""
+        pass
+
+    @abstractmethod
+    def batch_create_and_update(
+        self, clients_to_create: List[Client], clients_to_update: List[Client]
+    ) -> List[Client]:
+        """Batch create and update clients with single commit."""
         pass
 
 

@@ -7,6 +7,7 @@ This controller:
 - Can be easily extended without modification (Open/Closed)
 """
 
+import logging
 import os
 
 from app.core.api_utils import api_response
@@ -16,6 +17,8 @@ from app.services.client_service import ClientService
 from app.services.jotform_service import JotFormService
 from flask import Blueprint, flash, redirect, render_template, url_for
 from flask_login import login_required
+
+logger = logging.getLogger(__name__)
 
 client_bp = Blueprint("client", __name__, url_prefix="/clients")
 
@@ -61,20 +64,22 @@ def sync_clients():
     """Sync clients from JotForm to local database."""
     db = SessionLocal()
     try:
+        logger.info("Starting JotForm client sync")
+
         # Setup dependencies
         client_repo = ClientRepository(db)
         jotform_service = JotFormService(JOTFORM_API_KEY, JOTFORM_FORM_ID)
         client_service = ClientService(client_repo, jotform_service)
 
-        # Sync clients
+        # Sync clients using batch processing
         synced_clients = client_service.sync_clients_from_jotform()
 
-        flash(
-            f"Sincronizados {len(synced_clients)} novos clientes do JotForm!", "success"
-        )
+        logger.info(f"Successfully synced {len(synced_clients)} clients from JotForm")
+        flash(f"Sincronizados {len(synced_clients)} clientes do JotForm!", "success")
         return redirect(url_for("client.client_list"))
 
     except Exception as e:
+        logger.error(f"Error syncing clients from JotForm: {str(e)}", exc_info=True)
         flash(f"Erro ao sincronizar clientes: {str(e)}", "error")
         return redirect(url_for("client.client_list"))
     finally:

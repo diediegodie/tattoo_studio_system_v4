@@ -35,44 +35,50 @@ class ClientService:
         - Update existing clients with normalized names
         - Create new clients if they don't exist
         - Extract and normalize client name for database storage
+
+        Performance Optimization:
+        - Uses batch processing to avoid N+1 queries
+        - Single commit at the end instead of per-client commits
         """
         submissions = self.jotform_service.fetch_submissions()
-        synced_clients = []
+
+        # Batch fetch: Get all existing clients at once to avoid N+1 queries
+        existing_clients_map = self.client_repo.get_all_by_jotform_ids(
+            [str(s.get("id")) for s in submissions]
+        )
+
+        clients_to_create = []
+        clients_to_update = []
 
         for submission in submissions:
             jotform_id = str(submission.get("id"))
 
             # Extract and normalize client name
             client_name = self.jotform_service.parse_client_name(submission)
+            name_parts = client_name.split(" ", 1) if client_name else ["", ""]
+            primeiro_nome = name_parts[0] if len(name_parts) > 0 else ""
+            sobrenome = name_parts[1] if len(name_parts) > 1 else ""
 
-            # Check if client already exists
-            existing_client = self.client_repo.get_by_jotform_id(jotform_id)
+            # Check if client already exists (from batch fetch)
+            existing_client = existing_clients_map.get(jotform_id)
             if existing_client:
                 # Update existing client with normalized name
-                name_parts = client_name.split(" ", 1) if client_name else ["", ""]
-                primeiro_nome = name_parts[0] if len(name_parts) > 0 else ""
-                sobrenome = name_parts[1] if len(name_parts) > 1 else ""
-
                 existing_client.nome = primeiro_nome
                 existing_client.sobrenome = sobrenome
-
-                updated_client = self.client_repo.update(existing_client)
-                synced_clients.append(updated_client)
+                clients_to_update.append(existing_client)
             else:
-                # Create new client - split name into nome and sobrenome
-                name_parts = client_name.split(" ", 1) if client_name else ["", ""]
-                primeiro_nome = name_parts[0] if len(name_parts) > 0 else ""
-                sobrenome = name_parts[1] if len(name_parts) > 1 else ""
-
-                # Create new client
+                # Prepare new client for batch creation
                 new_client = DomainClient(
                     nome=primeiro_nome,
                     sobrenome=sobrenome,
                     jotform_submission_id=jotform_id,
                 )
+                clients_to_create.append(new_client)
 
-                created_client = self.client_repo.create(new_client)
-                synced_clients.append(created_client)
+        # Batch operations: Single commit for all changes
+        synced_clients = self.client_repo.batch_create_and_update(
+            clients_to_create, clients_to_update
+        )
 
         return synced_clients
 

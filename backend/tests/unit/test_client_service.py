@@ -8,6 +8,7 @@ This module tests the ClientService business logic with comprehensive coverage:
 - Error handling and edge cases
 """
 
+from typing import Any
 from unittest.mock import Mock
 
 import pytest
@@ -18,8 +19,8 @@ from tests.config.test_paths import ensure_domain_imports
 ensure_domain_imports()
 
 try:
-    from domain.entities import Client as DomainClient
-    from services.client_service import ClientService
+    from app.domain.entities import Client as DomainClient
+    from app.services.client_service import ClientService
     from tests.factories.repository_factories import (
         ClientRepositoryFactory,
         JotFormServiceFactory,
@@ -29,6 +30,11 @@ try:
 except ImportError as e:
     print(f"Warning: Could not import required modules: {e}")
     IMPORTS_AVAILABLE = False
+    # Provide dummy classes for type checking
+    DomainClient: Any = None
+    ClientService: Any = None
+    ClientRepositoryFactory: Any = None
+    JotFormServiceFactory: Any = None
 
 
 @pytest.fixture
@@ -44,7 +50,7 @@ def mock_jotform_service() -> Mock:
 
 
 @pytest.fixture
-def service(mock_client_repo, mock_jotform_service) -> ClientService:
+def service(mock_client_repo, mock_jotform_service):  # type: ignore
     """Initialize ClientService with mocked dependencies."""
     return ClientService(mock_client_repo, mock_jotform_service)
 
@@ -132,10 +138,10 @@ class TestClientServiceJotFormSync:
 
         mock_jotform_service.parse_client_name.side_effect = mock_parse_name
 
-        # Mock repository - no existing clients
-        mock_client_repo.get_by_jotform_id.return_value = None
+        # Mock batch fetch - no existing clients
+        mock_client_repo.get_all_by_jotform_ids.return_value = {}
 
-        # Mock creation
+        # Mock batch creation
         created_clients = [
             DomainClient(
                 id=1, nome="João", sobrenome="Silva", jotform_submission_id="123"
@@ -144,19 +150,20 @@ class TestClientServiceJotFormSync:
                 id=2, nome="Maria", sobrenome="Santos", jotform_submission_id="456"
             ),
         ]
-        mock_client_repo.create.side_effect = created_clients
+        mock_client_repo.batch_create_and_update.return_value = created_clients
 
         result = service.sync_clients_from_jotform()
 
         assert len(result) == 2
         assert result == created_clients
         mock_jotform_service.fetch_submissions.assert_called_once()
-        assert mock_client_repo.create.call_count == 2
+        mock_client_repo.get_all_by_jotform_ids.assert_called_once_with(["123", "456"])
+        mock_client_repo.batch_create_and_update.assert_called_once()
 
     def test_sync_clients_from_jotform_skip_existing_clients(
         self, service, mock_client_repo, mock_jotform_service
     ):
-        """Test that existing clients are skipped during synchronization."""
+        """Test that existing clients are updated during synchronization."""
         if not IMPORTS_AVAILABLE:
             pytest.skip("Required modules not available")
 
@@ -167,20 +174,20 @@ class TestClientServiceJotFormSync:
         # Mock parsing
         mock_jotform_service.parse_client_name.return_value = "João Silva"
 
-        # Mock repository - client already exists
+        # Mock batch fetch - client already exists
         existing_client = DomainClient(
             id=1, nome="João", sobrenome="Silva", jotform_submission_id="123"
         )
-        mock_client_repo.get_by_jotform_id.return_value = existing_client
-        mock_client_repo.update.return_value = existing_client
+        mock_client_repo.get_all_by_jotform_ids.return_value = {"123": existing_client}
+        mock_client_repo.batch_create_and_update.return_value = [existing_client]
 
         result = service.sync_clients_from_jotform()
 
         assert len(result) == 1  # Existing client was updated
         assert result[0] == existing_client
         mock_jotform_service.fetch_submissions.assert_called_once()
-        mock_client_repo.create.assert_not_called()
-        mock_client_repo.update.assert_called_once()
+        mock_client_repo.get_all_by_jotform_ids.assert_called_once_with(["123"])
+        mock_client_repo.batch_create_and_update.assert_called_once()
 
     def test_sync_clients_from_jotform_with_name_parsing(
         self, service, mock_client_repo, mock_jotform_service
@@ -202,17 +209,17 @@ class TestClientServiceJotFormSync:
 
         mock_jotform_service.parse_client_name.side_effect = mock_parse_name
 
-        # Mock repository - no existing clients
-        mock_client_repo.get_by_jotform_id.return_value = None
+        # Mock batch fetch - no existing clients
+        mock_client_repo.get_all_by_jotform_ids.return_value = {}
 
-        # Mock creation
+        # Mock batch creation
         created_clients = [
             DomainClient(
                 id=1, nome="João", sobrenome="Silva Santos", jotform_submission_id="123"
             ),
             DomainClient(id=2, nome="Maria", sobrenome="", jotform_submission_id="456"),
         ]
-        mock_client_repo.create.side_effect = created_clients
+        mock_client_repo.batch_create_and_update.return_value = created_clients
 
         result = service.sync_clients_from_jotform()
 
@@ -231,18 +238,20 @@ class TestClientServiceJotFormSync:
 
         # Mock empty submissions
         mock_jotform_service.fetch_submissions.return_value = []
+        mock_client_repo.get_all_by_jotform_ids.return_value = {}
+        mock_client_repo.batch_create_and_update.return_value = []
 
         result = service.sync_clients_from_jotform()
 
         assert len(result) == 0
         mock_jotform_service.fetch_submissions.assert_called_once()
-        mock_client_repo.get_by_jotform_id.assert_not_called()
-        mock_client_repo.create.assert_not_called()
+        mock_client_repo.get_all_by_jotform_ids.assert_called_once_with([])
+        mock_client_repo.batch_create_and_update.assert_called_once()
 
     def test_sync_clients_from_jotform_repository_error(
         self, service, mock_client_repo, mock_jotform_service
     ):
-        """Test synchronization when repository create fails."""
+        """Test synchronization when repository batch operation fails."""
         if not IMPORTS_AVAILABLE:
             pytest.skip("Required modules not available")
 
@@ -251,14 +260,15 @@ class TestClientServiceJotFormSync:
         mock_jotform_service.fetch_submissions.return_value = submissions
         mock_jotform_service.parse_client_name.return_value = "João Silva"
 
-        # Mock repository - no existing client, but create fails
-        mock_client_repo.get_by_jotform_id.return_value = None
-        mock_client_repo.create.return_value = None  # Simulate failure
+        # Mock batch fetch - no existing client
+        mock_client_repo.get_all_by_jotform_ids.return_value = {}
+
+        # Mock batch operation failure
+        mock_client_repo.batch_create_and_update.return_value = []  # Empty result
 
         result = service.sync_clients_from_jotform()
 
-        assert len(result) == 1
-        assert result[0] is None  # Failed creation returns None
+        assert len(result) == 0  # No clients synced due to failure
 
 
 @pytest.mark.unit
