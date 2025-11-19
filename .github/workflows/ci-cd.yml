@@ -97,8 +97,15 @@ jobs:
       # No need to call create_tables() in CI as it can cause UniqueViolation errors
       # Tests use their own isolated in-memory database configured in conftest.py
 
-      - name: Run tests
-        run: docker compose run --rm app pytest -v
+      - name: Run tests (SQLite enforced)
+        run: |
+          echo "Forcing in-memory SQLite for unit tests"
+          docker compose run --rm \
+            -e TESTING=true \
+            -e DATABASE_URL=sqlite:///:memory: \
+            -e RATE_LIMIT_ENABLED=0 \
+            -e DISABLE_AUTH_REDIRECTS=1 \
+            app pytest -v
       
       - name: Check logs for errors
         if: failure()

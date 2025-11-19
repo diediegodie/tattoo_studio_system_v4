@@ -36,8 +36,9 @@ Desktop.ini
 *.sublime-workspace
 *.sublime-project
 *.code-workspace
-.env
-.env.*
+/.env
+/.env.*
+!.env.test
 !.env.example
 *.secret
 *.pem

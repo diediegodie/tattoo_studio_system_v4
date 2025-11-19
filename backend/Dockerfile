@@ -30,6 +30,12 @@ RUN pip install --no-cache-dir --upgrade pip \
 # Copy application code
 COPY ./backend/app ./app
 
+# Copy scripts folder (includes entrypoint.sh)
+COPY ./backend/scripts ./scripts
+
+# Make entrypoint executable
+RUN chmod +x ./scripts/entrypoint.sh
+
 # Copy frontend assets for Flask templates
 COPY ../frontend/templates ./frontend/templates
 COPY ../frontend/assets ./frontend/assets

@@ -191,6 +191,7 @@ class TestRegistrarPagamentoTemplate:
                         "forma_pagamento": "Dinheiro",
                         "cliente_id": "",  # Empty client field
                         "artista_id": "1",
+                        "comissao_percent": "0",
                         "observacoes": "Test payment without client",
                     }
 

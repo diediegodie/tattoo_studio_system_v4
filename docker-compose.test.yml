@@ -23,8 +23,9 @@ services:
     depends_on:
       test-db:
         condition: service_healthy
+    env_file:
+      - .env.test
     environment:
-      DATABASE_URL: [REDACTED_DATABASE_URL]
       PYTHONPATH: /app
       FLASK_ENV: testing
       # Ensure flexible mode in tests unless explicitly overridden
