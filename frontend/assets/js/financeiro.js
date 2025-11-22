@@ -508,6 +508,14 @@
       return; // Elements not found, not on registrar_pagamento page
     }
 
+    // If server pre-populated manual name (from cliente_nome param), ensure correct initial visibility
+    try {
+      if (clienteInput && clienteInput.value && clienteInput.value.trim()) {
+        clienteSelect && clienteSelect.classList.add('hidden');
+        clienteInput.classList.remove('hidden');
+      }
+    } catch (_) {}
+
     // Toggle to manual input when __MANUAL__ is selected
     clienteSelect.addEventListener('change', function() {
       if (this.value === '__MANUAL__') {

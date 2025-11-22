@@ -264,7 +264,16 @@ def nova_sessao() -> Union[str, Response]:
 @csrf.exempt
 @require_session_authorization
 def finalizar_sessao(sessao_id: int) -> Response:
-    """Mark session as completed and redirect to payment registration."""
+    """Prepare session for payment and redirect to payment registration.
+
+    Previous behavior set status="completed" immediately, which removed the session
+    from the active sessions list (list_sessoes filters status=='active'). If the user
+    cancelled the payment registration, the session appeared "deleted" to the user.
+    We now keep the original status until payment is successfully registered (where
+    status transitions to 'paid'). This preserves visibility and prevents perceived
+    data loss. We also pass cliente_nome so manual (DB) clients are visible in the
+    payment form when JotForm-only clients are listed.
+    """
     db = None
     try:
         from app.db.session import SessionLocal
@@ -282,11 +291,12 @@ def finalizar_sessao(sessao_id: int) -> Response:
             return redirect("/sessoes/list")
 
         current_status = getattr(sessao, "status", None)
-        if current_status and current_status == "completed":
-            flash("Esta sessão já foi finalizada.", "info")
+        # Block re-finalization when already paid or explicitly completed (legacy status)
+        if current_status in {"paid", "completed"}:
+            flash("Esta sessão já foi finalizada ou paga.", "info")
             return redirect("/sessoes/list")
 
-        setattr(sessao, "status", "completed")
+        # Do NOT change status here; keep it 'active' so the session remains visible
         setattr(sessao, "updated_at", datetime.now())
         db.commit()
 
@@ -304,9 +314,13 @@ def finalizar_sessao(sessao_id: int) -> Response:
 
         cliente_param = getattr(sessao, "cliente_id", "")
         artista_param = getattr(sessao, "artista_id", "")
+        cliente_nome_param = getattr(getattr(sessao, "cliente", None), "name", "")
+        from urllib.parse import quote_plus
+
+        cliente_nome_enc = quote_plus(cliente_nome_param or "")
         qs = (
             f"/financeiro/registrar-pagamento?sessao_id={sessao_id}&data={data_str}"
-            f"&cliente_id={cliente_param}&artista_id={artista_param}&valor={valor_float}&observacoes={observacoes_value or ''}"
+            f"&cliente_id={cliente_param}&cliente_nome={cliente_nome_enc}&artista_id={artista_param}&valor={valor_float}&observacoes={observacoes_value or ''}"
         )
         return redirect(qs)
 

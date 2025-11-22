@@ -11,6 +11,7 @@ A comprehensive management platform built for tattoo studios, streamlining clien
 This system provides tattoo studio owners and artists with a centralized platform to manage their business operations. From client intake through JotForm integration to automated monthly financial statements, the application handles the complete workflow of a modern tattoo studio.
 
 **Key Capabilities:**
+
 - **Client Management**: Centralized client database with automatic synchronization from JotForm submissions
 - **Session Tracking**: Comprehensive session records including artist, client, services, and payment details
 - **Inventory Control**: Real-time inventory management with low-stock alerts
@@ -21,6 +22,7 @@ This system provides tattoo studio owners and artists with a centralized platfor
 ## Technology Stack
 
 **Backend:**
+
 - **Framework**: Flask 2.x with SQLAlchemy ORM
 - **Database**: PostgreSQL (Neon serverless, free tier)
 - **Authentication**: Google OAuth 2.0 + JWT tokens
@@ -28,11 +30,13 @@ This system provides tattoo studio owners and artists with a centralized platfor
 - **API Integration**: JotForm API for client intake
 
 **Frontend:**
+
 - **Templates**: Jinja2 with responsive HTML/CSS
 - **JavaScript**: Vanilla JS with modern ES6+ features
 - **Styling**: Custom CSS with mobile-first design
 
 **Infrastructure:**
+
 - **Hosting**: Render (web service + cron jobs)
 - **CI/CD**: GitHub Actions
 - **Containerization**: Docker + Docker Compose
@@ -41,24 +45,28 @@ This system provides tattoo studio owners and artists with a centralized platfor
 ## Features
 
 ### Client Management
+
 - Automatic client import from JotForm submissions
 - Client profile management with contact information
 - Session history tracking per client
 - Search and filter capabilities
 
 ### Session & Appointment Tracking
+
 - Detailed session records (artist, client, service, pricing)
 - Payment status tracking
 - Integration with Google Calendar
 - Session-to-client relationship management
 
 ### Inventory Management
+
 - Product stock tracking
 - Low-stock alerts
 - Usage history
 - CRUD operations with authorization
 
 ### Financial Operations
+
 - Automated monthly statement generation
 - Revenue and expense tracking
 - Batch processing for large datasets
@@ -66,6 +74,7 @@ This system provides tattoo studio owners and artists with a centralized platfor
 - Historical data archival
 
 ### Security & Authorization
+
 - Google OAuth 2.0 authentication
 - Email-based authorization system
 - JWT token management
@@ -73,6 +82,7 @@ This system provides tattoo studio owners and artists with a centralized platfor
 - Secure session handling
 
 ### Automation & Monitoring
+
 - **Keep-Alive Workflow**: Pings app every 14 minutes during business hours (Tue-Sat, 10:00-19:00 BRT) to prevent Render free tier spin-down
 - **Monthly Statement Backup**: Automated monthly financial snapshot generation on the 2nd of each month
 - **Health Checks**: Multiple endpoints for liveness, readiness, and business monitoring
@@ -125,17 +135,20 @@ tattoo_studio_system_v4/
 ### Quick Start with Docker
 
 1. **Clone the repository:**
+
    ```bash
    git clone https://github.com/diediegodie/tattoo_studio_system_v4.git
    cd tattoo_studio_system_v4
    ```
 
 2. **Configure environment variables:**
+
    ```bash
    cp .env.example .env
    ```
-   
+
    Edit `.env` and set required values:
+
    ```bash
    # Database (Neon or local PostgreSQL)
    DATABASE_URL=postgresql://user:password@host:5432/database
@@ -163,6 +176,7 @@ tattoo_studio_system_v4/
    ```
 
 3. **Start the application:**
+
    ```bash
    docker-compose up -d
    ```
@@ -172,6 +186,7 @@ tattoo_studio_system_v4/
    - Sign in with an authorized Google account
 
 5. **View logs:**
+
    ```bash
    docker-compose logs -f app
    ```
@@ -179,29 +194,34 @@ tattoo_studio_system_v4/
 ### Local Development (Without Docker)
 
 1. **Create and activate virtual environment:**
+
    ```bash
    python3 -m venv venv
    source venv/bin/activate  # On Windows: venv\Scripts\activate
    ```
 
 2. **Install dependencies:**
+
    ```bash
    pip install -r requirements.txt
    ```
 
 3. **Configure environment:**
+
    ```bash
    cp .env.example .env
    # Edit .env with your configuration
    ```
 
 4. **Set up database:**
+
    ```bash
    # Ensure PostgreSQL is running
    # Tables are created automatically on first run
    ```
 
 5. **Run the application:**
+
    ```bash
    cd backend
    python app/app.py
@@ -235,18 +255,21 @@ pytest backend/tests/test_auth.py -v
 The application is deployed on [Render](https://render.com) with the following setup:
 
 **Web Service:**
+
 - **Build Command**: `pip install -r requirements.txt`
 - **Start Command**: `cd backend && python app/app.py`
 - **Plan**: Free tier (spins down after 15 minutes of inactivity)
 - **Health Check**: `/api/health` (lightweight, always returns 200)
 
 **Database:**
+
 - **Provider**: Neon PostgreSQL (serverless, free tier)
 - **Connection**: Via `DATABASE_URL` environment variable
 - **Auto-sleep**: 5 minutes of inactivity
 
 **Environment Variables:**
 Configure the following in Render dashboard:
+
 - `DATABASE_URL` - Neon PostgreSQL connection string
 - `FLASK_SECRET_KEY` - Session encryption key
 - `JWT_SECRET_KEY` - JWT token signing key
@@ -263,9 +286,11 @@ Configure the following in Render dashboard:
 The project uses three automated workflows:
 
 #### 1. CI/CD Pipeline (`ci-cd.yml`)
+
 **Triggers**: Push to `main` or `develop`, Pull Requests
 
 **Actions**:
+
 - Builds Docker containers
 - Runs full test suite (370+ tests)
 - Validates code quality
@@ -274,27 +299,33 @@ The project uses three automated workflows:
 **Environment**: Isolated test database with seeded data
 
 #### 2. Keep-Alive Workflow (`keep_alive.yml`)
+
 **Schedule**: Tuesday-Saturday, 10:00-19:00 BRT (every 14 minutes)
 
 **Purpose**:
+
 - Prevents Render free tier from spinning down during business hours
 - Pings `/api/health` endpoint (lightweight, no DB queries)
 - Keeps instance warm with minimal resource usage
 
 **Why 14 minutes?**
+
 - Render spins down after 15 minutes of inactivity
 - 14-minute intervals provide a safety margin
 - Optimizes for responsiveness without waste
 
 #### 3. Monthly Statement Backup (`monthly_extrato_backup.yml`)
+
 **Schedule**: 2nd of each month at 03:00 UTC (00:00 BRT)
 
 **Purpose**:
+
 - Triggers automated monthly financial statement generation
 - Archives historical data (sessions, expenses, payments) into statements
 - Provides safety net for APScheduler job running on 1st at 02:00
 
 **Process**:
+
 1. Calculates previous month automatically
 2. Calls `/admin/extrato/trigger` API endpoint
 3. Verifies backup exists before data transfer
@@ -306,6 +337,7 @@ The project uses three automated workflows:
 ### Deployment Workflow
 
 1. **Code Changes**:
+
    ```bash
    git add .
    git commit -m "feat: description of changes"
@@ -337,11 +369,13 @@ The project uses three automated workflows:
 The application uses a dual authentication system:
 
 **Web Interface:**
+
 - Google OAuth 2.0 for user login
 - Session cookies for authenticated requests
 - Automatic redirect to OAuth provider
 
 **API Endpoints:**
+
 - JWT tokens for programmatic access
 - Bearer token in Authorization header
 - Email-based authorization check
@@ -349,12 +383,14 @@ The application uses a dual authentication system:
 ### Key Endpoints
 
 #### Authentication
+
 - `POST /auth/login` - Authenticate with email/password, returns JWT token
 - `GET /auth/login` - Start Google OAuth flow (web)
 - `POST /auth/logout` - Invalidate JWT token
 - `GET /logout` - Web logout (clears session)
 
 #### Clients
+
 - `GET /clients/` - Client management page (web)
 - `GET /clients/api/list` - List all clients (JSON)
 - `GET /clients/sync` - Trigger JotForm sync
@@ -363,6 +399,7 @@ The application uses a dual authentication system:
 - `DELETE /clients/<id>` - Delete client (requires auth)
 
 #### Sessions
+
 - `GET /sessoes/` - Session management page (web)
 - `GET /api/sessoes` - List sessions (JSON)
 - `POST /api/sessoes` - Create session (requires auth)
@@ -370,6 +407,7 @@ The application uses a dual authentication system:
 - `DELETE /api/sessoes/<id>` - Delete session (requires auth)
 
 #### Inventory
+
 - `GET /inventory/` - Inventory page (web)
 - `GET /api/inventory` - List inventory items (JSON)
 - `POST /inventory/` - Create item (requires auth)
@@ -377,11 +415,13 @@ The application uses a dual authentication system:
 - `DELETE /inventory/<id>` - Delete item (requires auth)
 
 #### Financial
+
 - `GET /financeiro/` - Financial dashboard (web)
 - `GET /api/financeiro/extrato/<year>/<month>` - Monthly statement (JSON)
 - `POST /admin/extrato/trigger` - Trigger statement generation (admin only)
 
 #### Health & Monitoring
+
 - `GET /api/health` - Liveness check (always 200)
 - `GET /health` - Health with DB status
 - `GET /ready` - Readiness check
@@ -391,7 +431,7 @@ The application uses a dual authentication system:
 
 ### Creating OAuth Credentials
 
-1. **Go to Google Cloud Console**: https://console.cloud.google.com/
+1. **Go to Google Cloud Console**: <https://console.cloud.google.com/>
 2. **Create or select a project**
 3. **Enable APIs**:
    - Google+ API (for user info)
@@ -403,6 +443,7 @@ The application uses a dual authentication system:
 5. **Create OAuth Client ID**:
    - Application type: Web application
    - Authorized redirect URIs:
+
      ```
      http://localhost:5000/auth/google_login/authorized
      http://127.0.0.1:5000/auth/google_login/authorized
@@ -414,11 +455,13 @@ The application uses a dual authentication system:
 ### Required Scopes
 
 **Authentication:**
+
 - `openid` - OpenID Connect authentication
 - `email` - User email address
 - `profile` - Basic profile information
 
 **Calendar Integration:**
+
 - `https://www.googleapis.com/auth/calendar.readonly` - Read calendar events
 - `https://www.googleapis.com/auth/calendar.events` - Manage calendar events
 
@@ -429,29 +472,34 @@ The application uses a dual authentication system:
 The system implements email-based authorization to control access to sensitive operations:
 
 **Configuration:**
+
 ```bash
 AUTHORIZED_EMAILS=admin@studio.com,manager@studio.com,artist@studio.com
 ```
 
 **Access Control:**
+
 - OAuth login rejects unauthorized emails during Google Sign-In
 - API endpoints require valid JWT token AND authorized email
 - Fail-closed security: empty `AUTHORIZED_EMAILS` denies all access
 - Case-insensitive email comparison
 
 **Protected Resources:**
+
 - Inventory management (POST, PUT, DELETE, PATCH)
 - Expense tracking (POST, PUT, DELETE)
 - Session management (POST, PUT, DELETE)
 - Financial operations (POST)
 
 **HTTP Status Codes:**
+
 - `401 Unauthorized` - Missing or invalid JWT token
 - `403 Forbidden` - Valid token but unauthorized email
 
 ### Rate Limiting
 
 Configurable rate limiting protects against abuse:
+
 - Default: 100 requests per minute per IP
 - Health check endpoints exempt from limits
 - Configurable via `RATE_LIMIT_ENABLED` environment variable
@@ -483,11 +531,13 @@ The application uses PostgreSQL with the following main tables:
 ### Database Operations
 
 **Connect to database (Docker):**
+
 ```bash
 docker-compose exec db psql -U admin -d tattoo_studio
 ```
 
 **Common queries:**
+
 ```sql
 -- List all clients
 SELECT id, nome, email FROM clientes ORDER BY nome;
@@ -504,6 +554,7 @@ LIMIT 10;
 ```
 
 **Backup and restore:**
+
 ```bash
 # Backup
 docker-compose exec db pg_dump -U admin tattoo_studio > backup.sql
@@ -515,6 +566,7 @@ docker-compose exec -T db psql -U admin tattoo_studio < backup.sql
 ### Migrations
 
 Database schema changes are managed through SQLAlchemy:
+
 - Models defined in `backend/app/models/`
 - Tables created automatically on first run
 - Manual migrations in `backend/migrations/` for complex changes
@@ -524,11 +576,13 @@ Database schema changes are managed through SQLAlchemy:
 ### Application Logs
 
 Logs are written to both console and file:
+
 - **Location**: `backend/logs/`
 - **Format**: Structured JSON with correlation IDs
 - **Levels**: DEBUG, INFO, WARNING, ERROR, CRITICAL
 
 **Log Files:**
+
 - `app.log` - General application logs
 - `atomic_extrato.log` - Monthly statement generation
 - `backup_process.log` - Backup operations
@@ -537,6 +591,7 @@ Logs are written to both console and file:
 ### Performance Monitoring
 
 **Slow Query Alerts:**
+
 ```bash
 # Enable slow query logging
 ALERT_SLOW_QUERY_ENABLED=true
@@ -547,6 +602,7 @@ ALERT_SINK_SLACK_WEBHOOK=https://hooks.slack.com/services/YOUR/WEBHOOK
 ```
 
 **Metrics Tracked:**
+
 - Request duration
 - Database query time
 - Background job execution
@@ -555,6 +611,7 @@ ALERT_SINK_SLACK_WEBHOOK=https://hooks.slack.com/services/YOUR/WEBHOOK
 ### Debugging
 
 **Enable debug mode (development only):**
+
 ```bash
 FLASK_ENV=development
 FLASK_DEBUG=1
@@ -562,6 +619,7 @@ LOG_LEVEL=DEBUG
 ```
 
 **View recent errors:**
+
 ```bash
 # Last 50 errors
 docker-compose logs app | grep ERROR | tail -50

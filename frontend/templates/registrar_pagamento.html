@@ -47,8 +47,10 @@
                                 </div>
                                 <div class="flex-form-field">
                                     <label for="cliente_id">Cliente (Opcional)</label>
+                                    {% set initial_manual_nome = request.form.get('cliente_nome') or cliente_nome %}
                                     <!-- Cliente dropdown with manual input option -->
-                                    <select name="cliente_id" id="cliente_id" class="full-width">
+                                    <select name="cliente_id" id="cliente_id"
+                                        class="full-width {% if initial_manual_nome %}hidden{% endif %}">
                                         <option value="">Nenhum cliente / Não informado</option>
                                         <option value="__MANUAL__">✏️ Inserir manualmente</option>
                                         {% for client in clients %}
@@ -57,9 +59,10 @@
                                             %}selected{% endif %}>{{ client.name }}</option>
                                         {% endfor %}
                                     </select>
-                                    <!-- Manual input field - hidden by default via CSS class (CSP-compliant) -->
+                                    <!-- Manual input field (visible if cliente_nome passed) -->
                                     <input type="text" name="cliente_nome" id="cliente_nome"
-                                        placeholder="Digite o nome do cliente" class="full-width hidden">
+                                        placeholder="Digite o nome do cliente" value="{{ initial_manual_nome or '' }}"
+                                        class="full-width {% if not initial_manual_nome %}hidden{% endif %}">
                                 </div>
                                 <div class="flex-form-field">
                                     <label for="artista_id">Artista</label>

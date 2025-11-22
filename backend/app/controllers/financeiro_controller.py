@@ -333,6 +333,9 @@ def registrar_pagamento() -> Union[str, Response, Tuple[str, int]]:
             # Check for query params to pre-fill the form
             data = request.args.get("data")
             cliente_id = request.args.get("cliente_id")
+            cliente_nome = request.args.get(
+                "cliente_nome"
+            )  # manual client name (optional)
             artista_id = request.args.get("artista_id")
             valor = request.args.get("valor")
             forma_pagamento = request.args.get("forma_pagamento")
@@ -345,6 +348,7 @@ def registrar_pagamento() -> Union[str, Response, Tuple[str, int]]:
                 artists=artists,
                 data=data,
                 cliente_id=cliente_id,
+                cliente_nome=cliente_nome,
                 artista_id=artista_id,
                 valor=valor,
                 forma_pagamento=forma_pagamento,
