@@ -126,6 +126,56 @@ class JotFormService(IJotFormService):
                 f"Failed to fetch JotForm submissions at offset {offset}: {str(e)}"
             )
 
+    def get_submission_by_id(self, submission_id: str) -> Optional[dict]:
+        """Fetch a single submission by ID from JotForm API.
+
+        Args:
+            submission_id: The JotForm submission ID
+
+        Returns:
+            Submission dictionary if found and not deleted, None otherwise
+        """
+        try:
+            url = f"{self.base_url}/submission/{submission_id}"
+            params = {"apiKey": self.api_key}
+
+            response = requests.get(url, params=params, timeout=10)
+            response.raise_for_status()
+
+            data = response.json()
+            submission = data.get("content", {})
+
+            # Filter out deleted submissions
+            if submission and submission.get("status") not in ["DELETED", None]:
+                logger.info(
+                    "Fetched JotForm submission %s successfully",
+                    submission_id,
+                    extra={"context": {"submission_id": submission_id}},
+                )
+                return submission
+            else:
+                logger.warning(
+                    "JotForm submission %s is deleted or not found",
+                    submission_id,
+                    extra={
+                        "context": {
+                            "submission_id": submission_id,
+                            "status": submission.get("status"),
+                        }
+                    },
+                )
+                return None
+
+        except requests.RequestException as e:
+            logger.error(
+                "Failed to fetch JotForm submission %s: %s",
+                submission_id,
+                str(e),
+                extra={"context": {"submission_id": submission_id, "error": str(e)}},
+                exc_info=True,
+            )
+            return None
+
     def parse_client_name(self, submission: dict) -> str:
         """Extract client name from JotForm submission using robust field-type-first logic.
 

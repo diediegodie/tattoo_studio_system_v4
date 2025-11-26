@@ -153,6 +153,9 @@ class UserRepository(IUserRepository):
             google_id=getattr(db_user, "google_id", None),
             role=getattr(db_user, "role", "client"),
             is_active=getattr(db_user, "is_active", True),
+            unified_flow_enabled=getattr(
+                db_user, "unified_flow_enabled", False
+            ),  # Phase 3: Per-user flag
             created_at=getattr(db_user, "created_at", None),
             updated_at=getattr(db_user, "updated_at", None),
         )

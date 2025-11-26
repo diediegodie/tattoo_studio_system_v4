@@ -171,6 +171,14 @@ def api_update_pagamento(pagamento_id: int):
                 return api_response(
                     False, "Erro ao processar nome do cliente", None, 400
                 )
+        elif "cliente_id" in payload and payload["cliente_id"]:
+            # Resolve cliente_id (handles both DB IDs and JotForm submission IDs)
+            from app.controllers.sessoes_helpers import resolve_cliente_id
+
+            resolved_cliente_id = resolve_cliente_id(db, payload["cliente_id"])
+            if resolved_cliente_id:
+                payload["cliente_id"] = resolved_cliente_id
+            # If resolution fails, leave as-is and let repository validation handle it
 
         # Server-side validation: forma_pagamento must be present and non-empty for PUT updates
         if (

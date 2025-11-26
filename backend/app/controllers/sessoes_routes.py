@@ -191,6 +191,18 @@ def nova_sessao() -> Union[str, Response]:
             else:
                 flash("Erro ao processar nome do cliente.", "error")
                 return _render_nova_sessao_form(db, form_data=sessao_request_data)
+        elif sessao_request_data.get("cliente_id"):
+            # Resolve cliente_id (handles both DB IDs and JotForm submission IDs)
+            from app.controllers.sessoes_helpers import resolve_cliente_id
+
+            resolved_cliente_id = resolve_cliente_id(
+                db, sessao_request_data["cliente_id"]
+            )
+            if resolved_cliente_id:
+                sessao_request_data["cliente_id"] = str(resolved_cliente_id)
+            else:
+                flash("Cliente inválido ou não encontrado.", "error")
+                return _render_nova_sessao_form(db, form_data=sessao_request_data)
 
         google_event_id = request.form.get("google_event_id")
 

@@ -54,17 +54,21 @@
                                         event.start_time else 'Data não definida' }}</small>
                                 </td>
                                 <td>
-                                    {% if event.google_event_id in events_with_sessions %}
-                                    <a href="{{ url_for('sessoes.list_sessoes') }}"
-                                        class="button small options-btn float-right button-success-outline">
-                                        Sessão criada
+                                    {# Phase 4: Unified flow (always enabled, Sessões UI removed) #}
+                                    {# UI Corrections: Updated labels and styling #}
+                                    {% if event.is_paid %}
+                                    <a href="{{ url_for('historico.historico_home', highlight_payment_event=event.google_event_id) }}"
+                                        class="button small float-right button-success btn btn-success"
+                                        aria-label="Evento concluído - ver detalhes no histórico"
+                                        title="Este evento já foi concluído">
+                                        Concluído
                                     </a>
-
-
                                     {% else %}
-                                    <a href="{{ url_for('sessoes.nova_sessao') }}?event_id={{ event.google_event_id or event.id or loop.index }}"
-                                        class="button small create-session-btn float-right">
-                                        Criar Sessão
+                                    <a href="{{ url_for('financeiro.registrar_pagamento') }}?google_event_id={{ event.google_event_id or event.id or loop.index }}&data={{ event.start_time.strftime('%Y-%m-%d') if event.start_time else '' }}&observacoes={{ event.title or 'Evento sem título' }}"
+                                        class="button small create-session-btn float-right"
+                                        aria-label="Registrar pagamento para este evento"
+                                        title="Clique para registrar o pagamento">
+                                        Registrar Pagamento
                                     </a>
                                     {% endif %}
                                 </td>
@@ -107,14 +111,8 @@
                                                 </td>
                                             </tr>
                                             {% endif %}
-                                            {% if event.google_event_id %}
-                                            <tr>
-                                                <td><strong>ID do Google</strong></td>
-                                                <td>{{ event.google_event_id }}</td>
-                                                <td>{% if event.google_event_id in events_with_sessions %}(Já tem sessão
-                                                    criada){% endif %}</td>
-                                            </tr>
-                                            {% endif %}
+                                            {# UI Corrections: Hide google_event_id from user-facing UI #}
+                                            {# Internal logic still uses google_event_id for duplicate checks #}
                                         </tbody>
                                     </table>
                                 </td>

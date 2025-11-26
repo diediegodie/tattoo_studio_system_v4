@@ -39,6 +39,9 @@
                             <!-- Hidden field for session linkage; prefer POSTed value when re-rendering -->
                             <input type="hidden" name="sessao_id"
                                 value="{{ request.form.get('sessao_id') or sessao_id or '' }}">
+                            <!-- Phase 2: Hidden field for Google Calendar event linkage -->
+                            <input type="hidden" name="google_event_id"
+                                value="{{ request.form.get('google_event_id') or google_event_id or '' }}">
                             <div class="flex-form-row">
                                 <div class="flex-form-field">
                                     <label for="data">Data</label>

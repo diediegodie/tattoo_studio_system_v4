@@ -258,3 +258,55 @@ def log_authorization_config():
             "env_var_set": bool(os.getenv("AUTHORIZED_EMAILS")),
         },
     )
+
+
+# ===========================
+# Feature Flags Configuration
+# ===========================
+
+
+def get_unified_session_payment_flow_enabled() -> bool:
+    """
+    Get whether the unified session+payment flow is enabled.
+
+    Returns:
+        bool: True if unified flow is enabled, False to use legacy flow
+
+    Environment Variables:
+        UNIFIED_SESSION_PAYMENT_FLOW: Whether to enable unified flow
+            Default: 'false' (safe default - use legacy flow)
+            Phase 1: Should be 'false' (schema changes only, no behavior change)
+            Phase 2: Can be enabled for canary rollout (10% → 100%)
+            Phase 3: Should be 'true' for full deployment
+
+    Truthy values: "true", "1", "yes" (case-insensitive)
+    Falsy values: "false", "0", "no" (case-insensitive)
+
+    Examples:
+        >>> # In .env file:
+        >>> # UNIFIED_SESSION_PAYMENT_FLOW=false  # Phase 1 (schema only)
+        >>> # UNIFIED_SESSION_PAYMENT_FLOW=true   # Phase 3 (full rollout)
+        >>> unified_enabled = get_unified_session_payment_flow_enabled()
+    """
+    flag_str = os.getenv("UNIFIED_SESSION_PAYMENT_FLOW", "false")
+    return flag_str.strip().lower() in ("true", "1", "yes")
+
+
+# Global feature flag - cached at module load time
+UNIFIED_SESSION_PAYMENT_FLOW = get_unified_session_payment_flow_enabled()
+
+
+def log_feature_flags():
+    """
+    Log the active feature flag configuration.
+
+    Should be called during application startup to provide visibility
+    into which features are enabled.
+    """
+    logger.info(
+        "Feature flags configuration initialized",
+        extra={
+            "unified_session_payment_flow": UNIFIED_SESSION_PAYMENT_FLOW,
+            "env_var_value": os.getenv("UNIFIED_SESSION_PAYMENT_FLOW", "false"),
+        },
+    )

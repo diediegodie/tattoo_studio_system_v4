@@ -30,9 +30,7 @@
                                 <li><a href="{{ url_for('calendar.calendar_page') }}"
                                                 class="{% if request.endpoint and request.endpoint.startswith('calendar.') %}active{% endif %}">Google
                                                 Agenda</a></li>
-                                <li><a href="{{ url_for('sessoes') }}"
-                                                class="{% if request.endpoint and request.endpoint.startswith('sessoes.') %}active{% endif %}">Sessões
-                                                </a></li>
+                                <!-- Phase 4: Sessões link removed (UI unified into Payments flow) -->
                                 <li><a href="{{ url_for('financeiro') }}"
                                                 class="{% if request.endpoint and request.endpoint.startswith('financeiro') %}active{% endif %}">Pagamentos</a>
                                 </li>

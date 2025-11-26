@@ -16,6 +16,9 @@ from flask import (
 )
 from flask_login import current_user, login_required
 from sqlalchemy.orm import joinedload
+from sqlalchemy.exc import (
+    IntegrityError,
+)  # Phase 2: For duplicate google_event_id handling
 from werkzeug.wrappers import Response
 from app.core.auth_decorators import require_session_authorization
 
@@ -276,7 +279,12 @@ def financeiro_home() -> str:
 @financeiro_bp.route("/registrar-pagamento", methods=["GET", "POST"])
 @require_session_authorization
 def registrar_pagamento() -> Union[str, Response, Tuple[str, int]]:
-    """Create a new payment record."""
+    """
+    Create a new payment record.
+
+    Phase 2 Update: Now accepts google_event_id parameter for prefill from Google Agenda.
+    Uses EventPrefillService to normalize event data for payment form.
+    """
     db = None
     try:
         db = SessionLocal()
@@ -330,17 +338,75 @@ def registrar_pagamento() -> Union[str, Response, Tuple[str, int]]:
                 artists_raw = []
             artists = _ensure_list(artists_raw)
 
-            # Check for query params to pre-fill the form
-            data = request.args.get("data")
+            # Phase 2: Check for google_event_id and use prefill service if present
+            google_event_id = (
+                request.args.get("google_event_id") or ""
+            )  # Always initialize to avoid NameError
+            prefill_data = {}
+
+            if google_event_id and google_event_id.strip():
+                # Use prefill service to parse event data from query params
+                from app.services.prefill_service import EventPrefillService
+
+                prefill_service = EventPrefillService()
+
+                # Extract additional event data from query params (if provided by calendar)
+                title = request.args.get("title")
+                description = request.args.get("description")
+                data_param = request.args.get("data")  # YYYY-MM-DD format
+                valor_param = request.args.get("valor")
+                observacoes_param = request.args.get("observacoes")
+
+                # Parse start_datetime if data provided
+                start_datetime = None
+                if data_param:
+                    try:
+                        start_datetime = datetime.strptime(data_param, "%Y-%m-%d")
+                    except ValueError:
+                        logger.warning("Invalid data parameter: %s", data_param)
+
+                # Generate prefill payload
+                prefill_data = prefill_service.parse_event_for_payment_form(
+                    google_event_id=google_event_id,
+                    title=title,
+                    start_datetime=start_datetime,
+                    description=description or observacoes_param,
+                    valor=valor_param,
+                )
+
+                logger.info(
+                    "Prefill data generated for google_event_id=%s: %s",
+                    google_event_id,
+                    prefill_data,
+                )
+
+            # BUG FIX: Always define google_event_id_final to avoid NameError or None in template
+            google_event_id_final = (
+                prefill_data.get("google_event_id") or google_event_id or ""
+            )
+
+            # Check for query params to pre-fill the form (fallback to legacy params if no prefill)
+            data = prefill_data.get("data") or request.args.get("data")
             cliente_id = request.args.get("cliente_id")
-            cliente_nome = request.args.get(
+            cliente_nome = prefill_data.get("cliente_nome") or request.args.get(
                 "cliente_nome"
-            )  # manual client name (optional)
-            artista_id = request.args.get("artista_id")
-            valor = request.args.get("valor")
-            forma_pagamento = request.args.get("forma_pagamento")
-            observacoes = request.args.get("observacoes")
-            sessao_id = request.args.get("sessao_id")  # Session linkage parameter
+            )
+            artista_id = prefill_data.get("artista_id") or request.args.get(
+                "artista_id"
+            )
+            valor = prefill_data.get("valor") or request.args.get("valor")
+            forma_pagamento = prefill_data.get("forma_pagamento") or request.args.get(
+                "forma_pagamento"
+            )
+            observacoes = prefill_data.get("observacoes") or request.args.get(
+                "observacoes"
+            )
+            sessao_id = request.args.get(
+                "sessao_id"
+            )  # Session linkage parameter (legacy)
+            google_event_id_final = (
+                prefill_data.get("google_event_id") or google_event_id
+            )
 
             return _safe_render(
                 "registrar_pagamento.html",
@@ -353,7 +419,8 @@ def registrar_pagamento() -> Union[str, Response, Tuple[str, int]]:
                 valor=valor,
                 forma_pagamento=forma_pagamento,
                 observacoes=observacoes,
-                sessao_id=sessao_id,  # Pass session ID to template
+                sessao_id=sessao_id,  # Pass session ID to template (legacy)
+                google_event_id=google_event_id_final,  # Phase 2: Pass google_event_id to template
             )
 
         elif request.method == "POST":
@@ -440,14 +507,29 @@ def registrar_pagamento() -> Union[str, Response, Tuple[str, int]]:
             sessao_id = _maybe_await(
                 request.form.get("sessao_id")
             )  # Optional session linkage
+            google_event_id = _maybe_await(
+                request.form.get("google_event_id")
+            )  # Phase 2: Google Calendar event linkage
 
-            # Handle manual client name input
+            # DEBUG: Log all extracted form values to diagnose green button issue
+            logger.info(
+                "registrar_pagamento POST - Form values extracted: google_event_id=%r (type=%s, empty=%s), sessao_id=%r",
+                google_event_id,
+                type(google_event_id).__name__,
+                not bool(google_event_id or "".strip()),
+                sessao_id,
+            )
+
+            # Handle client selection: manual name input OR JotForm submission ID
+            final_cliente_id = None
+
             if cliente_nome and cliente_nome.strip():
+                # Manual client name input
                 from app.controllers.sessoes_helpers import find_or_create_client
 
                 cliente_id_from_nome = find_or_create_client(db, cliente_nome)
                 if cliente_id_from_nome:
-                    cliente_id = str(cliente_id_from_nome)
+                    final_cliente_id = cliente_id_from_nome
                 else:
                     flash("Erro ao processar nome do cliente.", "error")
                     return (
@@ -462,9 +544,82 @@ def registrar_pagamento() -> Union[str, Response, Tuple[str, int]]:
                             forma_pagamento=forma_pagamento,
                             observacoes=observacoes,
                             sessao_id=sessao_id,
+                            google_event_id=google_event_id,
                         ),
                         400,
                     )
+            elif cliente_id:
+                # Cliente selected from dropdown - could be DB ID or JotForm submission ID
+                # Try to parse as integer first (database ID)
+                try:
+                    final_cliente_id = int(cliente_id)
+                    # Verify this client exists in database
+                    existing_client = (
+                        db.query(Client).filter(Client.id == final_cliente_id).first()
+                    )
+                    if not existing_client:
+                        # Not a valid DB ID, treat as JotForm submission ID
+                        final_cliente_id = None
+                except (ValueError, TypeError):
+                    # Not an integer, must be JotForm submission ID
+                    final_cliente_id = None
+
+                # If not a valid DB ID, try as JotForm submission ID
+                if final_cliente_id is None and _use_jotform:
+                    # Find or create client from JotForm submission ID
+                    existing_client = (
+                        db.query(Client)
+                        .filter(Client.jotform_submission_id == cliente_id)
+                        .first()
+                    )
+
+                    if existing_client:
+                        final_cliente_id = existing_client.id
+                        logger.info(
+                            "Found existing client from JotForm ID %s: client_id=%s, name=%s",
+                            cliente_id,
+                            existing_client.id,
+                            existing_client.name,
+                        )
+                    else:
+                        # Client doesn't exist in DB yet - need to create from JotForm data
+                        from app.repositories.client_repo import ClientRepository
+                        from app.services.jotform_service import JotFormService
+
+                        try:
+                            jotform_service = JotFormService(
+                                _JOTFORM_API_KEY, _JOTFORM_FORM_ID
+                            )
+                            # Get submission data from JotForm
+                            submission = jotform_service.get_submission_by_id(
+                                cliente_id
+                            )
+                            if submission:
+                                client_name = jotform_service.parse_client_name(
+                                    submission
+                                )
+                                new_client = Client(
+                                    name=client_name, jotform_submission_id=cliente_id
+                                )
+                                db.add(new_client)
+                                db.flush()
+                                final_cliente_id = new_client.id
+                                logger.info(
+                                    "Created new client from JotForm ID %s: client_id=%s, name=%s",
+                                    cliente_id,
+                                    new_client.id,
+                                    client_name,
+                                )
+                            else:
+                                logger.warning(
+                                    "JotForm submission %s not found", cliente_id
+                                )
+                        except Exception as e:
+                            logger.error(
+                                "Error fetching JotForm submission %s: %s",
+                                cliente_id,
+                                e,
+                            )
 
             # Structured informational log about parsed values (no raw body or full form dump)
             try:
@@ -515,6 +670,7 @@ def registrar_pagamento() -> Union[str, Response, Tuple[str, int]]:
                         forma_pagamento=forma_pagamento,
                         observacoes=observacoes,
                         sessao_id=sessao_id,
+                        google_event_id=google_event_id,
                     ),
                     400,
                 )
@@ -559,6 +715,7 @@ def registrar_pagamento() -> Union[str, Response, Tuple[str, int]]:
                         forma_pagamento=forma_pagamento,
                         observacoes=observacoes,
                         sessao_id=sessao_id,
+                        google_event_id=google_event_id,
                     ),
                     400,
                 )
@@ -597,6 +754,56 @@ def registrar_pagamento() -> Union[str, Response, Tuple[str, int]]:
                     ),
                     400,
                 )
+
+            # Phase 2: Duplicate prevention - check if payment already exists for this google_event_id
+            if google_event_id and google_event_id.strip():
+                from app.services.prefill_service import EventPrefillService
+
+                duplicate_exists, existing_payment_id = (
+                    EventPrefillService.check_duplicate_payment_by_event_id(
+                        db, google_event_id
+                    )
+                )
+
+                if duplicate_exists:
+                    # Log to migration_audit for tracking
+                    try:
+                        from app.db.base import MigrationAudit
+
+                        audit_entry = MigrationAudit(
+                            entity_type="pagamento_duplicate_attempt",
+                            entity_id=existing_payment_id,
+                            action="duplicate_blocked",
+                            status="blocked",
+                            details={
+                                "google_event_id": google_event_id,
+                                "attempted_valor": str(valor_decimal),
+                                "attempted_date": data_str,
+                                "user_id": current_user.id if current_user else None,
+                            },
+                        )
+                        db.add(audit_entry)
+                        db.commit()
+                    except Exception as audit_err:
+                        logger.warning(
+                            "Failed to log duplicate attempt to migration_audit: %s",
+                            audit_err,
+                        )
+                        db.rollback()  # Don't let audit logging failure break the flow
+
+                    # Redirect to historico with highlight parameter
+                    flash("Este evento já foi finalizado anteriormente.", "info")
+                    logger.info(
+                        "Duplicate payment attempt blocked: google_event_id=%s, existing_payment_id=%s",
+                        google_event_id,
+                        existing_payment_id,
+                    )
+                    return redirect(
+                        url_for(
+                            "historico.historico_home",
+                            highlight_payment=existing_payment_id,
+                        )
+                    )
 
             # Do the create payment + update session + create commission
             try:
@@ -641,6 +848,7 @@ def registrar_pagamento() -> Union[str, Response, Tuple[str, int]]:
                                 forma_pagamento=forma_pagamento,
                                 observacoes=observacoes,
                                 sessao_id=sessao_id,
+                                google_event_id=google_event_id,
                             ),
                             400,
                         )
@@ -668,6 +876,7 @@ def registrar_pagamento() -> Union[str, Response, Tuple[str, int]]:
                                     forma_pagamento=forma_pagamento,
                                     observacoes=observacoes,
                                     sessao_id=sessao_id,
+                                    google_event_id=google_event_id,
                                 ),
                                 400,
                             )
@@ -678,19 +887,63 @@ def registrar_pagamento() -> Union[str, Response, Tuple[str, int]]:
 
                 # At this point: com_percent is Decimal >0 to create commission, or None to skip
 
-                # Create payment (always)
+                # Phase 2: Create payment with google_event_id (if provided)
                 pagamento = Pagamento(
                     data=data,
                     valor=valor_decimal,
                     forma_pagamento=forma_pagamento,
-                    cliente_id=(int(cliente_id) if cliente_id is not None else None),
+                    cliente_id=final_cliente_id,  # Use resolved database Client.id
                     artista_id=artista_id_normalized,
                     observacoes=observacoes,
                     sessao_id=(int(sessao_id) if sessao_id else None),
+                    google_event_id=(
+                        google_event_id.strip()
+                        if google_event_id and google_event_id.strip()
+                        else None
+                    ),  # Phase 2
+                )
+                # DEBUG: Log the Pagamento object before database save
+                logger.info(
+                    "Pagamento object created: google_event_id=%r (will_be_null=%s), valor=%s, artista_id=%s",
+                    pagamento.google_event_id,
+                    pagamento.google_event_id is None,
+                    pagamento.valor,
+                    pagamento.artista_id,
                 )
                 db.add(pagamento)
                 try:
                     db.flush()
+                except IntegrityError as integrity_err:
+                    # Phase 2: Handle UNIQUE constraint violation on google_event_id
+                    db.rollback()
+                    if "google_event_id" in str(integrity_err).lower():
+                        logger.warning(
+                            "IntegrityError on google_event_id (race condition): %s",
+                            google_event_id,
+                        )
+                        flash(
+                            "Este evento já foi finalizado por outro usuário.", "info"
+                        )
+
+                        # Find the existing payment to redirect to
+                        existing_payment = (
+                            db.query(Pagamento)
+                            .filter(Pagamento.google_event_id == google_event_id)
+                            .first()
+                        )
+                        if existing_payment:
+                            return redirect(
+                                url_for(
+                                    "historico.historico_home",
+                                    highlight_payment=existing_payment.id,
+                                )
+                            )
+                        else:
+                            return redirect(url_for("historico.historico_home"))
+                    else:
+                        # Other integrity error (not google_event_id related)
+                        flash("Erro de integridade ao registrar pagamento.", "error")
+                        return _safe_redirect("/financeiro/registrar-pagamento")
                 except Exception:
                     pass
 
@@ -701,8 +954,79 @@ def registrar_pagamento() -> Union[str, Response, Tuple[str, int]]:
                     except Exception:
                         pass
 
-                # Link payment to session and set session status to 'paid'
-                if sessao_id:
+                # Phase 4: Automatic Sessao creation for payments with google_event_id (Option A)
+                # Rule: If google_event_id present, create Sessao automatically (Agenda OR Financeiro)
+                if google_event_id and google_event_id.strip():
+                    # Check if Sessao already exists for this event (edge case: partial legacy flow)
+                    existing_sessao = (
+                        db.query(Sessao)
+                        .filter(Sessao.google_event_id == google_event_id)
+                        .first()
+                    )
+
+                    if existing_sessao:
+                        # Link to existing session
+                        pagamento.sessao_id = existing_sessao.id
+                        existing_sessao.payment_id = pagamento.id
+                        cast(Any, existing_sessao).status = "paid"
+                        logger.info(
+                            "Phase 4: Linked payment to existing sessao: payment_id=%s sessao_id=%s google_event_id=%s",
+                            pagamento.id,
+                            existing_sessao.id,
+                            google_event_id,
+                        )
+                    else:
+                        # Create new Sessao with matching payment data
+                        new_sessao = Sessao(
+                            data=data,
+                            valor=valor_decimal,
+                            cliente_id=final_cliente_id,  # Use resolved cliente_id
+                            artista_id=artista_id_normalized,
+                            observacoes=observacoes,
+                            google_event_id=google_event_id,
+                            status="paid",  # Automatically set to paid
+                            payment_id=pagamento.id,  # Bidirectional link
+                        )
+                        db.add(new_sessao)
+                        db.flush()  # Get sessao.id
+
+                        # Set bidirectional link
+                        pagamento.sessao_id = new_sessao.id
+
+                        logger.info(
+                            "Phase 4: Auto-created sessao for payment: payment_id=%s sessao_id=%s google_event_id=%s",
+                            pagamento.id,
+                            new_sessao.id,
+                            google_event_id,
+                        )
+
+                        # Log to migration_audit for Phase 4 tracking
+                        try:
+                            from app.db.base import MigrationAudit
+
+                            audit_entry = MigrationAudit(
+                                entity_type="sessao_unified_creation",
+                                entity_id=new_sessao.id,
+                                action="auto_created_with_payment",
+                                status="success",
+                                details={
+                                    "payment_id": pagamento.id,
+                                    "google_event_id": google_event_id,
+                                    "valor": str(valor_decimal),
+                                    "client_id": cliente_id,
+                                    "artist_id": artista_id_normalized,
+                                    "phase": "4",
+                                },
+                            )
+                            db.add(audit_entry)
+                        except Exception as audit_err:
+                            logger.warning(
+                                "Phase 4 audit logging failed: %s", audit_err
+                            )
+                            # Don't fail payment creation if audit logging fails
+
+                # Legacy flow: Link payment to existing session (backward compatibility)
+                elif sessao_id:
                     sessao = (
                         db.query(Sessao)
                         .filter(
@@ -750,6 +1074,42 @@ def registrar_pagamento() -> Union[str, Response, Tuple[str, int]]:
                     sessao_id,
                     valor,
                 )
+
+                # Phase 3: Enhanced monitoring for canary rollout
+                if google_event_id:
+                    try:
+                        from app.db.base import MigrationAudit
+
+                        monitoring_entry = MigrationAudit(
+                            entity_type="pagamento_canary_monitoring",
+                            entity_id=pagamento.id,
+                            action="payment_created",
+                            status="success",
+                            details={
+                                "user_id": getattr(current_user, "id", None),
+                                "google_event_id": google_event_id,
+                                "valor": str(valor_decimal),
+                                "payment_id": pagamento.id,
+                                "sessao_id": sessao_id,
+                                "comissao_percent": (
+                                    str(com_percent) if com_percent else None
+                                ),
+                                "unified_flow_active": getattr(
+                                    current_user, "unified_flow_enabled", False
+                                ),
+                            },
+                        )
+                        db.add(monitoring_entry)
+                        db.commit()
+                        logger.debug(
+                            "Phase 3 monitoring logged: pagamento_id=%s google_event_id=%s",
+                            pagamento.id,
+                            google_event_id,
+                        )
+                    except Exception as monitor_err:
+                        logger.warning("Phase 3 monitoring log failed: %s", monitor_err)
+                        # Don't fail payment creation if monitoring fails
+
             except Exception:
                 logger.info("Pagamento registrado com sucesso (ids may be missing)")
 

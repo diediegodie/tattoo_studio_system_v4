@@ -1,8 +1,13 @@
 """
 Integration tests for Sessoes Controller with Google Calendar integration.
 
-These tests validate core session flows around Google Calendar integration.
-They use the project's `db_session` fixture for transactional isolation.
+**PHASE 4 DEPRECATION NOTICE:**
+These tests are OBSOLETE as of Phase 4 (2025-11-25).
+The Sessões UI (templates + routes) has been removed. Session creation is now automatic
+when payments include google_event_id.
+
+Tests are skipped to avoid false failures. Preserved for reference and potential rollback.
+For current unified flow tests, see: test_phase4_unified_sessao_creation.py
 """
 
 import uuid
@@ -14,6 +19,7 @@ import pytest
 from app.db.base import Client, Sessao, User
 
 
+@pytest.mark.skip(reason="Phase 4: Sessões UI removed, routes no longer accessible")
 @pytest.mark.postgres
 @pytest.mark.integration
 class TestSessoesControllerGoogleIntegration:

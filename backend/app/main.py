@@ -870,9 +870,19 @@ def create_app():  # noqa: C901
     from app.db.base import User
 
     # Apply database migrations (idempotent, safe to run on every startup)
-    from app.db.migrations import ensure_migration_001_applied
+    from app.db.migrations import (
+        ensure_migration_001_applied,
+        ensure_migration_002_applied,
+        ensure_migration_003_applied,
+        ensure_migration_004_backfill_google_event_id,
+        ensure_migration_005_unified_flow_flag,
+    )
 
     ensure_migration_001_applied()
+    ensure_migration_002_applied()  # Phase 1: Create migration_audit table
+    ensure_migration_003_applied()  # Phase 1: Add google_event_id to pagamentos
+    ensure_migration_004_backfill_google_event_id()  # Phase 1: Backfill google_event_id
+    ensure_migration_005_unified_flow_flag()  # Phase 3: Add per-user unified flow flag
 
     # Ensure service account user exists for GitHub Actions automation
     from app.db.seed import ensure_service_account_user

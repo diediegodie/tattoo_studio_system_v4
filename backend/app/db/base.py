@@ -64,6 +64,10 @@ class User(Base):
     )  # 'client', 'artist', 'admin'
     # Explicit active flag to support Flask-Login semantics and tests
     active_flag: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # Phase 3: Per-user unified flow flag for canary rollout (defaults False for backward compat)
+    unified_flow_enabled: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
 
     @property
     def is_active(self) -> bool:
@@ -267,6 +271,9 @@ class Pagamento(Base):
     sessao_id: Mapped[Optional[int]] = mapped_column(
         Integer, ForeignKey("sessoes.id"), nullable=True, index=True
     )
+    google_event_id: Mapped[Optional[str]] = mapped_column(
+        String(100), nullable=True, unique=True, index=True
+    )  # Link to Google Calendar event for duplicate prevention (Phase 1: Sessions Removal)
     created_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -484,3 +491,40 @@ class ExtratoSnapshot(Base):
 
     def __repr__(self):
         return f"<ExtratoSnapshot(id={self.id}, snapshot_id={self.snapshot_id}, mes={self.mes}, ano={self.ano})>"
+
+
+class MigrationAudit(Base):
+    """Audit trail for database migrations and refactoring operations.
+
+    Purpose: Track migration actions during sessions/payments unification refactoring.
+    Retention: 90 days post-stable deployment (or per compliance requirements).
+    Privacy: Contains ONLY IDs and technical metadata - NO PII.
+    """
+
+    __tablename__ = "migration_audit"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    entity_type: Mapped[str] = mapped_column(
+        String(50), nullable=False, index=True
+    )  # e.g., 'sessao_to_pagamento', 'unified_creation'
+    entity_id: Mapped[Optional[int]] = mapped_column(
+        Integer, nullable=True
+    )  # Original sessao_id or pagamento_id
+    action: Mapped[str] = mapped_column(
+        String(50), nullable=False
+    )  # e.g., 'backfill', 'create', 'link', 'collision'
+    status: Mapped[str] = mapped_column(
+        String(20), nullable=False
+    )  # e.g., 'success', 'skipped', 'collision', 'error'
+    details: Mapped[Optional[Any]] = mapped_column(
+        get_json_type(), nullable=True
+    )  # IDs only, counts, collision notes - NO PII
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), index=True
+    )
+
+    def __repr__(self):
+        return (
+            f"<MigrationAudit(id={self.id}, entity_type={self.entity_type}, "
+            f"action={self.action}, status={self.status})>"
+        )

@@ -411,18 +411,34 @@ def calendar_page():
     """
     Renders the main calendar page.
 
+    Phase 2 Note: This controller now checks UNIFIED_SESSION_PAYMENT_FLOW flag
+    to prepare conditional routing logic (but flag remains OFF in Phase 2).
+
     Returns:
         Rendered HTML template with calendar events
     """
     try:
+        # Phase 2: Check feature flag for unified flow (defaults to OFF)
+        # Phase 3: Also check per-user flag for canary rollout
+        import os
+
+        global_unified_flow = os.getenv(
+            "UNIFIED_SESSION_PAYMENT_FLOW", "false"
+        ).lower() in ("true", "1", "yes")
+
+        # Phase 3: Check per-user flag (enable if global flag OR user flag is ON)
+        user_unified_flow = getattr(current_user, "unified_flow_enabled", False)
+        unified_flow_enabled = global_unified_flow or user_unified_flow
+
         calendar_service = _get_calendar_service()
 
         # Check if user is authorized
         is_authorized = calendar_service.is_user_authorized(str(current_user.id))
 
         events = []
-        # Keep track of which events already have a session
+        # Keep track of which events already have a session OR payment (Phase 2)
         events_with_sessions = set()
+        events_with_payments = set()
 
         if is_authorized:
             try:
@@ -437,10 +453,9 @@ def calendar_page():
                     key=lambda x: x.start_time if x.start_time else datetime.min
                 )
 
-                # Check which events already have a corresponding session
+                # Check which events already have a corresponding session or payment
                 if events:
-                    # Get a list of all Google event IDs that have already been converted to sessions
-                    from app.db.base import Sessao
+                    from app.db.base import Sessao, Pagamento
                     from app.db.session import SessionLocal
 
                     db = SessionLocal()
@@ -457,8 +472,65 @@ def calendar_page():
                         for event in events:
                             if event.google_event_id in existing_event_ids:
                                 events_with_sessions.add(event.google_event_id)
+
+                        # Payments: always check existing payments and compute per-event is_paid flag
+                        existing_payment_event_ids = {
+                            row[0]
+                            for row in db.query(Pagamento.google_event_id)
+                            .filter(Pagamento.google_event_id.isnot(None))
+                            .all()
+                        }
+
+                        for event in events:
+                            # Explicit is_paid flag used by template for button state
+                            try:
+                                event.is_paid = (
+                                    event.google_event_id in existing_payment_event_ids
+                                )
+                            except Exception:
+                                # Be defensive in case event is a simple dict-like
+                                setattr(
+                                    event,
+                                    "is_paid",
+                                    getattr(event, "google_event_id", None)
+                                    in existing_payment_event_ids,
+                                )
+
+                            if event.is_paid and event.google_event_id:
+                                events_with_payments.add(event.google_event_id)
+
                     finally:
                         db.close()
+
+                # UI Corrections: Filter events with 6-hour persistence buffer
+                # Keep events visible if: paid OR (unpaid AND end_time within 6h)
+                from datetime import timezone
+
+                now_utc = datetime.now(timezone.utc)
+                buffer_time = now_utc - timedelta(hours=6)
+
+                filtered_events = []
+                for event in events:
+                    # Keep if payment exists
+                    if event.google_event_id in events_with_payments:
+                        filtered_events.append(event)
+                        continue
+
+                    # Keep if end_time is recent (within 6h buffer) or future
+                    if event.end_time:
+                        # Ensure timezone-aware comparison
+                        event_end = event.end_time
+                        if event_end.tzinfo is None:
+                            # Assume UTC if naive
+                            event_end = event_end.replace(tzinfo=timezone.utc)
+
+                        if event_end >= buffer_time:
+                            filtered_events.append(event)
+                    else:
+                        # Keep events without end_time (safety)
+                        filtered_events.append(event)
+
+                events = filtered_events
 
             except Exception as e:
                 logger.error(f"Error fetching events for page: {str(e)}")
@@ -469,6 +541,8 @@ def calendar_page():
             events=events,
             calendar_connected=is_authorized,
             events_with_sessions=events_with_sessions,
+            events_with_payments=events_with_payments,
+            unified_flow_enabled=unified_flow_enabled,  # Phase 2/3: Pass combined flag to template
         )
 
     except Exception as e:

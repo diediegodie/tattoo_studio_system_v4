@@ -28,6 +28,7 @@ class User:
     google_id: Optional[str] = None
     role: str = "client"  # 'client', 'artist', 'admin'
     is_active: bool = True
+    unified_flow_enabled: bool = False  # Phase 3: Per-user canary flag (defaults OFF)
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
@@ -109,6 +110,7 @@ class CalendarEvent:
     created_by: str = ""
     google_event_id: Optional[str] = None
     user_id: Optional[int] = None
+    is_paid: bool = False
 
     def __post_init__(self):
         """Validate business rules."""

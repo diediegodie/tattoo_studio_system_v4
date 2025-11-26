@@ -137,6 +137,18 @@ def api_update_sessao(sessao_id: int):
                     False, "Erro ao processar nome do cliente", None, 400
                 )
 
+        # Resolve cliente_id (handles both DB IDs and JotForm submission IDs)
+        if "cliente_id" in payload and payload["cliente_id"]:
+            from app.controllers.sessoes_helpers import resolve_cliente_id
+
+            resolved_cliente_id = resolve_cliente_id(db, payload["cliente_id"])
+            if resolved_cliente_id:
+                payload["cliente_id"] = resolved_cliente_id
+            else:
+                return api_response(
+                    False, "Cliente inválido ou não encontrado", None, 400
+                )
+
         # Server-side validation: ensure required fields are present
         required_fields = ["data", "cliente_id", "artista_id", "valor"]
         for field in required_fields:
@@ -157,7 +169,9 @@ def api_update_sessao(sessao_id: int):
                     else payload["data"]
                 )
             if "cliente_id" in payload and payload["cliente_id"]:
-                s.cliente_id = int(payload["cliente_id"])
+                s.cliente_id = int(
+                    payload["cliente_id"]
+                )  # Now safe to convert, already resolved
             if "artista_id" in payload and payload["artista_id"]:
                 s.artista_id = int(payload["artista_id"])
             if "valor" in payload and payload["valor"] is not None:

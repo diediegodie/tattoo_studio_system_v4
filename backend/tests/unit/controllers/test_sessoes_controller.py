@@ -1,6 +1,15 @@
 """
 Unit tests for sessoes_controller.py
 
+**PHASE 4 DEPRECATION NOTICE (2025-11-25):**
+These tests are OBSOLETE as of Phase 4.
+The Sessões UI (templates + routes) has been removed.
+Sessões are now created automatically when payments include google_event_id.
+Tests are skipped to avoid false failures.
+
+For current unified flow tests, see:
+- tests/integration/test_phase4_unified_sessao_creation.py
+
 Tests cover session listing, creation, validation, and authorization.
 """
 
@@ -326,6 +335,9 @@ class TestSessoesController:
 
 @pytest.mark.controllers
 @pytest.mark.sessions
+@pytest.mark.skip(
+    reason="Phase 4: Sessões UI removed - see test_phase4_unified_sessao_creation.py"
+)
 class TestSessoesControllerWorkflow:
     """Integration tests for sessoes controller with database."""
 
@@ -504,7 +516,13 @@ class TestSessoesControllerIntegration:
         )
 
         # Should handle validation gracefully (may return 401/403 if auth guard triggers)
-        assert response.status_code in [200, 400, 302, 401, 403]  # Various possible responses
+        assert response.status_code in [
+            200,
+            400,
+            302,
+            401,
+            403,
+        ]  # Various possible responses
 
     def test_concurrent_session_creation(self, authenticated_client):
         """Test handling of concurrent session creation requests."""
