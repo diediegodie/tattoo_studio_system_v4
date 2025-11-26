@@ -5,6 +5,7 @@ Test suite for batch processing functionality in atomic extrato generation.
 
 import json
 import os
+
 # Add backend to path for testing
 import sys
 from datetime import datetime
@@ -16,11 +17,13 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 from app.db.base import Comissao, Gasto, Pagamento, Sessao
-from app.services.extrato_atomic import \
-    generate_extrato_with_atomic_transaction
-from app.services.extrato_batch import (calculate_totals_batch, get_batch_size,
-                                        process_records_in_batches,
-                                        serialize_data_batch)
+from app.services.extrato_atomic import generate_extrato_with_atomic_transaction
+from app.services.extrato_batch import (
+    calculate_totals_batch,
+    get_batch_size,
+    process_records_in_batches,
+    serialize_data_batch,
+)
 
 
 class TestBatchProcessing:

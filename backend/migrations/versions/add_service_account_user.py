@@ -11,14 +11,16 @@ from alembic import op
 import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
-revision = '999addserviceaccount'
+revision = "999addserviceaccount"
 down_revision = None
 branch_labels = None
 depends_on = None
 
+
 def upgrade():
     # Insert or update the service account user (id=999)
-    op.execute("""
+    op.execute(
+        """
     INSERT INTO users (id, email, name, role, active_flag, password_hash)
     VALUES (
         999,
@@ -36,7 +38,9 @@ def upgrade():
         active_flag = TRUE,
         password_hash = '!'
     ;
-    """)
+    """
+    )
+
 
 def downgrade():
     # Remove the service account user (id=999) for reversibility

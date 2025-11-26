@@ -10,6 +10,7 @@ This module tests user creation operations with comprehensive coverage:
 from unittest.mock import Mock, patch
 
 import pytest
+
 # Test configuration and imports
 from tests.config.test_paths import ensure_domain_imports
 

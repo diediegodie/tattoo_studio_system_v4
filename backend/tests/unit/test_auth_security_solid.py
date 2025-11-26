@@ -8,6 +8,7 @@ aren't available in the test environment, tests will skip gracefully.
 from unittest.mock import Mock
 
 import pytest
+
 # Ensure test path setup runs (adds backend and app directories to sys.path)
 from tests.config.test_paths import ensure_domain_imports
 

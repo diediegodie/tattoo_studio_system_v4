@@ -15,12 +15,21 @@ setup_test_imports()
 
 try:
     from domain.entities import Appointment, Client, InventoryItem, User
-    from domain.interfaces import (IAppointmentReader, IAppointmentRepository,
-                                   IAppointmentWriter, IClientReader,
-                                   IClientRepository, IClientWriter,
-                                   IInventoryReader, IInventoryRepository,
-                                   IInventoryWriter, IJotFormService,
-                                   IUserReader, IUserRepository, IUserWriter)
+    from domain.interfaces import (
+        IAppointmentReader,
+        IAppointmentRepository,
+        IAppointmentWriter,
+        IClientReader,
+        IClientRepository,
+        IClientWriter,
+        IInventoryReader,
+        IInventoryRepository,
+        IInventoryWriter,
+        IJotFormService,
+        IUserReader,
+        IUserRepository,
+        IUserWriter,
+    )
 
     IMPORTS_AVAILABLE = True
 except ImportError as e:

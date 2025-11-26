@@ -64,7 +64,8 @@ def bypass_login_required():
     with patch("controllers.inventory_controller.login_required", lambda f: f), patch(
         "controllers.inventory_controller.require_session_authorization", lambda f: f
     ), patch("app.controllers.inventory_controller.login_required", lambda f: f), patch(
-        "app.controllers.inventory_controller.require_session_authorization", lambda f: f
+        "app.controllers.inventory_controller.require_session_authorization",
+        lambda f: f,
     ):
         yield
 

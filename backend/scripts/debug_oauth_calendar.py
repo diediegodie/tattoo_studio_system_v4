@@ -26,9 +26,10 @@ def test_oauth_token_retrieval():
     oauth_service = OAuthTokenService()
 
     # Test retrieving token for user 13 who has Google OAuth
-    [REDACTED_ACCESS_TOKEN]"13")
+    access_token = oauth_service.get_access_token("13")
 
-    if [REDACTED_ACCESS_TOKEN]
+    if access_token:
+        logger.info(
             "OAuth access token available",
             extra={
                 "context": {

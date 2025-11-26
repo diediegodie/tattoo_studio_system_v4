@@ -59,6 +59,7 @@ def logged_in_authorized_client(client, authorized_user):
     with client:
         # Use Flask-Login's test mode to log in user
         from flask_login import login_user
+
         with client.application.test_request_context():
             login_user(authorized_user)
         yield client
@@ -69,6 +70,7 @@ def logged_in_unauthorized_client(client, unauthorized_user):
     """Client with unauthorized user logged in via Flask-Login."""
     with client:
         from flask_login import login_user
+
         with client.application.test_request_context():
             login_user(unauthorized_user)
         yield client
@@ -86,7 +88,7 @@ class TestOAuthAuthorization:
         mock_blueprint = MagicMock()
         mock_blueprint.name = "google_login"
         mock_session = MagicMock()
-        
+
         # Mock the Google API response with unauthorized email
         mock_response = MagicMock()
         mock_response.ok = True
@@ -102,22 +104,20 @@ class TestOAuthAuthorization:
         with client.application.test_request_context():
             from app.auth.google_login import create_google_login_blueprint
             from flask_dance.consumer import oauth_authorized
-            
+
             # The callback should reject unauthorized email
             # In real scenario, this would happen during OAuth flow
             # Here we test the authorization check logic
             from app.core.config import is_email_authorized
-            
+
             assert not is_email_authorized("hacker@evil.com")
             assert is_email_authorized("authorized@example.com")
 
-    @patch.dict(
-        "os.environ", {"AUTHORIZED_EMAILS": "authorized@example.com"}
-    )
+    @patch.dict("os.environ", {"AUTHORIZED_EMAILS": "authorized@example.com"})
     def test_oauth_callback_with_authorized_email(self, client):
         """Test that OAuth callback accepts authorized email."""
         from app.core.config import is_email_authorized
-        
+
         assert is_email_authorized("authorized@example.com")
         assert is_email_authorized("AUTHORIZED@EXAMPLE.COM")  # Case insensitive
         assert not is_email_authorized("other@example.com")
@@ -126,13 +126,11 @@ class TestOAuthAuthorization:
 class TestAPIAuthorization:
     """Test API endpoint authorization checks."""
 
-    @patch.dict(
-        "os.environ", {"AUTHORIZED_EMAILS": "authorized@example.com"}
-    )
+    @patch.dict("os.environ", {"AUTHORIZED_EMAILS": "authorized@example.com"})
     def test_inventory_create_without_token_returns_401(self, client):
         """Test that inventory creation without session/login returns 401.
-        
-        Note: Inventory routes now use @require_session_authorization 
+
+        Note: Inventory routes now use @require_session_authorization
         which requires Flask-Login session, not JWT tokens.
         """
         response = client.post(
@@ -142,11 +140,9 @@ class TestAPIAuthorization:
         assert response.status_code == 401
         data = response.get_json()
         assert "error" in data
-        assert ("Authentication" in data["error"] or "Authorization" in data["error"])
+        assert "Authentication" in data["error"] or "Authorization" in data["error"]
 
-    @patch.dict(
-        "os.environ", {"AUTHORIZED_EMAILS": "authorized@example.com"}
-    )
+    @patch.dict("os.environ", {"AUTHORIZED_EMAILS": "authorized@example.com"})
     def test_inventory_create_with_invalid_token_returns_401(self, client):
         """Test that inventory creation with invalid token returns 401."""
         response = client.post(
@@ -158,10 +154,10 @@ class TestAPIAuthorization:
         data = response.get_json()
         assert "error" in data
 
-    @pytest.mark.skip(reason="Inventory routes use @require_session_authorization (Flask-Login), not JWT. Use browser-based integration tests instead.")
-    @patch.dict(
-        "os.environ", {"AUTHORIZED_EMAILS": "authorized@example.com"}
+    @pytest.mark.skip(
+        reason="Inventory routes use @require_session_authorization (Flask-Login), not JWT. Use browser-based integration tests instead."
     )
+    @patch.dict("os.environ", {"AUTHORIZED_EMAILS": "authorized@example.com"})
     def test_inventory_create_with_unauthorized_email_returns_403(
         self, client, unauthorized_token
     ):
@@ -176,10 +172,10 @@ class TestAPIAuthorization:
         assert "error" in data
         assert "not authorized" in data["error"].lower()
 
-    @pytest.mark.skip(reason="Inventory routes use @require_session_authorization (Flask-Login), not JWT. Use browser-based integration tests instead.")
-    @patch.dict(
-        "os.environ", {"AUTHORIZED_EMAILS": "authorized@example.com"}
+    @pytest.mark.skip(
+        reason="Inventory routes use @require_session_authorization (Flask-Login), not JWT. Use browser-based integration tests instead."
     )
+    @patch.dict("os.environ", {"AUTHORIZED_EMAILS": "authorized@example.com"})
     def test_inventory_create_with_authorized_email_succeeds(
         self, client, authorized_token
     ):
@@ -192,9 +188,7 @@ class TestAPIAuthorization:
         # Should succeed (200 or 201) - actual implementation may vary
         assert response.status_code in [200, 201]
 
-    @patch.dict(
-        "os.environ", {"AUTHORIZED_EMAILS": "authorized@example.com"}
-    )
+    @patch.dict("os.environ", {"AUTHORIZED_EMAILS": "authorized@example.com"})
     def test_gastos_create_without_authorization_returns_401(self, client):
         """Test that gastos creation without token returns 401."""
         response = client.post(
@@ -208,10 +202,10 @@ class TestAPIAuthorization:
         )
         assert response.status_code == 401
 
-    @pytest.mark.skip(reason="Gastos routes use @require_session_authorization (Flask-Login), not JWT. Use browser-based integration tests instead.")
-    @patch.dict(
-        "os.environ", {"AUTHORIZED_EMAILS": "authorized@example.com"}
+    @pytest.mark.skip(
+        reason="Gastos routes use @require_session_authorization (Flask-Login), not JWT. Use browser-based integration tests instead."
     )
+    @patch.dict("os.environ", {"AUTHORIZED_EMAILS": "authorized@example.com"})
     def test_gastos_create_with_unauthorized_email_returns_403(
         self, client, unauthorized_token
     ):
@@ -228,9 +222,7 @@ class TestAPIAuthorization:
         )
         assert response.status_code == 403
 
-    @patch.dict(
-        "os.environ", {"AUTHORIZED_EMAILS": "authorized@example.com"}
-    )
+    @patch.dict("os.environ", {"AUTHORIZED_EMAILS": "authorized@example.com"})
     def test_sessoes_update_without_authorization_returns_401(self, client):
         """Test that session update without token returns 401."""
         response = client.put(
@@ -244,10 +236,10 @@ class TestAPIAuthorization:
         )
         assert response.status_code == 401
 
-    @pytest.mark.skip(reason="Sessoes API routes use @require_session_authorization (Flask-Login), not JWT. Use browser-based integration tests instead.")
-    @patch.dict(
-        "os.environ", {"AUTHORIZED_EMAILS": "authorized@example.com"}
+    @pytest.mark.skip(
+        reason="Sessoes API routes use @require_session_authorization (Flask-Login), not JWT. Use browser-based integration tests instead."
     )
+    @patch.dict("os.environ", {"AUTHORIZED_EMAILS": "authorized@example.com"})
     def test_sessoes_delete_with_unauthorized_email_returns_403(
         self, client, unauthorized_token
     ):
@@ -258,10 +250,10 @@ class TestAPIAuthorization:
         )
         assert response.status_code == 403
 
-    @pytest.mark.skip(reason="Inventory routes use @require_session_authorization (Flask-Login), not JWT. Use browser-based integration tests instead.")
-    @patch.dict(
-        "os.environ", {"AUTHORIZED_EMAILS": ""}
+    @pytest.mark.skip(
+        reason="Inventory routes use @require_session_authorization (Flask-Login), not JWT. Use browser-based integration tests instead."
     )
+    @patch.dict("os.environ", {"AUTHORIZED_EMAILS": ""})
     def test_empty_authorized_emails_rejects_all_users(self, client, authorized_token):
         """Test that empty AUTHORIZED_EMAILS env var rejects all users."""
         response = client.post(
@@ -277,12 +269,13 @@ class TestAuthorizationHelpers:
     """Test authorization helper functions."""
 
     @patch.dict(
-        "os.environ", {"AUTHORIZED_EMAILS": "user1@example.com,user2@example.com,admin@company.com"}
+        "os.environ",
+        {"AUTHORIZED_EMAILS": "user1@example.com,user2@example.com,admin@company.com"},
     )
     def test_get_authorized_emails_parses_correctly(self):
         """Test that authorized emails are parsed correctly from env var."""
         from app.core.config import get_authorized_emails
-        
+
         emails = get_authorized_emails()
         assert len(emails) == 3
         assert "user1@example.com" in emails
@@ -290,34 +283,31 @@ class TestAuthorizationHelpers:
         assert "admin@company.com" in emails
 
     @patch.dict(
-        "os.environ", {"AUTHORIZED_EMAILS": "USER@EXAMPLE.COM, admin@example.com , test@test.com"}
+        "os.environ",
+        {"AUTHORIZED_EMAILS": "USER@EXAMPLE.COM, admin@example.com , test@test.com"},
     )
     def test_get_authorized_emails_normalizes_case_and_whitespace(self):
         """Test that emails are normalized (lowercased, trimmed)."""
         from app.core.config import get_authorized_emails
-        
+
         emails = get_authorized_emails()
         assert "user@example.com" in emails  # Lowercased
         assert "admin@example.com" in emails  # Trimmed
         assert "test@test.com" in emails
 
-    @patch.dict(
-        "os.environ", {"AUTHORIZED_EMAILS": ""}
-    )
+    @patch.dict("os.environ", {"AUTHORIZED_EMAILS": ""})
     def test_is_email_authorized_returns_false_for_empty_config(self):
         """Test that empty config rejects all emails."""
         from app.core.config import is_email_authorized
-        
+
         assert not is_email_authorized("any@example.com")
         assert not is_email_authorized("admin@example.com")
 
-    @patch.dict(
-        "os.environ", {"AUTHORIZED_EMAILS": "admin@example.com"}
-    )
+    @patch.dict("os.environ", {"AUTHORIZED_EMAILS": "admin@example.com"})
     def test_is_email_authorized_case_insensitive(self):
         """Test that email check is case-insensitive."""
         from app.core.config import is_email_authorized
-        
+
         assert is_email_authorized("admin@example.com")
         assert is_email_authorized("ADMIN@EXAMPLE.COM")
         assert is_email_authorized("Admin@Example.Com")

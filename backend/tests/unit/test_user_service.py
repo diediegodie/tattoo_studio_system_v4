@@ -13,6 +13,7 @@ from typing import Dict, Optional
 from unittest.mock import Mock, patch
 
 import pytest
+
 # Test configuration and imports
 from tests.config.test_paths import ensure_domain_imports
 
@@ -46,6 +47,7 @@ def service(mock_repo) -> Optional["UserService"]:
 
 from .test_user_service_artist import *
 from .test_user_service_auth import *
+
 # Import from split modules
 from .test_user_service_google_oauth import *
 from .test_user_service_management import *

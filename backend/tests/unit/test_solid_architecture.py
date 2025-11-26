@@ -12,6 +12,7 @@ from typing import Any, cast
 from unittest.mock import Mock, patch
 
 import pytest
+
 # Import the new architecture components
 from app.domain.entities import User as DomainUser
 from app.domain.interfaces import IUserRepository

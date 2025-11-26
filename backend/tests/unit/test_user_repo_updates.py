@@ -11,6 +11,7 @@ This module tests user update operations with comprehensive coverage:
 from unittest.mock import Mock
 
 import pytest
+
 # Test configuration and imports
 from tests.config.test_paths import ensure_domain_imports
 

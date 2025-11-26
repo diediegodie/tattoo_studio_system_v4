@@ -23,17 +23,17 @@ from typing import Optional
 
 def apply_migration():
     """Apply the migration to make jotform_submission_id nullable."""
-    
+
     # Get database URL from command line, env, or fallback to SQLite
     if len(sys.argv) > 1:
         database_url = sys.argv[1]
     else:
-        database_url = os.getenv('DATABASE_URL')
+        database_url = os.getenv("DATABASE_URL")
         if not database_url:
             # Fallback to local SQLite
             project_root = Path(__file__).parent.parent.parent
-            sqlite_path = project_root / 'tattoo_studio_dev.db'
-            database_url = f'sqlite:///{sqlite_path}'
+            sqlite_path = project_root / "tattoo_studio_dev.db"
+            database_url = f"sqlite:///{sqlite_path}"
 
     # Extract path for SQLite
     if database_url.startswith("sqlite:///"):

@@ -4,6 +4,7 @@ Test suite for atomic historical records deletion functionality.
 """
 
 import logging
+
 # Add backend to path for testing
 import sys
 from datetime import datetime

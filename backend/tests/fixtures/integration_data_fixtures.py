@@ -8,6 +8,7 @@ of the tattoo studio system.
 from datetime import datetime, timezone
 
 import pytest
+
 # Set up test environment paths
 from tests.config.test_paths import setup_test_environment
 

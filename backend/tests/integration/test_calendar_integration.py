@@ -136,8 +136,7 @@ def test_with_mock_token():
     print("=" * 50)
 
     try:
-        from app.repositories.google_calendar_repo import \
-            GoogleCalendarRepository
+        from app.repositories.google_calendar_repo import GoogleCalendarRepository
 
         # Test repository without real API calls
         repo = GoogleCalendarRepository()

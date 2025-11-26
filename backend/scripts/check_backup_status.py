@@ -32,6 +32,7 @@ from app.core.config import EXTRATO_REQUIRE_BACKUP
 
 from typing import Optional
 
+
 def check_backup(month: Optional[int] = None, year: Optional[int] = None):
     """Check if backup exists for specified month/year."""
 

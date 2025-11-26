@@ -190,7 +190,11 @@ class EventPrefillService:
                 else:
                     prefill_data["artista_id"] = int(artist_id)
             except (ValueError, TypeError):
-                logger.warning("Invalid artist_id provided: %s (type: %s)", artist_id, type(artist_id))
+                logger.warning(
+                    "Invalid artist_id provided: %s (type: %s)",
+                    artist_id,
+                    type(artist_id),
+                )
 
         # 6. Observacoes (use description or title as fallback)
         observacoes_text = description or title or ""

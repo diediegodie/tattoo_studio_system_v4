@@ -23,9 +23,12 @@ def mock_authorized_emails():
     """Mock AUTHORIZED_EMAILS for OAuth integration tests."""
     with patch.dict(
         "os.environ",
-        {"AUTHORIZED_EMAILS": "integration@example.com,loginonly@example.com,calendar@test.com,admin@test.com"},
+        {
+            "AUTHORIZED_EMAILS": "integration@example.com,loginonly@example.com,calendar@test.com,admin@test.com"
+        },
     ):
         import app.core.config
+
         app.core.config.AUTHORIZED_EMAILS = app.core.config.get_authorized_emails()
         yield
         app.core.config.AUTHORIZED_EMAILS = set()

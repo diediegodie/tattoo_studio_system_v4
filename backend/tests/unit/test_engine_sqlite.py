@@ -11,10 +11,12 @@ def test_engine_uses_sqlite_in_memory():
     assert os.environ.get("TESTING") == "true"
 
     from backend.app.db.session import get_engine  # Imported after TESTING flag
+
     engine = get_engine()
 
     # Dialect must be sqlite (file-based or memory). We do not require in-memory.
     assert engine.dialect.name == "sqlite"
     # Provide informational assertion: pool should not be NullPool under tests
     from sqlalchemy.pool import QueuePool
+
     assert isinstance(engine.pool, QueuePool) or hasattr(engine.pool, "connect")

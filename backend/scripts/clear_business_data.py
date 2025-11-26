@@ -30,9 +30,7 @@ def clear_business_data():
     if os.path.exists("/.dockerenv") or os.getenv("DOCKER_RESET") == "1":
         # Docker environment - use PostgreSQL
         logger.info("Detected Docker environment, using PostgreSQL...")
-        db_url = os.getenv(
-            "DATABASE_URL", "[REDACTED_DATABASE_URL]"
-        )
+        db_url = os.getenv("DATABASE_URL", "[REDACTED_DATABASE_URL]")
         os.environ["DATABASE_URL"] = db_url
     else:
         # Local environment - use SQLite

@@ -34,9 +34,12 @@ except ImportError as exc:  # pragma: no cover - keep test discovery resilient
 @pytest.fixture(autouse=True)
 def mock_authorized_emails():
     """Mock AUTHORIZED_EMAILS to allow test users to pass authorization checks."""
-    with patch.dict("os.environ", {"AUTHORIZED_EMAILS": "test@example.com,admin@test.com"}):
+    with patch.dict(
+        "os.environ", {"AUTHORIZED_EMAILS": "test@example.com,admin@test.com"}
+    ):
         # Reload the config module to pick up the new env var
         import app.core.config
+
         app.core.config.AUTHORIZED_EMAILS = app.core.config.get_authorized_emails()
         yield
         # Reset after test

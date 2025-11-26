@@ -1,4 +1,5 @@
 import pytest
+
 # Ensure import paths are configured like other tests
 from tests.config import setup_test_imports
 

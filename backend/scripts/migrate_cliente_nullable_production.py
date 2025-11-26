@@ -141,7 +141,7 @@ class ProductionMigration:
             # Check if pagamentos table exists
             table_check = conn.execute(
                 text(
-            """
+                    """
                 SELECT EXISTS (
                     SELECT FROM information_schema.tables 
                     WHERE table_name = 'pagamentos'

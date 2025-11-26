@@ -29,9 +29,7 @@ class TestGoogleLoginBlueprint:
         ):
             import app.core.config
 
-            app.core.config.AUTHORIZED_EMAILS = (
-                app.core.config.get_authorized_emails()
-            )
+            app.core.config.AUTHORIZED_EMAILS = app.core.config.get_authorized_emails()
             yield
             app.core.config.AUTHORIZED_EMAILS = set()
 
