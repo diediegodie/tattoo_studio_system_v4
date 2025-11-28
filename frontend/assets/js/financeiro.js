@@ -547,7 +547,27 @@
     const comissaoEl = document.getElementById('comissao_percent');
     if (!form || !comissaoEl) return;
 
+    // Debounce and button disable state
+    let isSubmitting = false;
+    let lastSubmitTime = 0;
+    const DEBOUNCE_MS = 1500; // 1.5 second debounce
+
     form.addEventListener('submit', function (e) {
+      // Debounce check: prevent rapid successive submissions
+      const now = Date.now();
+      if (now - lastSubmitTime < DEBOUNCE_MS) {
+        e.preventDefault();
+        console.log('[financeiro] Submit debounced - too soon after last submission');
+        return;
+      }
+
+      // Already submitting check: prevent parallel submissions
+      if (isSubmitting) {
+        e.preventDefault();
+        console.log('[financeiro] Submit prevented - already submitting');
+        return;
+      }
+
       // clear previous error state
       try {
         comissaoEl.classList.remove('modal-error');
@@ -591,6 +611,27 @@
         return;
       }
       // 0 is allowed and means no commission will be created server-side
+
+      // All validations passed - disable submit button and set state
+      isSubmitting = true;
+      lastSubmitTime = now;
+
+      const submitBtn = form.querySelector('button[type="submit"]');
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Salvando...';
+        submitBtn.classList.add('loading');
+      }
+
+      // Re-enable button after timeout as fallback (in case server doesn't respond)
+      setTimeout(function() {
+        isSubmitting = false;
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Salvar';
+          submitBtn.classList.remove('loading');
+        }
+      }, 10000); // 10 second timeout
     });
   }
 

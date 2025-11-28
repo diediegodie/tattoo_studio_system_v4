@@ -181,7 +181,12 @@ def financeiro_home() -> str:
         base_query = _safe_options(
             raw_query, joinedload(Pagamento.cliente), joinedload(Pagamento.artista)
         )
-        query = _safe_order_by(base_query, Pagamento.data.desc())
+        query = _safe_order_by(
+            base_query,
+            Pagamento.data.desc(),
+            Pagamento.created_at.desc(),
+            Pagamento.id.desc(),
+        )
 
         # Apply pagination with safe fallbacks for mocked queries
         paginated_query = _safe_limit(
@@ -886,6 +891,72 @@ def registrar_pagamento() -> Union[str, Response, Tuple[str, int]]:
                         com_valor = (valor_decimal * com_percent) / Decimal("100")
 
                 # At this point: com_percent is Decimal >0 to create commission, or None to skip
+
+                # Duplicate prevention: check for existing payment with same composite key
+                # to prevent multiple submissions from creating duplicate records
+                existing_payment = (
+                    db.query(Pagamento)
+                    .filter(
+                        Pagamento.data == data,
+                        Pagamento.valor == valor_decimal,
+                        Pagamento.forma_pagamento == forma_pagamento,
+                        Pagamento.artista_id == artista_id_normalized,
+                        # cliente_id can be None, so handle comparison properly
+                        (
+                            (Pagamento.cliente_id == final_cliente_id)
+                            if final_cliente_id
+                            else (Pagamento.cliente_id.is_(None))
+                        ),
+                    )
+                    .order_by(Pagamento.created_at.desc())
+                    .first()
+                )
+
+                if existing_payment:
+                    # Found duplicate - log and return existing payment
+                    logger.info(
+                        "Duplicate payment detected: existing_payment_id=%s, "
+                        "data=%s, valor=%s, artista_id=%s, cliente_id=%s",
+                        existing_payment.id,
+                        data,
+                        valor_decimal,
+                        artista_id_normalized,
+                        final_cliente_id,
+                    )
+
+                    # Log to migration_audit for tracking
+                    try:
+                        from app.db.base import MigrationAudit
+
+                        audit_entry = MigrationAudit(
+                            entity_type="pagamento_duplicate_attempt",
+                            entity_id=existing_payment.id,
+                            action="duplicate_blocked",
+                            status="blocked",
+                            details={
+                                "attempted_valor": str(valor_decimal),
+                                "attempted_date": str(data),
+                                "user_id": current_user.id if current_user else None,
+                                "method": "composite_key",
+                            },
+                        )
+                        db.add(audit_entry)
+                        db.commit()
+                    except Exception as audit_err:
+                        logger.warning(
+                            "Failed to log duplicate attempt to migration_audit: %s",
+                            audit_err,
+                        )
+                        db.rollback()
+
+                    # Redirect to historico with highlight parameter
+                    flash("Este pagamento já foi registrado anteriormente.", "info")
+                    return redirect(
+                        url_for(
+                            "historico.historico_home",
+                            highlight_payment=existing_payment.id,
+                        )
+                    )
 
                 # Phase 2: Create payment with google_event_id (if provided)
                 pagamento = Pagamento(

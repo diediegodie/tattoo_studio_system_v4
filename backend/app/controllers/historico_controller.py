@@ -381,7 +381,11 @@ def historico_home():
                 joinedload(Pagamento.comissoes),
             )
             .filter(Pagamento.data >= start_date_date, Pagamento.data < end_date_date)
-            .order_by(Pagamento.data.desc())
+            .order_by(
+                Pagamento.data.desc(),
+                Pagamento.created_at.desc(),
+                Pagamento.id.desc(),
+            )
             .distinct()
         )
 
@@ -670,10 +674,10 @@ def historico_home():
                     f"HISTORICO_DEBUG: Session statuses (id, status): {session_statuses}"
                 )
                 logger.info(
-                    f"HISTORICO_DEBUG: Sessions filtered by status: paid-only for unlinked (plus sessions linked via payment)"
+                    "HISTORICO_DEBUG: Sessions filtered by status: paid-only for unlinked (plus sessions linked via payment)"
                 )
                 logger.info(
-                    f"HISTORICO_DEBUG: Commission artists: {commission_artists}"
+                    "HISTORICO_DEBUG: Commission artists: %s", commission_artists
                 )
                 logger.info(f"HISTORICO_DEBUG: Session artists: {session_artists}")
                 logger.info(f"HISTORICO_DEBUG: Payment artists: {payment_artists}")

@@ -35,7 +35,11 @@ def api_list_pagamentos():
         pagamentos = (
             db.query(Pagamento)
             .options(joinedload(Pagamento.cliente), joinedload(Pagamento.artista))
-            .order_by(Pagamento.data.desc())  # Most recent first
+            .order_by(
+                Pagamento.data.desc(),
+                Pagamento.created_at.desc(),
+                Pagamento.id.desc(),
+            )  # Most recent first (by date, then time, then ID)
             .all()
         )
 
