@@ -105,19 +105,28 @@ def test_log_json_format(log_dir):
 
 def test_flask_request_logging(client, log_dir):
     """Test that Flask requests are logged with timing."""
+    # If file logging is disabled, skip this test (console-only logging).
+    if os.getenv("LOG_TO_FILE", "1") != "1":
+        pytest.skip("File logging disabled by LOG_TO_FILE=0")
+
     main_log = log_dir / "tattoo_studio.log"
 
     # Record current file size
     initial_size = main_log.stat().st_size
 
     # Make a request
-    response = client.get("/")
+    _ = client.get("/")
 
-    # Give logging time to write
-    time.sleep(0.1)
+    # Poll for file growth to account for I/O buffering
+    final_size = initial_size
+    deadline = time.time() + 1.0  # up to 1s
+    while time.time() < deadline:
+        final_size = main_log.stat().st_size
+        if final_size > initial_size:
+            break
+        time.sleep(0.05)
 
     # Check that log file grew
-    final_size = main_log.stat().st_size
     assert final_size > initial_size, "Log file should grow after request"
 
     # Read new log entries
