@@ -134,6 +134,10 @@ class TestPaymentRegistrationWithOptionalClient:
                     # Mock queries for Client and other data
                     mock_query = Mock()
                     mock_db_session.query.return_value = mock_query
+                    # Mock the duplicate detection query chain: query().filter().order_by().first() -> None
+                    mock_query.filter.return_value.order_by.return_value.first.return_value = (
+                        None
+                    )
                     mock_query.order_by.return_value.all.return_value = []
                     mock_query.options.return_value.order_by.return_value.all.return_value = (
                         []
@@ -187,6 +191,10 @@ class TestPaymentRegistrationWithOptionalClient:
                     # Mock queries for Client and other data
                     mock_query = Mock()
                     mock_db_session.query.return_value = mock_query
+                    # Mock the duplicate detection query chain: query().filter().order_by().first() -> None
+                    mock_query.filter.return_value.order_by.return_value.first.return_value = (
+                        None
+                    )
                     mock_query.order_by.return_value.all.return_value = []
                     mock_query.options.return_value.order_by.return_value.all.return_value = (
                         []
