@@ -46,9 +46,9 @@ jobs:
       
       - name: Create .env file for CI
         run: |
-          echo "POSTGRES_USER=${{ secrets.POSTGRES_USER }}" >> .env
-          echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" >> .env
-          echo "POSTGRES_DB=${{ secrets.POSTGRES_DB }}" >> .env
+          echo "POSTGRES_USER=postgres" >> .env
+          echo "POSTGRES_PASSWORD=postgres" >> .env
+          echo "POSTGRES_DB=test_db" >> .env
           echo "FLASK_SECRET_KEY=${{ secrets.CI_FLASK_SECRET_KEY }}" >> .env
           echo "JWT_SECRET_KEY=${{ secrets.CI_JWT_SECRET_KEY }}" >> .env
           echo "JOTFORM_API_KEY=${{ secrets.CI_JOTFORM_API_KEY }}" >> .env
@@ -73,7 +73,7 @@ jobs:
           echo "Waiting for PostgreSQL (tattoo_studio_db) to be healthy..."
           timeout 90 bash -c 'until [ "$(docker inspect -f {{.State.Health.Status}} tattoo_studio_db)" = "healthy" ]; do sleep 2; done'
           echo "PostgreSQL is ready - verifying with pg_isready..."
-          docker compose exec -T db pg_isready -U ${{ secrets.POSTGRES_USER }} -d ${{ secrets.POSTGRES_DB }}
+          docker compose exec -T db pg_isready -U postgres -d test_db
           echo "Database connection verified"
       
       - name: Set up backups directory permissions
@@ -86,8 +86,8 @@ jobs:
       - name: Reset database for clean test run
         run: |
           echo "Resetting database to ensure clean state..."
-          docker compose exec -T db psql -U ${{ secrets.POSTGRES_USER }} -d postgres -c "DROP DATABASE IF EXISTS ${{ secrets.POSTGRES_DB }};"
-          docker compose exec -T db psql -U ${{ secrets.POSTGRES_USER }} -d postgres -c "CREATE DATABASE ${{ secrets.POSTGRES_DB }};"
+          docker compose exec -T db psql -U postgres -d postgres -c "DROP DATABASE IF EXISTS test_db;"
+          docker compose exec -T db psql -U postgres -d postgres -c "CREATE DATABASE test_db;"
           echo "Database reset complete"
       
       - name: Ensure logs directory exists
