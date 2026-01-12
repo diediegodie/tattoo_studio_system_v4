@@ -3,7 +3,7 @@ services:
   db:
     image: postgres:16
     container_name: tattoo_studio_db
-    restart: always
+    restart: "no"
     env_file:
       - .env
       - .env.example
@@ -32,7 +32,7 @@ services:
       dockerfile: ./backend/Dockerfile
       target: ${DOCKER_TARGET:-development}  # Use development by default, production for prod
     container_name: tattoo_studio_app
-    restart: always
+    restart: "no"
     env_file:
       - .env
     environment:
@@ -78,7 +78,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: tattoo_studio_redis
-    restart: always
+    restart: "no"
     expose:
       - "6379"
     networks:
