@@ -63,7 +63,7 @@ jobs:
             --max-time 60 \
             --retry 2 \
             --retry-delay 5 \
-            https://almanegra.onrender.com/api/health)
+            https://alma-negra.onrender.com/api/health)
           
           if [ "$response" = "200" ]; then
             echo "✅ App is alive (HTTP $response)"
@@ -110,10 +110,10 @@ jobs:
 #    If you need to eliminate ALL cold starts (including Neon), change the endpoint:
 #    
 #    Replace:
-#      https://almanegra.onrender.com/api/health
+#      https://alma-negra.onrender.com/api/health
 #    
 #    With:
-#      https://almanegra.onrender.com/ready
+#      https://alma-negra.onrender.com/ready
 #    
 #    Trade-off: Higher resource usage, but guaranteed warm DB on user arrival
 #
