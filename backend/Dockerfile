@@ -88,10 +88,11 @@ ENV FLASK_ENV=production
 
 # Health check for production
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-    CMD curl -f http://localhost:5000/health || exit 1
+    CMD curl -f http://localhost:${PORT:-5000}/api/health || exit 1
 
-# Command for production (Gunicorn)
-CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:5000", "--workers", "4", "--timeout", "120"]
+# Command for production (Gunicorn) - bind to dynamic PORT if provided
+# Use shell form so $PORT expansion works inside container
+CMD gunicorn app:app --bind 0.0.0.0:${PORT:-5000} --workers 4 --timeout 120
 
 # Test stage
 FROM base AS test

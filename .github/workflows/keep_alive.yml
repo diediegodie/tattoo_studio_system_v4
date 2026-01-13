@@ -27,7 +27,7 @@ on:
     # Day-of-week: 2=Tuesday, 3=Wednesday, 4=Thursday, 5=Friday, 6=Saturday
     
         # Tuesday to Saturday, every 14 minutes from 13:00 to 21:56 UTC (10:00–18:56 BRT)
-    - cron: '0,14,28,42,56 13-21 * * 2-6'
+    - cron: '0,15,30,45 13-21 * * 2-6'
     
     # Final ping at 22:00 UTC (19:00 BRT) to cover the last hour
     - cron: '0 22 * * 2-6'
