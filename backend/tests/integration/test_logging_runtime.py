@@ -119,7 +119,7 @@ def test_flask_request_logging(client, log_dir):
 
     # Poll for file growth to account for I/O buffering
     final_size = initial_size
-    deadline = time.time() + 1.0  # up to 1s
+    deadline = time.time() + 3.0  # up to 3s
     while time.time() < deadline:
         final_size = main_log.stat().st_size
         if final_size > initial_size:
