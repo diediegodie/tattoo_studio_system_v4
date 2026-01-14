@@ -20,19 +20,16 @@ name: Keep App Alive (Business Hours)
 
 on:
   schedule:
-    # Cron expressions run in UTC. São Paulo is UTC-3 (no DST as of 2019).
-    # Business hours: 10:00–19:00 BRT = 13:00–22:00 UTC
-    # Run every 14 minutes between 13:00 and 22:00 UTC
-    # Format: minute hour day-of-month month day-of-week
-    # Day-of-week: 2=Tuesday, 3=Wednesday, 4=Thursday, 5=Friday, 6=Saturday
-    
-    # Tuesday to Saturday, every 14 minutes from 13:00 to 21:56 UTC (10:00–18:56 BRT)
-    - cron: '0,14,28,42,56 13-21 * * 2-6'
-    
-    # Final ping at 22:00 UTC (19:00 BRT) to cover the last hour
-    - cron: '0 22 * * 2-6'
+    - cron: '0,14,28,42,56 13 * * 1-6' # 10:00,10:14,10:28,10:42,10:56 BRT -> 13:00-13:56 UTC
+    - cron: '10,24,38,52 14 * * 1-6'    # 11:10,11:24,11:38,11:52 BRT -> 14:10-14:52 UTC
+    - cron: '6,20,34,48 15 * * 1-6'     # 12:06,12:20,12:34,12:48 BRT -> 15:06-15:48 UTC
+    - cron: '2,16,30,44,58 16 * * 1-6'  # 13:02,13:16,...,13:58 BRT -> 16:02-16:58 UTC
+    - cron: '12,26,40,54 17 * * 1-6'    # 14:12,...,14:54 BRT -> 17:12-17:54 UTC
+    - cron: '8,22,36,50 18 * * 1-6'     # 15:08,...,15:50 BRT -> 18:08-18:50 UTC
+    - cron: '4,18,32,46 19 * * 1-6'     # 16:04,...,16:46 BRT -> 19:04-19:46 UTC
+    - cron: '0,14,28,42,56 20 * * 1-6'  # 17:00,...,17:56 BRT -> 20:00-20:56 UTC
+    - cron: '10,24,38,52 21 * * 1-6'    # 18:10,18:24,18:38,18:52 BRT -> 21:10-21:52 UTC
 
-  # Allow manual trigger for testing
   workflow_dispatch:
 
 jobs:
