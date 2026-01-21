@@ -63,16 +63,14 @@ def get_existing_indexes(engine, table_names):
             for table_name in table_names:
                 # Query pg_indexes for index information
                 result = conn.execute(
-                    text(
-                        """
+                    text("""
                     SELECT
                         indexname,
                         indexdef
                     FROM pg_indexes
                     WHERE tablename = :table_name
                     ORDER BY indexname
-                """
-                    ),
+                """),
                     {"table_name": table_name},
                 )
 

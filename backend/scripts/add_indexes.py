@@ -32,12 +32,10 @@ def create_index_if_not_exists(engine, index_name, table_name, column_name):
         with engine.connect() as conn:
             # Check if index exists
             result = conn.execute(
-                text(
-                    """
+                text("""
                 SELECT 1 FROM pg_indexes
                 WHERE tablename = :table_name AND indexname = :index_name
-            """
-                ),
+            """),
                 {"table_name": table_name, "index_name": index_name},
             )
 

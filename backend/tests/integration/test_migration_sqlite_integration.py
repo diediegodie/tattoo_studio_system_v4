@@ -11,16 +11,14 @@ import pytest
 def _create_old_schema(db_path):
     conn = sqlite3.connect(db_path)
     cur = conn.cursor()
-    cur.execute(
-        """
+    cur.execute("""
         CREATE TABLE inventory (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             nome TEXT,
             quantidade INTEGER,
             "order" INTEGER NOT NULL DEFAULT 0
         );
-        """
-    )
+        """)
     # Insert a row
     cur.execute(
         'INSERT INTO inventory (nome, quantidade, "order") VALUES (?, ?, ?)',

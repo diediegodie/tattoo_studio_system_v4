@@ -64,16 +64,14 @@ def migrate_inventory_order(database_url=None):
             cur.execute("DROP TABLE inventory")
 
             # Recreate table with nullable 'order' column
-            cur.execute(
-                """
+            cur.execute("""
                 CREATE TABLE inventory (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     nome TEXT,
                     quantidade INTEGER,
                     "order" INTEGER NULL DEFAULT 0
                 );
-            """
-            )
+            """)
 
             # Insert data back
             cur.executemany(

@@ -3,6 +3,7 @@
 Mock test to verify Google Calendar OAuth and token refresh fixes
 This simulates the Google API responses to test our logic without network dependency
 """
+
 import os
 import sys
 

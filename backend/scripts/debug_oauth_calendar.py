@@ -3,6 +3,7 @@
 Direct test script to debug Google Calendar OAuth token storage and service functionality
 This script bypasses web authentication and directly tests our fixes
 """
+
 import os
 import sys
 

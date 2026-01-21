@@ -34,15 +34,11 @@ def check_column_exists(db_session, logger):
 
         # If SQLite pragma doesn't work, try PostgreSQL approach
         try:
-            result = db_session.execute(
-                text(
-                    """
+            result = db_session.execute(text("""
                 SELECT COUNT(*) as count
                 FROM information_schema.columns 
                 WHERE table_name = 'sessoes' AND column_name = 'hora'
-            """
-                )
-            ).fetchone()
+            """)).fetchone()
             return result and result[0] > 0
         except Exception:
             # If both fail, assume column exists to be safe
@@ -84,9 +80,7 @@ def drop_hora_column(db_session, logger):
             # Drop temporary table if it exists
             db_session.execute(text("DROP TABLE IF EXISTS sessoes_new"))
 
-            db_session.execute(
-                text(
-                    """
+            db_session.execute(text("""
                 CREATE TABLE sessoes_new (
                     id SERIAL PRIMARY KEY,
                     data DATE NOT NULL,
@@ -102,14 +96,10 @@ def drop_hora_column(db_session, logger):
                     FOREIGN KEY (cliente_id) REFERENCES clientes (id),
                     FOREIGN KEY (artista_id) REFERENCES artistas (id)
                 )
-            """
-                )
-            )
+            """))
 
             # Copy data from old table to new table (excluding hora)
-            db_session.execute(
-                text(
-                    """
+            db_session.execute(text("""
                 INSERT INTO sessoes_new (
                     id, data, cliente_id, artista_id, valor, observacoes, 
                     google_event_id, status, payment_id, created_at, updated_at
@@ -118,9 +108,7 @@ def drop_hora_column(db_session, logger):
                     id, data, cliente_id, artista_id, valor, observacoes,
                     google_event_id, status, payment_id, created_at, updated_at
                 FROM sessoes
-            """
-                )
-            )
+            """))
 
             # Drop old table and rename new table
             db_session.execute(text("DROP TABLE sessoes"))

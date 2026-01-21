@@ -2,6 +2,7 @@
 """
 Test script to debug Google Calendar sync with proper authentication
 """
+
 import json
 import os
 from datetime import datetime

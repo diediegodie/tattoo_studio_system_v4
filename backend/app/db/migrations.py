@@ -71,22 +71,16 @@ def ensure_migration_001_applied() -> None:
 
             if dialect_name == "postgresql":
                 # PostgreSQL: Simple ALTER COLUMN
-                conn.execute(
-                    text(
-                        """
+                conn.execute(text("""
                     ALTER TABLE clients 
                     ALTER COLUMN jotform_submission_id DROP NOT NULL;
-                """
-                    )
-                )
+                """))
                 conn.commit()
 
             elif dialect_name == "sqlite":
                 # SQLite: Must recreate table (SQLite limitation)
                 # Step 1: Create new table with nullable column
-                conn.execute(
-                    text(
-                        """
+                conn.execute(text("""
                     CREATE TABLE clients_new (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         name VARCHAR(255) NOT NULL,
@@ -94,20 +88,14 @@ def ensure_migration_001_applied() -> None:
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                         updated_at TIMESTAMP
                     );
-                """
-                    )
-                )
+                """))
 
                 # Step 2: Copy data
-                conn.execute(
-                    text(
-                        """
+                conn.execute(text("""
                     INSERT INTO clients_new (id, name, jotform_submission_id, created_at, updated_at)
                     SELECT id, name, jotform_submission_id, created_at, updated_at
                     FROM clients;
-                """
-                    )
-                )
+                """))
 
                 # Step 3: Drop old table
                 conn.execute(text("DROP TABLE clients;"))
@@ -179,9 +167,7 @@ def ensure_migration_002_applied() -> None:
             )
 
             if dialect_name == "postgresql":
-                conn.execute(
-                    text(
-                        """
+                conn.execute(text("""
                     CREATE TABLE migration_audit (
                         id SERIAL PRIMARY KEY,
                         entity_type VARCHAR(50) NOT NULL,
@@ -193,15 +179,11 @@ def ensure_migration_002_applied() -> None:
                     );
                     CREATE INDEX idx_migration_audit_entity_type ON migration_audit(entity_type);
                     CREATE INDEX idx_migration_audit_created_at ON migration_audit(created_at);
-                """
-                    )
-                )
+                """))
                 conn.commit()
 
             elif dialect_name == "sqlite":
-                conn.execute(
-                    text(
-                        """
+                conn.execute(text("""
                     CREATE TABLE migration_audit (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         entity_type VARCHAR(50) NOT NULL,
@@ -211,9 +193,7 @@ def ensure_migration_002_applied() -> None:
                         details TEXT,
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     );
-                """
-                    )
-                )
+                """))
                 conn.execute(
                     text(
                         "CREATE INDEX idx_migration_audit_entity_type ON migration_audit(entity_type);"
@@ -296,46 +276,30 @@ def ensure_migration_003_applied() -> None:
 
             if dialect_name == "postgresql":
                 # PostgreSQL: Simple ALTER TABLE
-                conn.execute(
-                    text(
-                        """
+                conn.execute(text("""
                     ALTER TABLE pagamentos 
                     ADD COLUMN google_event_id VARCHAR(100) NULL;
-                """
-                    )
-                )
+                """))
                 # Add unique constraint (partial - only for non-NULL values)
-                conn.execute(
-                    text(
-                        """
+                conn.execute(text("""
                     CREATE UNIQUE INDEX idx_pagamentos_google_event_id 
                     ON pagamentos(google_event_id) 
                     WHERE google_event_id IS NOT NULL;
-                """
-                    )
-                )
+                """))
                 conn.commit()
 
             elif dialect_name == "sqlite":
                 # SQLite: ALTER TABLE ADD COLUMN is supported
-                conn.execute(
-                    text(
-                        """
+                conn.execute(text("""
                     ALTER TABLE pagamentos 
                     ADD COLUMN google_event_id VARCHAR(100) NULL;
-                """
-                    )
-                )
+                """))
                 # SQLite unique index (conditional on NULL requires WHERE clause)
-                conn.execute(
-                    text(
-                        """
+                conn.execute(text("""
                     CREATE UNIQUE INDEX idx_pagamentos_google_event_id 
                     ON pagamentos(google_event_id) 
                     WHERE google_event_id IS NOT NULL;
-                """
-                    )
-                )
+                """))
                 conn.commit()
 
             else:
@@ -418,8 +382,7 @@ def ensure_migration_004_backfill_google_event_id() -> None:
             )
 
             # Step 1: Find collision candidates (same google_event_id linked to multiple pagamentos)
-            collision_query = text(
-                """
+            collision_query = text("""
                 SELECT s.google_event_id, COUNT(DISTINCT p.id) as pagamento_count
                 FROM sessoes s
                 INNER JOIN pagamentos p ON (p.sessao_id = s.id OR s.payment_id = p.id)
@@ -427,20 +390,17 @@ def ensure_migration_004_backfill_google_event_id() -> None:
                   AND p.google_event_id IS NULL
                 GROUP BY s.google_event_id
                 HAVING COUNT(DISTINCT p.id) > 1
-            """
-            )
+            """)
             collision_result = conn.execute(collision_query).fetchall()
             collision_event_ids = {row[0] for row in collision_result}
 
             # Log collisions to migration_audit
             for event_id in collision_event_ids:
                 conn.execute(
-                    text(
-                        """
+                    text("""
                     INSERT INTO migration_audit (entity_type, entity_id, action, status, details)
                     VALUES (:entity_type, NULL, :action, :status, :details)
-                """
-                    ),
+                """),
                     {
                         "entity_type": "pagamento_backfill",
                         "action": "backfill",
@@ -451,8 +411,7 @@ def ensure_migration_004_backfill_google_event_id() -> None:
 
             # Step 2: Backfill where no collision detected
             if dialect_name == "postgresql":
-                backfill_query = text(
-                    """
+                backfill_query = text("""
                     UPDATE pagamentos p
                     SET google_event_id = s.google_event_id
                     FROM sessoes s
@@ -460,8 +419,7 @@ def ensure_migration_004_backfill_google_event_id() -> None:
                       AND s.google_event_id IS NOT NULL
                       AND p.google_event_id IS NULL
                       AND s.google_event_id NOT IN :collision_ids
-                """
-                )
+                """)
                 result = conn.execute(
                     backfill_query,
                     {
@@ -474,8 +432,7 @@ def ensure_migration_004_backfill_google_event_id() -> None:
 
             elif dialect_name == "sqlite":
                 # SQLite doesn't support UPDATE FROM, use subquery
-                backfill_query = text(
-                    """
+                backfill_query = text("""
                     UPDATE pagamentos
                     SET google_event_id = (
                         SELECT s.google_event_id
@@ -490,21 +447,18 @@ def ensure_migration_004_backfill_google_event_id() -> None:
                         WHERE (pagamentos.sessao_id = s2.id OR s2.payment_id = pagamentos.id)
                           AND s2.google_event_id IS NOT NULL
                       )
-                """
-                )
+                """)
                 result = conn.execute(backfill_query)
                 rows_updated = result.rowcount
 
                 # For SQLite, manually filter out collisions by setting back to NULL
                 if collision_event_ids:
                     conn.execute(
-                        text(
-                            """
+                        text("""
                         UPDATE pagamentos
                         SET google_event_id = NULL
                         WHERE google_event_id IN :collision_ids
-                    """
-                        ),
+                    """),
                         {"collision_ids": tuple(collision_event_ids)},
                     )
 
@@ -517,12 +471,10 @@ def ensure_migration_004_backfill_google_event_id() -> None:
 
             # Step 3: Log summary to migration_audit
             conn.execute(
-                text(
-                    """
+                text("""
                 INSERT INTO migration_audit (entity_type, entity_id, action, status, details)
                 VALUES (:entity_type, NULL, :action, :status, :details)
-            """
-                ),
+            """),
                 {
                     "entity_type": "pagamento_backfill",
                     "action": "backfill",
@@ -591,26 +543,18 @@ def ensure_migration_005_unified_flow_flag() -> None:
 
             if dialect_name == "postgresql":
                 # PostgreSQL: Add column with default False
-                conn.execute(
-                    text(
-                        """
+                conn.execute(text("""
                     ALTER TABLE users 
                     ADD COLUMN unified_flow_enabled BOOLEAN NOT NULL DEFAULT FALSE;
-                """
-                    )
-                )
+                """))
                 conn.commit()
 
             elif dialect_name == "sqlite":
                 # SQLite: Add column directly (supports adding columns with defaults)
-                conn.execute(
-                    text(
-                        """
+                conn.execute(text("""
                     ALTER TABLE users 
                     ADD COLUMN unified_flow_enabled BOOLEAN NOT NULL DEFAULT 0;
-                """
-                    )
-                )
+                """))
                 conn.commit()
 
             else:
@@ -622,12 +566,10 @@ def ensure_migration_005_unified_flow_flag() -> None:
 
             # Log migration completion
             conn.execute(
-                text(
-                    """
+                text("""
                 INSERT INTO migration_audit (entity_type, entity_id, action, status, details)
                 VALUES (:entity_type, NULL, :action, :status, :details)
-            """
-                ),
+            """),
                 {
                     "entity_type": "user",
                     "action": "add_unified_flow_flag",

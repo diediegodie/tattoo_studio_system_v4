@@ -32,23 +32,17 @@ def run_migration():
             if "postgresql" in database_url:
                 # PostgreSQL syntax
                 logger.info("Running PostgreSQL migration...")
-                conn.execute(
-                    text(
-                        """
+                conn.execute(text("""
                     ALTER TABLE comissoes
                     ALTER COLUMN pagamento_id DROP NOT NULL;
-                """
-                    )
-                )
+                """))
                 conn.commit()
                 logger.info("Migration completed successfully for PostgreSQL.")
             else:
                 # SQLite syntax (if needed)
                 logger.info("Running SQLite migration...")
                 # For SQLite, we need to recreate the table
-                conn.execute(
-                    text(
-                        """
+                conn.execute(text("""
                     CREATE TABLE comissoes_new (
                         id INTEGER PRIMARY KEY,
                         pagamento_id INTEGER,
@@ -60,19 +54,13 @@ def run_migration():
                         FOREIGN KEY (pagamento_id) REFERENCES pagamentos (id),
                         FOREIGN KEY (artista_id) REFERENCES users (id)
                     );
-                """
-                    )
-                )
+                """))
 
-                conn.execute(
-                    text(
-                        """
+                conn.execute(text("""
                     INSERT INTO comissoes_new
                     SELECT id, pagamento_id, artista_id, percentual, valor, observacoes, created_at
                     FROM comissoes;
-                """
-                    )
-                )
+                """))
 
                 conn.execute(text("DROP TABLE comissoes;"))
                 conn.execute(text("ALTER TABLE comissoes_new RENAME TO comissoes;"))

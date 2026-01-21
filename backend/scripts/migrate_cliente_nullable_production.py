@@ -139,30 +139,22 @@ class ProductionMigration:
 
         with self.engine.connect() as conn:
             # Check if pagamentos table exists
-            table_check = conn.execute(
-                text(
-                    """
+            table_check = conn.execute(text("""
                 SELECT EXISTS (
                     SELECT FROM information_schema.tables 
                     WHERE table_name = 'pagamentos'
                 );
-            """
-                )
-            ).fetchone()[0]
+            """)).fetchone()[0]
 
             if not table_check:
                 raise Exception("pagamentos table does not exist")
 
             # Check cliente_id column
-            column_info = conn.execute(
-                text(
-                    """
+            column_info = conn.execute(text("""
                 SELECT column_name, is_nullable, data_type 
                 FROM information_schema.columns 
                 WHERE table_name = 'pagamentos' AND column_name = 'cliente_id';
-            """
-                )
-            ).fetchone()
+            """)).fetchone()
 
             if not column_info:
                 raise Exception("cliente_id column does not exist in pagamentos table")
@@ -199,15 +191,11 @@ class ProductionMigration:
                 logger.info("✅ Successfully executed ALTER TABLE statement")
 
                 # Verify within transaction
-                result = conn.execute(
-                    text(
-                        """
+                result = conn.execute(text("""
                     SELECT is_nullable 
                     FROM information_schema.columns 
                     WHERE table_name = 'pagamentos' AND column_name = 'cliente_id';
-                """
-                    )
-                ).fetchone()
+                """)).fetchone()
 
                 if result is None or result[0] != "YES":
                     raise Exception(
@@ -234,15 +222,11 @@ class ProductionMigration:
 
         with self.engine.connect() as conn:
             # Check schema
-            column_info = conn.execute(
-                text(
-                    """
+            column_info = conn.execute(text("""
                 SELECT column_name, is_nullable, data_type 
                 FROM information_schema.columns 
                 WHERE table_name = 'pagamentos' AND column_name = 'cliente_id';
-            """
-                )
-            ).fetchone()
+            """)).fetchone()
 
             if column_info is None or column_info[1] != "YES":
                 raise Exception(
@@ -252,36 +236,24 @@ class ProductionMigration:
             # Test NULL insertion
             conn.execute(text("BEGIN;"))
             try:
-                conn.execute(
-                    text(
-                        """
+                conn.execute(text("""
                     INSERT INTO pagamentos (valor, forma_pagamento, descricao, created_at, cliente_id)
                     VALUES (1.00, 'test', 'Migration verification test', NOW(), NULL);
-                """
-                    )
-                )
+                """))
 
                 # Verify insertion
-                result = conn.execute(
-                    text(
-                        """
+                result = conn.execute(text("""
                     SELECT id FROM pagamentos 
                     WHERE descricao = 'Migration verification test' AND cliente_id IS NULL;
-                """
-                    )
-                ).fetchone()
+                """)).fetchone()
 
                 if not result:
                     raise Exception("Could not insert payment with NULL cliente_id")
 
                 # Clean up test data
-                conn.execute(
-                    text(
-                        """
+                conn.execute(text("""
                     DELETE FROM pagamentos WHERE descricao = 'Migration verification test';
-                """
-                    )
-                )
+                """))
 
                 conn.execute(text("COMMIT;"))
                 logger.info(

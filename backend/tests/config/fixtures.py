@@ -429,15 +429,11 @@ def postgres_db():
             try:
                 with main_engine.connect() as conn:
                     # Terminate any active connections to the test database
-                    conn.execute(
-                        text(
-                            f"""
+                    conn.execute(text(f"""
                         SELECT pg_terminate_backend(pid)
                         FROM pg_stat_activity
                         WHERE datname = '{test_db_name}' AND pid <> pg_backend_pid()
-                    """
-                        )
-                    )
+                    """))
                     # Drop the database
                     conn.execute(text(f"DROP DATABASE IF EXISTS {test_db_name}"))
             except OperationalError as exc:

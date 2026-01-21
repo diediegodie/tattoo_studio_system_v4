@@ -46,16 +46,12 @@ def check_database_connection(database_url):
                 return False
 
             # Check pagamentos table exists
-            table_result = conn.execute(
-                text(
-                    """
+            table_result = conn.execute(text("""
                 SELECT EXISTS (
                     SELECT FROM information_schema.tables 
                     WHERE table_name = 'pagamentos'
                 );
-            """
-                )
-            ).fetchone()
+            """)).fetchone()
 
             if not table_result:
                 logger.error("Could not check table existence")
@@ -68,15 +64,11 @@ def check_database_connection(database_url):
                 return False
 
             # Check current schema
-            column_info = conn.execute(
-                text(
-                    """
+            column_info = conn.execute(text("""
                 SELECT column_name, is_nullable, data_type 
                 FROM information_schema.columns 
                 WHERE table_name = 'pagamentos' AND column_name = 'cliente_id';
-            """
-                )
-            ).fetchone()
+            """)).fetchone()
 
             if not column_info:
                 logger.error("cliente_id column not found in pagamentos table")

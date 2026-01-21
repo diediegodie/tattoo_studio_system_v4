@@ -93,16 +93,12 @@ def test_pg_stat_activity():
             result = conn.execute(text("SELECT version()")).fetchone()
             if result and "PostgreSQL" in result[0]:
                 # Query pg_stat_activity for our application
-                activity_result = conn.execute(
-                    text(
-                        """
+                activity_result = conn.execute(text("""
                         SELECT datname, application_name, state, query
                         FROM pg_stat_activity
                         WHERE application_name = 'tattoo_studio'
                         AND pid = pg_backend_pid()
-                    """
-                    )
-                ).fetchone()
+                    """)).fetchone()
 
                 if activity_result:
                     logger.info(f"✅ Found connection in pg_stat_activity:")

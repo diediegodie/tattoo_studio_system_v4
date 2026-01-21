@@ -74,12 +74,10 @@ print("=" * 60)
 print("TESTING MANUAL CLIENT CREATION:")
 print("=" * 60)
 try:
-    cursor.execute(
-        """
+    cursor.execute("""
         INSERT INTO clients (name, jotform_submission_id, created_at)
         VALUES ('Test Manual Client', NULL, CURRENT_TIMESTAMP)
-    """
-    )
+    """)
     conn.commit()
     print("✅ SUCCESS: Manual client created without jotform_submission_id")
 

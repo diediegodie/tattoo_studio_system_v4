@@ -2,6 +2,7 @@
 """
 Debug script to test app creation for the API tests.
 """
+
 import os
 import sys
 

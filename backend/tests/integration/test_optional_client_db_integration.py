@@ -138,30 +138,22 @@ class TestOptionalClientDatabaseIntegration:
         assert "PostgreSQL" in result[0], "Should be connected to PostgreSQL"
 
         # Check that cliente_id column allows NULL in pagamentos table (main feature)
-        nullable_check = postgres_db.execute(
-            text(
-                """
+        nullable_check = postgres_db.execute(text("""
             SELECT is_nullable 
             FROM information_schema.columns 
             WHERE table_name='pagamentos' AND column_name='cliente_id'
-        """
-            )
-        ).fetchone()
+        """)).fetchone()
         assert (
             nullable_check[0] == "YES"
         ), "pagamentos.cliente_id should allow NULL values"
 
         # Note: sessoes.cliente_id is still NOT NULL in current schema
         # The optional client feature is primarily implemented for payments
-        sessoes_nullable = postgres_db.execute(
-            text(
-                """
+        sessoes_nullable = postgres_db.execute(text("""
             SELECT is_nullable 
             FROM information_schema.columns 
             WHERE table_name='sessoes' AND column_name='cliente_id'
-        """
-            )
-        ).fetchone()
+        """)).fetchone()
         # This is expected to be 'NO' - documenting current state
         assert (
             sessoes_nullable[0] == "NO"

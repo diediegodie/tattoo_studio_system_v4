@@ -3,6 +3,7 @@
 Test script to create a gasto via authenticated HTTP request
 This is a manual integration test that requires a running server.
 """
+
 from datetime import datetime
 import os
 

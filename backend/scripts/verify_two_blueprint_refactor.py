@@ -30,15 +30,11 @@ def verify_database_schema():
 
     with engine.connect() as conn:
         # Check oauth table exists
-        result = conn.execute(
-            text(
-                """
+        result = conn.execute(text("""
             SELECT table_name 
             FROM information_schema.tables 
             WHERE table_name = 'oauth'
-        """
-            )
-        )
+        """))
 
         if result.fetchone():
             print("✅ OAuth table exists")
@@ -47,15 +43,11 @@ def verify_database_schema():
             return False
 
         # Check provider column
-        result = conn.execute(
-            text(
-                """
+        result = conn.execute(text("""
             SELECT column_name, data_type 
             FROM information_schema.columns 
             WHERE table_name = 'oauth' AND column_name = 'provider'
-        """
-            )
-        )
+        """))
 
         if result.fetchone():
             print("✅ Provider column exists")

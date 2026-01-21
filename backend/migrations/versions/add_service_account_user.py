@@ -19,8 +19,7 @@ depends_on = None
 
 def upgrade():
     # Insert or update the service account user (id=999)
-    op.execute(
-        """
+    op.execute("""
     INSERT INTO users (id, email, name, role, active_flag, password_hash)
     VALUES (
         999,
@@ -38,8 +37,7 @@ def upgrade():
         active_flag = TRUE,
         password_hash = '!'
     ;
-    """
-    )
+    """)
 
 
 def downgrade():

@@ -33,45 +33,29 @@ def run_migration():
     with engine.connect() as conn:
         try:
             # Add status column to sessoes table
-            conn.execute(
-                text(
-                    """
+            conn.execute(text("""
                 ALTER TABLE sessoes
                 ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'active'
-            """
-                )
-            )
+            """))
 
             # Add payment_id column to sessoes table
-            conn.execute(
-                text(
-                    """
+            conn.execute(text("""
                 ALTER TABLE sessoes
                 ADD COLUMN IF NOT EXISTS payment_id INTEGER REFERENCES pagamentos(id)
-            """
-                )
-            )
+            """))
 
             # Add sessao_id column to pagamentos table
-            conn.execute(
-                text(
-                    """
+            conn.execute(text("""
                 ALTER TABLE pagamentos
                 ADD COLUMN IF NOT EXISTS sessao_id INTEGER REFERENCES sessoes(id)
-            """
-                )
-            )
+            """))
 
             # Update existing sessions to 'active' status if they don't have one
-            conn.execute(
-                text(
-                    """
+            conn.execute(text("""
                 UPDATE sessoes
                 SET status = 'active'
                 WHERE status IS NULL OR status = ''
-            """
-                )
-            )
+            """))
 
             conn.commit()
             logger.info("Migration completed successfully!")

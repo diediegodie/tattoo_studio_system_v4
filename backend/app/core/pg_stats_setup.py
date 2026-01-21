@@ -98,8 +98,7 @@ def get_slow_queries(limit: int = 10) -> List[Dict[str, Any]]:
     Returns:
         List of query statistics
     """
-    query = text(
-        """
+    query = text("""
         SELECT 
             calls,
             total_exec_time,
@@ -112,8 +111,7 @@ def get_slow_queries(limit: int = 10) -> List[Dict[str, Any]]:
         FROM pg_stat_statements
         ORDER BY mean_exec_time DESC
         LIMIT :limit
-    """
-    )
+    """)
 
     with SessionLocal() as db:
         results = db.execute(query, {"limit": limit}).fetchall()
@@ -146,8 +144,7 @@ def get_most_frequent_queries(limit: int = 20) -> List[Dict[str, Any]]:
     Returns:
         List of query statistics
     """
-    query = text(
-        """
+    query = text("""
         SELECT 
             calls,
             total_exec_time,
@@ -158,8 +155,7 @@ def get_most_frequent_queries(limit: int = 20) -> List[Dict[str, Any]]:
         FROM pg_stat_statements
         ORDER BY calls DESC
         LIMIT :limit
-    """
-    )
+    """)
 
     with SessionLocal() as db:
         results = db.execute(query, {"limit": limit}).fetchall()
@@ -188,8 +184,7 @@ def detect_n_plus_one() -> List[Dict[str, Any]]:
     Returns:
         List of suspected N+1 patterns
     """
-    query = text(
-        """
+    query = text("""
         SELECT 
             calls,
             mean_exec_time,
@@ -200,8 +195,7 @@ def detect_n_plus_one() -> List[Dict[str, Any]]:
           AND query NOT LIKE '%information_schema%'
         ORDER BY calls DESC
         LIMIT 20
-    """
-    )
+    """)
 
     with SessionLocal() as db:
         results = db.execute(query).fetchall()
