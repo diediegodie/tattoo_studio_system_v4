@@ -83,7 +83,28 @@ This system provides tattoo studio owners and artists with a centralized platfor
 
 ### Automation & Monitoring
 
-- **Keep-Alive Workflow**: Pings app every 14 minutes during business hours (Tue-Sat, 10:00-19:00 BRT) to prevent Render free tier spin-down
+- **Keep-Alive (cron-job.org)**: The previous GitHub Actions `keep_alive.yml` workflow has been disabled. Instead we use an external scheduler (cron-job.org) to ping the app during business hours and prevent Render free-tier spin-down.
+
+   - Recommended endpoint: `https://<your-app>.onrender.com/api/health` (lightweight, no DB)
+   - Example cron-job.org settings:
+
+      - Schedule: custom hours (e.g. Tue–Sat, 10:00–19:00 BRT)
+      - Frequency: every 14 minutes during the business-hour window
+      - Request: `GET` to the health URL
+
+      Example curl used by the job:
+
+      ```bash
+      curl -s -o /dev/null -w "%{http_code}" \
+         --connect-timeout 60 --max-time 180 \
+         --retry 3 --retry-delay 10 \
+         https://<your-app>.onrender.com/api/health
+      ```
+
+   - Notes:
+      - `api/health` is preferred because it is lightweight and does not hit the DB; use `/ready` only if you need to keep the DB warm as well.
+      - Using an external scheduler keeps GitHub Actions minutes low and isolates keep-alive from CI/CD workflows.
+
 - **Monthly Statement Backup**: Automated monthly financial snapshot generation on the 2nd of each month
 - **Health Checks**: Multiple endpoints for liveness, readiness, and business monitoring
 - **Slow Query Alerts**: Configurable thresholds with optional Slack integration
