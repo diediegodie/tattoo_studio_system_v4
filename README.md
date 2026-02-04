@@ -2,7 +2,6 @@
 
 [![CI/CD Pipeline](https://github.com/diediegodie/tattoo_studio_system_v4/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/diediegodie/tattoo_studio_system_v4/actions/workflows/ci-cd.yml)
 [![Monthly Backup](https://github.com/diediegodie/tattoo_studio_system_v4/actions/workflows/monthly_extrato_backup.yml/badge.svg)](https://github.com/diediegodie/tattoo_studio_system_v4/actions/workflows/monthly_extrato_backup.yml)
-[![Keep Alive](https://github.com/diediegodie/tattoo_studio_system_v4/actions/workflows/keep_alive.yml/badge.svg)](https://github.com/diediegodie/tattoo_studio_system_v4/actions/workflows/keep_alive.yml)
 
 A comprehensive management platform built for tattoo studios, streamlining client relationships, session scheduling, inventory tracking, and financial operations. Designed for reliability, security, and ease of use.
 
