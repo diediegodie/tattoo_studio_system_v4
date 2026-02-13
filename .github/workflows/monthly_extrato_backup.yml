@@ -4,10 +4,10 @@ permissions:
   issues: write
 
 on:
-  # Schedule: 2nd of each month at 03:00 UTC
+  # Schedule: 1st of each month at 03:00 UTC
   # (APScheduler runs on 1st at 02:00 São Paulo = 05:00 UTC)
   schedule:
-    - cron: '0 3 2 * *'
+    - cron: '0 3 1 * *'
   
   # Allow manual trigger for testing
   workflow_dispatch:
@@ -125,11 +125,20 @@ jobs:
           
           # Evaluate backup outcome based on both status code and response body
           if [ "$HTTP_STATUS" -eq 200 ] && [ "$RESPONSE_SUCCESS" = "true" ]; then
-            # Backup was successfully created
-            echo "SUCCESS: Backup created successfully for $MONTH/$YEAR"
-            echo "backup_status=created" >> $GITHUB_OUTPUT
-            echo "backup_existed=false" >> $GITHUB_OUTPUT
-            exit 0
+            # Check the message to see if this was "no data to backup"
+            if echo "$RESPONSE_MESSAGE" | grep -i "no data\|no historical data" > /dev/null; then
+              echo "WARNING: No data to backup - extrato generation will be skipped"
+              echo "   Reason: No payment/session data found for $MONTH/$YEAR"
+              echo "   File created: No (no data available)"
+              echo "backup_status=no_data" >> $GITHUB_OUTPUT
+              exit 0
+            else
+              # Backup was successfully created
+              echo "SUCCESS: Backup created successfully for $MONTH/$YEAR"
+              echo "backup_status=created" >> $GITHUB_OUTPUT
+              echo "backup_existed=false" >> $GITHUB_OUTPUT
+              exit 0
+            fi
             
           elif [ "$HTTP_STATUS" -eq 409 ]; then
             # Backup already exists (conflict) - this is acceptable
@@ -171,6 +180,14 @@ jobs:
           BACKUP_STATUS: ${{ steps.backup.outputs.backup_status }}
         run: |
           set +e  # Don't exit on error - we handle it manually
+          
+          # Check if backup step reported "no_data" - if so, skip extrato generation
+          if [ "$BACKUP_STATUS" == "no_data" ]; then
+            echo "Skipping extrato generation: No data available for backup for $MONTH/$YEAR"
+            echo "This is normal when there are no payments/sessions in the database for this period"
+            echo "status=skipped" >> $GITHUB_OUTPUT
+            exit 0
+          fi
           
           # Validate required secrets exist
           if [ -z "$API_BASE_URL" ] || [ -z "$API_TOKEN" ]; then
@@ -322,6 +339,10 @@ jobs:
               echo "- Status: Backup created successfully" >> $GITHUB_STEP_SUMMARY
             elif [ "$BACKUP_STATUS" = "already_exists" ]; then
               echo "- Status: Backup already exists (reused)" >> $GITHUB_STEP_SUMMARY
+            elif [ "$BACKUP_STATUS" = "no_data" ]; then
+              echo "- Status: No data available for backup" >> $GITHUB_STEP_SUMMARY
+              echo "  - Note: No payments/sessions found for this period" >> $GITHUB_STEP_SUMMARY
+              echo "  - Extrato generation will be skipped" >> $GITHUB_STEP_SUMMARY
             else
               echo "- Status: $BACKUP_STATUS" >> $GITHUB_STEP_SUMMARY
             fi
@@ -334,7 +355,10 @@ jobs:
           
           # Extrato generation step status
           echo "### Step 2: Extrato Generation" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ steps.trigger.outcome }}" == "success" ]; then
+          if [ "${{ steps.trigger.outputs.status }}" = "skipped" ]; then
+            echo "- Status: Skipped (no data for backup)" >> $GITHUB_STEP_SUMMARY
+            echo "  - Reason: No payments/sessions in database for ${{ steps.setup.outputs.month }}/${{ steps.setup.outputs.year }}" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ steps.trigger.outcome }}" == "success" ]; then
             echo "- Status: Extrato generation completed" >> $GITHUB_STEP_SUMMARY
             if [ "${{ steps.parse.outputs.success }}" == "true" ]; then
               echo "  - **Result**: Successfully generated" >> $GITHUB_STEP_SUMMARY
