@@ -125,20 +125,11 @@ jobs:
           
           # Evaluate backup outcome based on both status code and response body
           if [ "$HTTP_STATUS" -eq 200 ] && [ "$RESPONSE_SUCCESS" = "true" ]; then
-            # Check the message to see if this was "no data to backup"
-            if echo "$RESPONSE_MESSAGE" | grep -i "no data\|no historical data" > /dev/null; then
-              echo "WARNING: No data to backup - extrato generation will be skipped"
-              echo "   Reason: No payment/session data found for $MONTH/$YEAR"
-              echo "   File created: No (no data available)"
-              echo "backup_status=no_data" >> $GITHUB_OUTPUT
-              exit 0
-            else
-              # Backup was successfully created
-              echo "SUCCESS: Backup created successfully for $MONTH/$YEAR"
-              echo "backup_status=created" >> $GITHUB_OUTPUT
-              echo "backup_existed=false" >> $GITHUB_OUTPUT
-              exit 0
-            fi
+            # Backup was successfully created
+            echo "SUCCESS: Backup created successfully for $MONTH/$YEAR"
+            echo "backup_status=created" >> $GITHUB_OUTPUT
+            echo "backup_existed=false" >> $GITHUB_OUTPUT
+            exit 0
             
           elif [ "$HTTP_STATUS" -eq 409 ]; then
             # Backup already exists (conflict) - this is acceptable
@@ -342,10 +333,6 @@ jobs:
               echo "- Status: Backup created successfully" >> $GITHUB_STEP_SUMMARY
             elif [ "$BACKUP_STATUS" = "already_exists" ]; then
               echo "- Status: Backup already exists (reused)" >> $GITHUB_STEP_SUMMARY
-            elif [ "$BACKUP_STATUS" = "no_data" ]; then
-              echo "- Status: No data available for backup" >> $GITHUB_STEP_SUMMARY
-              echo "  - Note: No payments/sessions found for this period" >> $GITHUB_STEP_SUMMARY
-              echo "  - Extrato generation will be skipped" >> $GITHUB_STEP_SUMMARY
             else
               echo "- Status: $BACKUP_STATUS" >> $GITHUB_STEP_SUMMARY
             fi
