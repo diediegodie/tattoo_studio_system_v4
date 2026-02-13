@@ -178,6 +178,7 @@ jobs:
           YEAR: ${{ steps.setup.outputs.year }}
           FORCE: ${{ steps.setup.outputs.force }}
           BACKUP_STATUS: ${{ steps.backup.outputs.backup_status }}
+          EXTRATO_REQUIRE_BACKUP: "false"
         run: |
           set +e  # Don't exit on error - we handle it manually
           
@@ -199,6 +200,7 @@ jobs:
           echo "Extrato Generation Step Starting..."
           echo "   Target: $MONTH/$YEAR (Force: $FORCE)"
           echo "   Backup Status from previous step: $BACKUP_STATUS"
+          echo "   Backup Requirement: DISABLED (for GitHub Actions automation)"
           
           # Build strict JSON payload using jq (forces numeric month/year and boolean force)
           PAYLOAD=$(jq -n \
@@ -329,6 +331,7 @@ jobs:
           echo "**Date**: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
           echo "**Target Period**: ${{ steps.setup.outputs.month }}/${{ steps.setup.outputs.year }}" >> $GITHUB_STEP_SUMMARY
           echo "**Trigger Type**: ${{ github.event_name == 'schedule' && 'Scheduled' || 'Manual' }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Backup Requirement**: Disabled (EXTRATO_REQUIRE_BACKUP=false for GitHub Actions)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           
           # Backup step status
