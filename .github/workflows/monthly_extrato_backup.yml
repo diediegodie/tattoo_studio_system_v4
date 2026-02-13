@@ -70,6 +70,8 @@ jobs:
           MONTH: ${{ steps.setup.outputs.month }}
           YEAR: ${{ steps.setup.outputs.year }}
         run: |
+          set -e  # Exit on any error
+          
           # Validate required secrets exist
           if [ -z "$API_BASE_URL" ] || [ -z "$API_TOKEN" ]; then
             echo "ERROR: EXTRATO_API_BASE_URL or EXTRATO_API_TOKEN not configured"
@@ -77,17 +79,24 @@ jobs:
             exit 1
           fi
           
+          echo "Backup Step Starting..."
+          echo "   Target: $MONTH/$YEAR"
+          
           # Build JSON payload for backup creation
           PAYLOAD=$(jq -n \
             --arg month "$MONTH" \
             --arg year "$YEAR" \
             '{month: ($month|tonumber), year: ($year|tonumber)}' )
           
-          echo "Backup endpoint: $API_BASE_URL/api/backup/create_service"
+          echo "Endpoint: $API_BASE_URL/api/backup/create_service"
           echo "Payload: $PAYLOAD"
           
-          # Make backup creation request
-          HTTP_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+          # Make backup creation request with timeout
+          echo "Sending backup creation request..."
+          HTTP_RESPONSE=$(curl -s -w "\n%{http_code}" \
+            --connect-timeout 10 \
+            --max-time 60 \
+            -X POST \
             "$API_BASE_URL/api/backup/create_service" \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer $API_TOKEN" \
@@ -97,20 +106,58 @@ jobs:
           HTTP_BODY=$(echo "$HTTP_RESPONSE" | head -n -1)
           HTTP_STATUS=$(echo "$HTTP_RESPONSE" | tail -n 1)
           
-          echo "Backup response status: $HTTP_STATUS"
-          echo "Backup response body: $HTTP_BODY"
+          echo "Response Status: $HTTP_STATUS"
+          echo "Response Body:"
+          echo "$HTTP_BODY" | jq . 2>/dev/null || echo "$HTTP_BODY"
           
           # Save response for debugging
           echo "$HTTP_BODY" > backup_response.json
           
-          # Check if backup creation was successful (200) or already exists (409)
-          if [ "$HTTP_STATUS" -eq 200 ] || [ "$HTTP_STATUS" -eq 409 ]; then
-            echo "SUCCESS: Backup creation completed (created or already exists)"
-            echo "backup_status=$HTTP_STATUS" >> $GITHUB_OUTPUT
+          # Parse response
+          RESPONSE_SUCCESS=$(echo "$HTTP_BODY" | jq -r '.success // false' 2>/dev/null)
+          RESPONSE_MESSAGE=$(echo "$HTTP_BODY" | jq -r '.message // .error // "Unknown response"' 2>/dev/null)
+          
+          echo ""
+          echo "Parsed Response:"
+          echo "   Success: $RESPONSE_SUCCESS"
+          echo "   Message: $RESPONSE_MESSAGE"
+          echo ""
+          
+          # Evaluate backup outcome based on both status code and response body
+          if [ "$HTTP_STATUS" -eq 200 ] && [ "$RESPONSE_SUCCESS" = "true" ]; then
+            # Backup was successfully created
+            echo "SUCCESS: Backup created successfully for $MONTH/$YEAR"
+            echo "backup_status=created" >> $GITHUB_OUTPUT
+            echo "backup_existed=false" >> $GITHUB_OUTPUT
+            exit 0
+            
+          elif [ "$HTTP_STATUS" -eq 409 ]; then
+            # Backup already exists (conflict) - this is acceptable
+            echo "INFO: Backup already exists for $MONTH/$YEAR"
+            echo "backup_status=already_exists" >> $GITHUB_OUTPUT
+            echo "backup_existed=true" >> $GITHUB_OUTPUT
+            exit 0
+            
+          elif [ "$HTTP_STATUS" -eq 200 ] && [ "$RESPONSE_SUCCESS" = "false" ]; then
+            # 200 but success=false - something went wrong
+            echo "WARNING: API returned 200 but success=false"
+            echo "   Message: $RESPONSE_MESSAGE"
+            echo "backup_status=partial_failure" >> $GITHUB_OUTPUT
+            exit 0  # Continue - might be "no data to backup"
+            
           else
-            echo "FAILED: Backup creation failed with status $HTTP_STATUS"
-            echo "backup_status=$HTTP_STATUS" >> $GITHUB_OUTPUT
-            # Continue anyway - extrato generation might still work if backup exists
+            # Actual error
+            echo "FAILED: Backup creation failed with HTTP $HTTP_STATUS"
+            echo "   Message: $RESPONSE_MESSAGE"
+            echo "backup_status=error" >> $GITHUB_OUTPUT
+            echo ""
+            echo "Debugging Information:"
+            echo "   Endpoint: $API_BASE_URL/api/backup/create_service"
+            echo "   HTTP Status: $HTTP_STATUS"
+            echo "   Tokens/Secrets: Check GitHub Actions secrets are correctly set"
+            echo "   Network: Check if API is reachable from GitHub Actions runner"
+            echo ""
+            exit 1  # Explicit failure
           fi
       
       - name: Trigger extrato generation endpoint
@@ -121,13 +168,20 @@ jobs:
           MONTH: ${{ steps.setup.outputs.month }}
           YEAR: ${{ steps.setup.outputs.year }}
           FORCE: ${{ steps.setup.outputs.force }}
+          BACKUP_STATUS: ${{ steps.backup.outputs.backup_status }}
         run: |
+          set +e  # Don't exit on error - we handle it manually
+          
           # Validate required secrets exist
           if [ -z "$API_BASE_URL" ] || [ -z "$API_TOKEN" ]; then
             echo "ERROR: EXTRATO_API_BASE_URL or EXTRATO_API_TOKEN not configured"
             echo "Add these secrets in: Settings → Secrets and variables → Actions"
             exit 1
           fi
+          
+          echo "Extrato Generation Step Starting..."
+          echo "   Target: $MONTH/$YEAR (Force: $FORCE)"
+          echo "   Backup Status from previous step: $BACKUP_STATUS"
           
           # Build strict JSON payload using jq (forces numeric month/year and boolean force)
           PAYLOAD=$(jq -n \
@@ -138,16 +192,21 @@ jobs:
           
           echo "Target endpoint: $API_BASE_URL/api/extrato/generate_service"
           echo "Payload: $PAYLOAD"
+          echo ""
           
           # Retry configuration
           MAX_RETRIES=3
           DELAY=5
+          SUCCESS=false
           
           # Make API request with retry logic
           for i in $(seq 1 $MAX_RETRIES); do
             echo "Attempt $i of $MAX_RETRIES..."
             
-            HTTP_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+            HTTP_RESPONSE=$(curl -s -w "\n%{http_code}" \
+              --connect-timeout 10 \
+              --max-time 60 \
+              -X POST \
               "$API_BASE_URL/api/extrato/generate_service" \
               -H "Content-Type: application/json" \
               -H "Authorization: Bearer $API_TOKEN" \
@@ -157,47 +216,66 @@ jobs:
             HTTP_BODY=$(echo "$HTTP_RESPONSE" | head -n -1)
             HTTP_STATUS=$(echo "$HTTP_RESPONSE" | tail -n 1)
             
-            echo "Response status: $HTTP_STATUS"
-            echo "Response body: $HTTP_BODY"
+            echo "   Status: $HTTP_STATUS"
             
             # Save response for debugging
             echo "$HTTP_BODY" > response.json
             
-            # Extract details for special handling
-            DETAILS=$(echo "$HTTP_BODY" | jq -r '.details // ""')
+            # Parse response details
+            RESPONSE_SUCCESS=$(echo "$HTTP_BODY" | jq -r '.success // false' 2>/dev/null)
+            RESPONSE_ERROR=$(echo "$HTTP_BODY" | jq -r '.error // .message // ""' 2>/dev/null)
+            RESPONSE_DETAILS=$(echo "$HTTP_BODY" | jq -r '.details // ""' 2>/dev/null)
+            
+            echo "   Response:"
+            echo "$HTTP_BODY" | jq . 2>/dev/null || echo "   (raw) $HTTP_BODY"
+            
+            # Check for backup verification failure
+            BACKUP_FAILURE=false
+            if echo "$RESPONSE_ERROR" | grep -q "backup verification failed"; then
+              BACKUP_FAILURE=true
+              echo ""
+              echo "BACKUP VERIFICATION FAILURE DETECTED"
+              echo "   Error: $RESPONSE_ERROR"
+              echo "   This likely means: Backup step did not create the required backup file"
+            fi
             
             # Check if request was successful
-            if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 300 ] || { [ "$HTTP_STATUS" -eq 500 ] && [ "$DETAILS" = "Extrato already exists for month/year" ]; }; then
-              echo "SUCCESS: Extrato generation completed (generated or already exists)"
+            if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 300 ]; then
+              echo "SUCCESS: Extrato generation completed"
               echo "status=$HTTP_STATUS" >> $GITHUB_OUTPUT
+              SUCCESS=true
               break
-            else
-              echo "WARNING: Attempt $i failed (HTTP $HTTP_STATUS)"
               
-              if [ "$i" -lt $MAX_RETRIES ]; then
-                echo "Retrying in $DELAY seconds..."
-                sleep $DELAY
-                DELAY=$((DELAY * 2))  # Exponential backoff
-              else
-                echo "FAILED: All $MAX_RETRIES attempts exhausted"
-                echo "status=$HTTP_STATUS" >> $GITHUB_OUTPUT
-                
-                # Add response body to step summary for debugging
-                echo "### Generation Failed (HTTP $HTTP_STATUS)" >> $GITHUB_STEP_SUMMARY
-                echo '#### Response body:' >> $GITHUB_STEP_SUMMARY
-                echo '```json' >> $GITHUB_STEP_SUMMARY
-                cat response.json >> $GITHUB_STEP_SUMMARY
-                echo '```' >> $GITHUB_STEP_SUMMARY
-                echo '' >> $GITHUB_STEP_SUMMARY
-                echo '#### Debug Information:' >> $GITHUB_STEP_SUMMARY
-                echo "- Endpoint: \`$API_BASE_URL/api/extrato/generate_service\`" >> $GITHUB_STEP_SUMMARY
-                echo "- Payload: \`$PAYLOAD\`" >> $GITHUB_STEP_SUMMARY
-                echo "- HTTP Status: \`$HTTP_STATUS\`" >> $GITHUB_STEP_SUMMARY
-                
-                exit 1
-              fi
+            elif [ "$HTTP_STATUS" -eq 500 ] && [ "$RESPONSE_DETAILS" = "Extrato already exists for month/year" ]; then
+              echo "INFO: Extrato already exists for $MONTH/$YEAR (no regeneration needed)"
+              echo "status=$HTTP_STATUS" >> $GITHUB_OUTPUT
+              SUCCESS=true
+              break
+              
+            elif [ "$BACKUP_FAILURE" = "true" ]; then
+              # Backup verification failure - don't retry, this needs to be fixed
+              echo ""
+              echo "FAILED: Backup verification failed"
+              echo "   Backup status from step: $BACKUP_STATUS"
+              echo "   Action required: Ensure backup was created successfully"
+              echo ""
+              echo "status=$HTTP_STATUS" >> $GITHUB_OUTPUT
+              break  # Don't retry - this is a configuration issue
+              
+            elif [ "$i" -lt $MAX_RETRIES ]; then
+              echo "   Retrying in $DELAY seconds (attempt $((i+1))/$MAX_RETRIES)..."
+              sleep $DELAY
+              DELAY=$((DELAY * 2))  # Exponential backoff
+              
+            else
+              echo "FAILED: All $MAX_RETRIES attempts exhausted"
+              echo "status=$HTTP_STATUS" >> $GITHUB_OUTPUT
             fi
           done
+          
+          if [ "$SUCCESS" = "false" ]; then
+            exit 1
+          fi
       
       - name: Upload debug responses on failure
         if: failure()
@@ -232,38 +310,75 @@ jobs:
           echo "## Monthly Extrato Generation Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Date**: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
-          echo "**Target**: ${{ steps.setup.outputs.month }}/${{ steps.setup.outputs.year }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Trigger**: ${{ github.event_name == 'schedule' && 'Scheduled' || 'Manual' }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Target Period**: ${{ steps.setup.outputs.month }}/${{ steps.setup.outputs.year }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Trigger Type**: ${{ github.event_name == 'schedule' && 'Scheduled' || 'Manual' }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           
-          # Backup status
+          # Backup step status
+          echo "### Step 1: Backup Creation" >> $GITHUB_STEP_SUMMARY
           if [ "${{ steps.backup.outcome }}" == "success" ]; then
-            echo "### Backup Step" >> $GITHUB_STEP_SUMMARY
-            echo "- ✅ **Backup**: Created or already exists" >> $GITHUB_STEP_SUMMARY
+            BACKUP_STATUS="${{ steps.backup.outputs.backup_status }}"
+            if [ "$BACKUP_STATUS" = "created" ]; then
+              echo "- Status: Backup created successfully" >> $GITHUB_STEP_SUMMARY
+            elif [ "$BACKUP_STATUS" = "already_exists" ]; then
+              echo "- Status: Backup already exists (reused)" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "- Status: $BACKUP_STATUS" >> $GITHUB_STEP_SUMMARY
+            fi
           else
-            echo "### Backup Step" >> $GITHUB_STEP_SUMMARY
-            echo "- ❌ **Backup**: Failed (status ${{ steps.backup.outputs.backup_status }})" >> $GITHUB_STEP_SUMMARY
+            echo "- Status: Backup creation FAILED" >> $GITHUB_STEP_SUMMARY
+            echo "  - **Output**: ${{ steps.backup.outputs.backup_status }}" >> $GITHUB_STEP_SUMMARY
+            echo "  - **Details**: See logs for curl output and error response" >> $GITHUB_STEP_SUMMARY
           fi
           echo "" >> $GITHUB_STEP_SUMMARY
           
+          # Extrato generation step status
+          echo "### Step 2: Extrato Generation" >> $GITHUB_STEP_SUMMARY
           if [ "${{ steps.trigger.outcome }}" == "success" ]; then
-            echo "### Generation Successful" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "- **Status**: ${{ steps.trigger.outputs.status }}" >> $GITHUB_STEP_SUMMARY
-            echo "- **Message**: ${{ steps.parse.outputs.message }}" >> $GITHUB_STEP_SUMMARY
-            echo "- **Extrato ID**: ${{ steps.parse.outputs.extrato_id }}" >> $GITHUB_STEP_SUMMARY
+            echo "- Status: Extrato generation completed" >> $GITHUB_STEP_SUMMARY
+            if [ "${{ steps.parse.outputs.success }}" == "true" ]; then
+              echo "  - **Result**: Successfully generated" >> $GITHUB_STEP_SUMMARY
+              echo "  - **Message**: ${{ steps.parse.outputs.message }}" >> $GITHUB_STEP_SUMMARY
+              echo "  - **Extrato ID**: ${{ steps.parse.outputs.extrato_id }}" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "  - **Result**: Already exists (no regeneration)" >> $GITHUB_STEP_SUMMARY
+            fi
           else
-            echo "### Generation Failed" >> $GITHUB_STEP_SUMMARY
+            echo "- Status: Extrato generation FAILED (HTTP ${{ steps.trigger.outputs.status }})" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "- **Status**: ${{ steps.trigger.outputs.status }}" >> $GITHUB_STEP_SUMMARY
-            echo "- **Error**: Check logs above for details" >> $GITHUB_STEP_SUMMARY
+            echo "#### Diagnostic Information:" >> $GITHUB_STEP_SUMMARY
+            echo "- **HTTP Status**: \`${{ steps.trigger.outputs.status }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "- **Backup Status (Previous Step)**: \`${{ steps.backup.outputs.backup_status }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "- **Backup File Existence**: Unknown (check API response in artifacts)" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "**Action Required**: Investigate APScheduler job and API endpoint" >> $GITHUB_STEP_SUMMARY
+            echo "#### Troubleshooting Guide:" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**If backup verification failed:**" >> $GITHUB_STEP_SUMMARY
+            echo "1. Check if backup file was created: \`backups/${{ steps.setup.outputs.year }}_${{ steps.setup.outputs.month }}/backup_${{ steps.setup.outputs.year }}_${{ steps.setup.outputs.month }}.csv\`" >> $GITHUB_STEP_SUMMARY
+            echo "2. Verify database has data for this period (check payment/session records)" >> $GITHUB_STEP_SUMMARY
+            echo "3. Review backup creation response in \`extrato-api-responses\` artifact" >> $GITHUB_STEP_SUMMARY
+            echo "4. Check database connectivity from API container" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**If API endpoint is unreachable:**" >> $GITHUB_STEP_SUMMARY
+            echo "1. Verify \`EXTRATO_API_BASE_URL\` secret is set and correct" >> $GITHUB_STEP_SUMMARY
+            echo "2. Check if API server is running" >> $GITHUB_STEP_SUMMARY
+            echo "3. Verify network connectivity from GitHub Actions runner" >> $GITHUB_STEP_SUMMARY
+            echo "4. Review API logs for errors" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**If authentication failed:**" >> $GITHUB_STEP_SUMMARY
+            echo "1. Verify \`EXTRATO_API_TOKEN\` secret is set correctly" >> $GITHUB_STEP_SUMMARY
+            echo "2. Ensure token is a valid service account JWT (not expired)" >> $GITHUB_STEP_SUMMARY
+            echo "3. Check token has admin/service account role" >> $GITHUB_STEP_SUMMARY
+            echo "4. Regenerate token if needed: \`python scripts/generate_service_token.py\`" >> $GITHUB_STEP_SUMMARY
           fi
           
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "---" >> $GITHUB_STEP_SUMMARY
-          echo "*This is a backup safety net. Primary automation runs via APScheduler in main.py.*" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+            echo "#### Artifacts Available:" >> $GITHUB_STEP_SUMMARY
+          echo "- Response files: \`extrato-api-responses\` (when workflow fails)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "*This is the GitHub Actions workflow safety net. Primary automation runs via APScheduler in the backend.*" >> $GITHUB_STEP_SUMMARY
       
       - name: Notify on failure
         if: failure()
