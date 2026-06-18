@@ -28,7 +28,7 @@ The platform provides:
 
 # Engineering Highlights
 
-* 370+ automated tests
+* 775+ automated tests passing
 * Flask + PostgreSQL architecture
 * Dockerized development environment
 * GitHub Actions CI/CD pipeline
