@@ -11,7 +11,7 @@
 /.venv/
 /.idea/
 /.vscode/
-.docs/
+/local_documentations
 .github/instructions/
 *.pyc
 *.pyo
@@ -80,5 +80,3 @@ docker-compose.override.yml
 client_secret.json
 client_secrets.json:Zone.Identifier
 backend/logs/
-docs/
-docs/
